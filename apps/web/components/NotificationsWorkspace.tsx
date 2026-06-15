@@ -3,7 +3,7 @@
 import NotificationsV2Workspace from "@/components/NotificationsV2Workspace";
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
-import { Notification } from "@harvest/domain";
+import { Notification } from "@/lib/domain";
 import { AlertTriangle, Bell, CheckCircle, Clock, Mail, Package, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 

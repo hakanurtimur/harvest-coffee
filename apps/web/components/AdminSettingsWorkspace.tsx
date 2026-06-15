@@ -3,7 +3,7 @@
 import AdminSettingsV2Workspace from "@/components/AdminSettingsV2Workspace";
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
-import { AdminSettings } from "@harvest/domain";
+import { AdminSettings } from "@/lib/domain";
 import { AlertTriangle, Mail, Save } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 

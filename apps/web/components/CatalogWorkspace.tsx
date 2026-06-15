@@ -2,7 +2,7 @@
 
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
-import { calculateOrderItems, calculateOrderTotal, Product, User } from "@harvest/domain";
+import { calculateOrderItems, calculateOrderTotal, Product, User } from "@/lib/domain";
 import {
   ArrowRight,
   Building2,

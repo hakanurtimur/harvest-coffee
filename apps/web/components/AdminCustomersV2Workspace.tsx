@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { getHarvestApi } from "@/lib/harvest-api";
-import type { CustomerSegment, Order, User } from "@harvest/domain";
+import type { CustomerSegment, Order, User } from "@/lib/domain";
 import { DollarSign, Package, TrendingUp, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 

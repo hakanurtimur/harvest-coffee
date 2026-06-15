@@ -9,7 +9,7 @@ import {
   orderStatusLabels,
   PaymentStatus,
   paymentStatusLabels,
-} from "@harvest/domain";
+} from "@/lib/domain";
 import { RefreshCw, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 

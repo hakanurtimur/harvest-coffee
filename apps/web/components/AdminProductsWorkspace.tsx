@@ -3,7 +3,7 @@
 import AdminProductsV2Workspace from "@/components/AdminProductsV2Workspace";
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
-import type { Product } from "@harvest/domain";
+import type { Product } from "@/lib/domain";
 import { Edit2, Loader2, Package, Plus, Save, Sparkles, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 

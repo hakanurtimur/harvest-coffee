@@ -3,8 +3,8 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getHarvestApi } from "@/lib/harvest-api";
-import type { Order, OrderStatus, PaymentStatus } from "@harvest/domain";
-import { orderStatusLabels, paymentStatusLabels } from "@harvest/domain";
+import type { Order, OrderStatus, PaymentStatus } from "@/lib/domain";
+import { orderStatusLabels, paymentStatusLabels } from "@/lib/domain";
 import { ArrowRight, Calendar, CheckCircle, Clock, Filter, Package, RefreshCw, Save, Truck, User, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";

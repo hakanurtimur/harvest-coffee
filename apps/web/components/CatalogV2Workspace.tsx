@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getHarvestApi } from "@/lib/harvest-api";
-import { calculateOrderItems, calculateOrderTotal, type PaymentMethod, type Product, type User } from "@harvest/domain";
+import { calculateOrderItems, calculateOrderTotal, type PaymentMethod, type Product, type User } from "@/lib/domain";
 import {
   ArrowRight,
   Check,

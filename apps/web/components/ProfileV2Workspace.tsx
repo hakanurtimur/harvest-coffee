@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getHarvestApi } from "@/lib/harvest-api";
-import type { Address, CustomerSegment, Order, OrderStatus, PaymentStatus, User } from "@harvest/domain";
+import type { Address, CustomerSegment, Order, OrderStatus, PaymentStatus, User } from "@/lib/domain";
 import {
   Activity,
   AlertTriangle,

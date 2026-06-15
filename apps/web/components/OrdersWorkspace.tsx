@@ -2,7 +2,7 @@
 
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
-import { Order, OrderStatus, PaymentStatus } from "@harvest/domain";
+import { Order, OrderStatus, PaymentStatus } from "@/lib/domain";
 import { ArrowRight, Calendar, CheckCircle, Clock, Package, Truck, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";

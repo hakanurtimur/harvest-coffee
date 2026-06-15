@@ -1,8 +1,8 @@
 "use client";
 
 import { createClient } from "@base44/sdk";
-import type { UserRole } from "@harvest/domain";
-import { createBase44HarvestApi, createMockHarvestApi, createReadOnlyHarvestApi, type Base44ClientLike, type HarvestApi } from "@harvest/api";
+import type { UserRole } from "@/lib/domain";
+import { createBase44HarvestApi, createMockHarvestApi, createReadOnlyHarvestApi, type Base44ClientLike, type HarvestApi } from "@/lib/api";
 
 const STORAGE_PREFIX = "base44_";
 const mockApi = createMockHarvestApi();

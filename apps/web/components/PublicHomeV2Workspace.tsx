@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import type { Product } from "@harvest/domain";
+import type { Product } from "@/lib/domain";
 import { ArrowRight, Coffee, Flame, Handshake, Plus, ShoppingBag, ShoppingCart, Sprout, Trophy } from "lucide-react";
 import Link from "next/link";
 import MotionReveal from "./MotionReveal";

@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/card";
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { getHarvestApi } from "@/lib/harvest-api";
-import type { Order, Rental, User } from "@harvest/domain";
+import type { Order, Rental, User } from "@/lib/domain";
 import { AlertTriangle, BarChart3, CheckCircle, Clock, Package, PieChart as PieChartIcon, TrendingUp, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from "recharts";

@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { getHarvestApi } from "@/lib/harvest-api";
-import type { Rental } from "@harvest/domain";
+import type { Rental } from "@/lib/domain";
 import { CalendarDays, ChevronLeft, ChevronRight, Clock, Package, TrendingUp } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 

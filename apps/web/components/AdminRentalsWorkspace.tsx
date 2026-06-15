@@ -1,7 +1,7 @@
 "use client";
 
 import { getHarvestApi } from "@/lib/harvest-api";
-import { Rental } from "@harvest/domain";
+import { Rental } from "@/lib/domain";
 import { Plus, RefreshCw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";

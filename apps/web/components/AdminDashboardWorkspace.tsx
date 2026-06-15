@@ -3,7 +3,7 @@
 import AdminDashboardV2Workspace from "@/components/AdminDashboardV2Workspace";
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
-import { Order, PaymentMethod, Product, User, orderStatusLabels, paymentMethodLabels } from "@harvest/domain";
+import { Order, PaymentMethod, Product, User, orderStatusLabels, paymentMethodLabels } from "@/lib/domain";
 import { BarChart3, CheckCircle, Clock, CreditCard, DollarSign, Package, ShoppingBag, Truck, Users } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";

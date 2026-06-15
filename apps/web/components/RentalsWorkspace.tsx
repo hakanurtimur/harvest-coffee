@@ -2,7 +2,7 @@
 
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
-import { Rental } from "@harvest/domain";
+import { Rental } from "@/lib/domain";
 import { AlertTriangle, Calendar, CheckCircle, Clock, FileText } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";

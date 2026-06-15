@@ -3,7 +3,7 @@
 import OrderDetailV2Workspace from "@/components/OrderDetailV2Workspace";
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
-import { Order, paymentMethodLabels, paymentStatusLabels } from "@harvest/domain";
+import { Order, paymentMethodLabels, paymentStatusLabels } from "@/lib/domain";
 import { ArrowLeft, CreditCard, FileText, MapPin, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";

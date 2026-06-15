@@ -2,7 +2,7 @@
 
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
-import { Product } from "@harvest/domain";
+import { Product } from "@/lib/domain";
 import { AlertCircle, ArrowLeft, CalendarDays } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";

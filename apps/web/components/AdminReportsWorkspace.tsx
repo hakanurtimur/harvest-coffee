@@ -3,7 +3,7 @@
 import AdminReportsV2Workspace from "@/components/AdminReportsV2Workspace";
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
-import type { Order, Rental, User } from "@harvest/domain";
+import type { Order, Rental, User } from "@/lib/domain";
 import { AlertTriangle, CheckCircle, Clock, Package, TrendingUp, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";

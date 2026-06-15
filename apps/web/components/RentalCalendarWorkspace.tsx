@@ -3,7 +3,7 @@
 import RentalCalendarV2Workspace from "@/components/RentalCalendarV2Workspace";
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
-import { Rental } from "@harvest/domain";
+import { Rental } from "@/lib/domain";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 

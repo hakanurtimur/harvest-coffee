@@ -2,7 +2,7 @@
 
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
-import type { Address, CustomerSegment, Order, OrderStatus, PaymentStatus, User } from "@harvest/domain";
+import type { Address, CustomerSegment, Order, OrderStatus, PaymentStatus, User } from "@/lib/domain";
 import { Activity, AlertTriangle, Calendar, CheckCircle, Clock, Edit2, MapPin, Package, Plus, Save, Trash2, Truck, X, XCircle } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";

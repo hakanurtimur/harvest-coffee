@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getHarvestApi } from "@/lib/harvest-api";
-import type { Order, OrderStatus, PaymentStatus } from "@harvest/domain";
+import type { Order, OrderStatus, PaymentStatus } from "@/lib/domain";
 import { ArrowLeft, Calendar, CheckCircle, Clock, MapPin, Package, Search, Truck, XCircle } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";

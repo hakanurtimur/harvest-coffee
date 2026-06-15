@@ -4,7 +4,7 @@ import MotionReveal from "@/components/MotionReveal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getHarvestApi } from "@/lib/harvest-api";
-import type { Product } from "@harvest/domain";
+import type { Product } from "@/lib/domain";
 import { AlertCircle, ArrowLeft, CalendarDays, CheckCircle, FileText } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";

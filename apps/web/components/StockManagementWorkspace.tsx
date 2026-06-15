@@ -3,7 +3,7 @@
 import StockManagementV2Workspace from "@/components/StockManagementV2Workspace";
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
-import type { Product } from "@harvest/domain";
+import type { Product } from "@/lib/domain";
 import { AlertTriangle, Edit2, Package, Save, TrendingDown, TrendingUp, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 

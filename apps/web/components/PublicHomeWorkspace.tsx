@@ -2,7 +2,7 @@
 
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
-import { Order, Product } from "@harvest/domain";
+import { Order, Product } from "@/lib/domain";
 import { ArrowRight, Award, Coffee, Leaf, Plus, ShoppingCart, Star, Zap } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";

@@ -3,7 +3,7 @@
 import AdminCustomersV2Workspace from "@/components/AdminCustomersV2Workspace";
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
-import type { CustomerSegment, Order, User } from "@harvest/domain";
+import type { CustomerSegment, Order, User } from "@/lib/domain";
 import { DollarSign, Package, TrendingUp, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 

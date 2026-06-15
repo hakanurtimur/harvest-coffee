@@ -2,7 +2,7 @@
 
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
-import type { User, UserRole } from "@harvest/domain";
+import type { User, UserRole } from "@/lib/domain";
 import { BarChart3, Boxes, CalendarDays, ChevronLeft, ChevronRight, ClipboardList, LayoutDashboard, LogOut, Menu, PackagePlus, Settings, ShoppingCart, UserCircle, Users, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";

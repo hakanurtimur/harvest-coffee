@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { getHarvestApi } from "@/lib/harvest-api";
-import type { AdminSettings } from "@harvest/domain";
+import type { AdminSettings } from "@/lib/domain";
 import { AlertTriangle, Mail, Save } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
