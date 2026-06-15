@@ -1,0 +1,9 @@
+{
+  "name": "Harvest Coffee B2B Orders",
+  "site": {
+    "installCommand": "npm install",
+    "buildCommand": "npm run build",
+    "serveCommand": "npm run dev",
+    "outputDirectory": "./dist"
+  }
+}

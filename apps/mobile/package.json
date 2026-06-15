@@ -1,0 +1,26 @@
+{
+  "name": "@harvest/mobile",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@harvest/api": "0.0.0",
+    "@harvest/domain": "0.0.0",
+    "expo": "53.0.27",
+    "expo-router": "5.1.11",
+    "react": "19.0.0",
+    "react-native": "0.79.7",
+    "react-native-safe-area-context": "5.4.0",
+    "react-native-screens": "4.11.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.0.14",
+    "typescript": "^5.8.2"
+  }
+}

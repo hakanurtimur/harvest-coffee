@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "Harvest Coffee",
+    "slug": "harvest-coffee",
+    "scheme": "harvestcoffee",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true
+  }
+}

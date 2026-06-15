@@ -1,0 +1,59 @@
+{
+  "name": "Rental",
+  "type": "object",
+  "properties": {
+    "product_id": {
+      "type": "string",
+      "description": "ID of the rented product"
+    },
+    "product_name": {
+      "type": "string",
+      "description": "Name of the rented product"
+    },
+    "rental_start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Rental start date"
+    },
+    "rental_end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Rental end date"
+    },
+    "customer_email": {
+      "type": "string",
+      "description": "Email of the customer"
+    },
+    "customer_name": {
+      "type": "string",
+      "description": "Name of the customer"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "upcoming",
+        "expired",
+        "cancelled"
+      ],
+      "default": "upcoming",
+      "description": "Rental status"
+    },
+    "reminder_sent": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether 3-day reminder has been sent"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Special notes about the rental"
+    }
+  },
+  "required": [
+    "product_id",
+    "product_name",
+    "rental_start_date",
+    "rental_end_date",
+    "customer_email"
+  ]
+}

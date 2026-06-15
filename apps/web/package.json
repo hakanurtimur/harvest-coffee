@@ -1,0 +1,29 @@
+{
+  "name": "@harvest/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@base44/sdk": "^0.8.32",
+    "@harvest/api": "0.0.0",
+    "@harvest/domain": "0.0.0",
+    "@tanstack/react-query": "^5.84.1",
+    "lucide-react": "^0.475.0",
+    "next": "^15.3.4",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "recharts": "^2.15.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.5",
+    "@types/react": "19.0.14",
+    "@types/react-dom": "19.0.6",
+    "typescript": "^5.8.2"
+  }
+}

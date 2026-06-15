@@ -1,0 +1,239 @@
+import { Notification, Order, Product, Rental, User } from "@harvest/domain";
+
+const nowIso = () => new Date().toISOString();
+
+export function createDemoProducts(): Product[] {
+  return [
+    {
+      id: "espresso-001",
+      name: "House Espresso Beans",
+      description: "A balanced wholesale espresso blend for cafes with chocolate, almond, and soft citrus notes.",
+      price: 18.5,
+      imageUrl: "https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1200&q=80",
+      category: "Coffee Beans",
+      weight: "1 kg",
+      stockStatus: "in_stock",
+      stockQuantity: 240,
+      lowStockThreshold: 30,
+    },
+    {
+      id: "origin-014",
+      name: "Colombia Single Origin",
+      description: "A bright filter and espresso option for cafes that want a rotating premium origin.",
+      price: 24,
+      imageUrl: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=1200&q=80",
+      category: "Single Origin",
+      weight: "1 kg",
+      stockStatus: "in_stock",
+      stockQuantity: 74,
+      lowStockThreshold: 20,
+    },
+    {
+      id: "cups-012",
+      name: "Compostable 8oz Cups",
+      description: "Double-wall cups for high-volume service with a clean matte finish and reliable heat protection.",
+      price: 42,
+      imageUrl: "https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=1200&q=80",
+      category: "Cups & Lids",
+      weight: "500 pack",
+      stockStatus: "low_stock",
+      stockQuantity: 18,
+      lowStockThreshold: 25,
+    },
+    {
+      id: "lids-008",
+      name: "Black Sip Lids",
+      description: "Tight-fit lids for takeaway coffee programs, packed for fast stockroom replenishment.",
+      price: 29,
+      imageUrl: "",
+      category: "Cups & Lids",
+      weight: "1000 pack",
+      stockStatus: "in_stock",
+      stockQuantity: 130,
+      lowStockThreshold: 40,
+    },
+    {
+      id: "syrup-004",
+      name: "Vanilla Syrup",
+      description: "A clean-label syrup built for lattes, cold drinks, and hospitality beverage programs.",
+      price: 9.75,
+      imageUrl: "https://images.unsplash.com/photo-1523942839745-7848c839b661?auto=format&fit=crop&w=1200&q=80",
+      category: "Ingredients",
+      weight: "1 L",
+      stockStatus: "in_stock",
+      stockQuantity: 96,
+      lowStockThreshold: 20,
+    },
+    {
+      id: "machine-002",
+      name: "Compact Espresso Machine",
+      description: "A rental-ready machine for smaller hospitality bars and pop-up coffee counters.",
+      price: 180,
+      imageUrl: "https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?auto=format&fit=crop&w=1200&q=80",
+      category: "Machines",
+      weight: "Monthly rental",
+      stockStatus: "in_stock",
+      stockQuantity: 6,
+      lowStockThreshold: 2,
+    },
+  ];
+}
+
+export function createDemoOrders(): Order[] {
+  return [
+    {
+      id: "order-demo-1",
+      orderNumber: "HC20481031",
+      customerEmail: "dealer@example.com",
+      customerName: "North Quarter Cafe",
+      items: [
+        {
+          productId: "espresso-001",
+          productName: "House Espresso Beans",
+          quantity: 6,
+          price: 18.5,
+          subtotal: 111,
+        },
+      ],
+      totalAmount: 111,
+      status: "preparing",
+      paymentStatus: "pending",
+      paymentMethod: "bank_transfer",
+      deliveryAddress: "Unit 4, Roastery Lane",
+      createdAt: nowIso(),
+    },
+    {
+      id: "order-demo-2",
+      orderNumber: "HC20480914",
+      customerEmail: "dealer@example.com",
+      customerName: "North Quarter Cafe",
+      items: [
+        {
+          productId: "cups-012",
+          productName: "Compostable 8oz Cups",
+          quantity: 3,
+          price: 42,
+          subtotal: 126,
+        },
+        {
+          productId: "syrup-004",
+          productName: "Vanilla Syrup",
+          quantity: 8,
+          price: 9.75,
+          subtotal: 78,
+        },
+      ],
+      totalAmount: 204,
+      status: "in_transit",
+      paymentStatus: "paid",
+      paymentMethod: "credit_card",
+      deliveryAddress: "Unit 4, Roastery Lane",
+      trackingNumber: "HC-TRACK-8834",
+      estimatedDeliveryDate: "2026-06-16",
+      createdAt: "2026-06-10T09:30:00.000Z",
+    },
+    {
+      id: "order-demo-3",
+      orderNumber: "HC20480177",
+      customerEmail: "river@example.com",
+      customerName: "River Market Deli",
+      items: [
+        {
+          productId: "origin-014",
+          productName: "Colombia Single Origin",
+          quantity: 4,
+          price: 24,
+          subtotal: 96,
+        },
+      ],
+      totalAmount: 96,
+      status: "delivered",
+      paymentStatus: "paid",
+      paymentMethod: "bank_transfer",
+      deliveryAddress: "18 River Street",
+      createdAt: "2026-06-08T11:15:00.000Z",
+    },
+  ];
+}
+
+export function createDemoUsers(): User[] {
+  return [
+    {
+      id: "user-demo-1",
+      email: "dealer@example.com",
+      fullName: "Hakan Urtimur",
+      companyName: "North Quarter Cafe",
+      role: "dealer",
+      customerSegment: "regular",
+      addresses: [{ title: "Main cafe", address: "Unit 4, Roastery Lane" }],
+    },
+    {
+      id: "user-demo-2",
+      email: "river@example.com",
+      fullName: "River Market Deli",
+      companyName: "River Market Deli",
+      role: "dealer",
+      customerSegment: "vip",
+      addresses: [{ title: "Deli", address: "18 River Street" }],
+    },
+    {
+      id: "user-demo-3",
+      email: "ops@example.com",
+      fullName: "Ops Admin",
+      role: "admin",
+      customerSegment: "regular",
+      addresses: [],
+      adminSettings: {
+        adminNotificationEmail: "ops@example.com",
+        rentalReminderDays: 3,
+        appName: "Harvest Coffee",
+      },
+    },
+  ];
+}
+
+export function createDemoRentals(): Rental[] {
+  return [
+    {
+      id: "rental-demo-1",
+      productId: "machine-002",
+      productName: "Compact Espresso Machine",
+      customerEmail: "dealer@example.com",
+      customerName: "North Quarter Cafe",
+      startDate: "2026-06-01",
+      endDate: "2026-06-30",
+      status: "active",
+      reminderSent: false,
+      notes: "Monthly machine rental.",
+    },
+  ];
+}
+
+export function createDemoNotifications(): Notification[] {
+  return [
+    {
+      id: "notification-demo-1",
+      type: "order_status",
+      title: "Order status updated",
+      message: "Order #HC20480914 is now in transit.",
+      recipientEmail: "dealer@example.com",
+      isAdmin: false,
+      relatedEntity: "Order",
+      relatedEntityId: "order-demo-2",
+      read: false,
+      createdAt: nowIso(),
+    },
+    {
+      id: "notification-demo-2",
+      type: "low_stock",
+      title: "Low stock",
+      message: "Compostable 8oz Cups is below the reorder threshold.",
+      recipientEmail: "ops@example.com",
+      isAdmin: true,
+      relatedEntity: "Product",
+      relatedEntityId: "cups-012",
+      read: false,
+      createdAt: nowIso(),
+    },
+  ];
+}
