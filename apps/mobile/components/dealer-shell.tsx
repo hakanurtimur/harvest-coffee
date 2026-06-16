@@ -2,7 +2,7 @@ import { router, usePathname } from "expo-router";
 import { ReactNode, useEffect } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useMobileState } from "../lib/mobile-state";
-import { AppScreen, colors, FadeInView, initials, LoadingState } from "./ui";
+import { AppScreen, colors, FadeInView, initials, LoadingState, StatusBanner } from "./ui";
 
 const tabs = [
   { href: "/products", label: "Products" },
@@ -13,7 +13,7 @@ const tabs = [
 
 export function DealerShell({ children, title }: { children: ReactNode; title: string }) {
   const pathname = usePathname();
-  const { booting, currentUser, isAuthenticated, loadingData, notifications } = useMobileState();
+  const { booting, currentUser, dataError, isAuthenticated, loadingData, notifications } = useMobileState();
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 
   useEffect(() => {
@@ -45,7 +45,18 @@ export function DealerShell({ children, title }: { children: ReactNode; title: s
           </Pressable>
         </View>
       </FadeInView>
-      <View style={styles.body}>{children}</View>
+      <View style={styles.body}>
+        {dataError ? (
+          <View style={styles.bannerWrap}>
+            <StatusBanner tone="error" title="Could not refresh data" body={dataError} />
+          </View>
+        ) : loadingData ? (
+          <View style={styles.bannerWrap}>
+            <StatusBanner title="Syncing latest dealer data" body="Products, orders, rentals, and notifications are being refreshed." />
+          </View>
+        ) : null}
+        {children}
+      </View>
       <FadeInView delay={120} distance={8} style={styles.tabs}>
         {tabs.map((tab) => {
           const active = pathname === tab.href;
@@ -87,6 +98,10 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
+  },
+  bannerWrap: {
+    paddingHorizontal: 8,
+    paddingTop: 8,
   },
   header: {
     backgroundColor: colors.secondary,

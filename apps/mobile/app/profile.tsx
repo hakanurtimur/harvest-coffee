@@ -4,6 +4,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { DealerShell } from "../components/dealer-shell";
 import { Card, Field, Metric, OutlineButton, PrimaryButton, ScrollContent, SectionTitle, styles } from "../components/ui";
 import { useMobileState } from "../lib/mobile-state";
+import { validateAddressForm } from "../lib/validation";
 
 export default function ProfileScreen() {
   const { addAddress, currentUser, deleteAddress, deliveryAddress, logout, orders, setDeliveryAddress } = useMobileState();
@@ -14,16 +15,19 @@ export default function ProfileScreen() {
   if (!currentUser) return null;
 
   const submitAddress = async () => {
-    if (!addressTitle.trim() || addressText.trim().length < 3) {
-      Alert.alert("Address required", "Add an address title and a valid address.");
+    const address = validateAddressForm(addressTitle, addressText);
+    if (!address.ok) {
+      Alert.alert(address.title, address.message);
       return;
     }
 
     setSaving(true);
     try {
-      await addAddress(addressTitle.trim(), addressText.trim());
+      await addAddress(address.value.title, address.value.address);
       setAddressTitle("");
       setAddressText("");
+    } catch (error) {
+      Alert.alert("Address failed", error instanceof Error ? error.message : "The address could not be saved.");
     } finally {
       setSaving(false);
     }

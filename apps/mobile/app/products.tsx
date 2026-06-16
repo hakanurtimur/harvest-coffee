@@ -10,6 +10,7 @@ import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native
 import { DealerShell } from "../components/dealer-shell";
 import { Card, FadeInView, Field, formatCurrency, ProductCard, styles } from "../components/ui";
 import { useMobileState } from "../lib/mobile-state";
+import { validateDeliveryAddress } from "../lib/validation";
 
 const paymentMethods: PaymentMethod[] = ["bank_transfer", "credit_card", "paypal", "cash_on_delivery"];
 
@@ -36,8 +37,9 @@ export default function ProductsScreen() {
 
   const submitOrder = async () => {
     if (!currentUser || cartItems.length === 0 || saving) return;
-    if (deliveryAddress.trim().length < 3) {
-      Alert.alert("Delivery address required", "Please add a delivery address before placing the order.");
+    const address = validateDeliveryAddress(deliveryAddress);
+    if (!address.ok) {
+      Alert.alert(address.title, address.message);
       return;
     }
 
@@ -46,7 +48,7 @@ export default function ProductsScreen() {
       const order = await createOrder({
         customerEmail: currentUser.email,
         customerName: currentUser.companyName || currentUser.fullName,
-        deliveryAddress: deliveryAddress.trim(),
+        deliveryAddress: address.value,
         items: cartItems,
         notes: notes.trim() || undefined,
         paymentMethod,
@@ -55,6 +57,8 @@ export default function ProductsScreen() {
       setNotes("");
       router.push(`/order/${order.id}`);
       Alert.alert("Order created", `Order ${order.orderNumber} has been created.`);
+    } catch (error) {
+      Alert.alert("Order failed", error instanceof Error ? error.message : "The order could not be created.");
     } finally {
       setSaving(false);
     }
@@ -70,6 +74,8 @@ export default function ProductsScreen() {
             <Text style={styles.description}>{loadingData ? "Loading products..." : "No products available."}</Text>
           </Card>
         }
+        initialNumToRender={6}
+        keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <FadeInView style={productStyles.quickOrder}>
             <View style={productStyles.quickOrderHeader}>
@@ -113,6 +119,9 @@ export default function ProductsScreen() {
             </Pressable>
           </FadeInView>
         }
+        maxToRenderPerBatch={6}
+        showsVerticalScrollIndicator={false}
+        windowSize={7}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
           <ProductCard

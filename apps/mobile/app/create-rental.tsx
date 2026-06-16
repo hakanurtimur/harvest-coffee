@@ -5,13 +5,14 @@ import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { DealerShell } from "../components/dealer-shell";
 import { Card, Field, PrimaryButton, ScrollContent, SectionTitle, styles } from "../components/ui";
 import { useMobileState } from "../lib/mobile-state";
+import { addDays, formatDateInput, validateRentalDates } from "../lib/validation";
 
 export default function CreateRentalScreen() {
   const { createRental, currentUser, products } = useMobileState();
   const rentalProducts = useMemo(() => products.filter((product) => product.category.toLowerCase().includes("machine") || product.weight?.toLowerCase().includes("rental")), [products]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(rentalProducts[0] ?? products[0] ?? null);
-  const [startDate, setStartDate] = useState("2026-06-16");
-  const [endDate, setEndDate] = useState("2026-07-16");
+  const [startDate, setStartDate] = useState(() => formatDateInput(new Date()));
+  const [endDate, setEndDate] = useState(() => formatDateInput(addDays(new Date(), 30)));
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -21,8 +22,9 @@ export default function CreateRentalScreen() {
 
   const submit = async () => {
     if (!currentUser || !selectedProduct || saving) return;
-    if (!startDate.trim() || !endDate.trim()) {
-      Alert.alert("Rental dates required", "Add a start and end date.");
+    const dates = validateRentalDates(startDate, endDate);
+    if (!dates.ok) {
+      Alert.alert(dates.title, dates.message);
       return;
     }
 
@@ -31,14 +33,16 @@ export default function CreateRentalScreen() {
       await createRental({
         customerEmail: currentUser.email,
         customerName: currentUser.companyName || currentUser.fullName,
-        endDate: endDate.trim(),
+        endDate: dates.value.endDate,
         notes: notes.trim() || undefined,
         productId: selectedProduct.id,
         productName: selectedProduct.name,
-        startDate: startDate.trim(),
+        startDate: dates.value.startDate,
       });
       Alert.alert("Rental created", "The rental request has been created.");
       router.replace("/rentals");
+    } catch (error) {
+      Alert.alert("Rental failed", error instanceof Error ? error.message : "The rental request could not be created.");
     } finally {
       setSaving(false);
     }

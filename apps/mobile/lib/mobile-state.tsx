@@ -17,8 +17,10 @@ interface MobileState {
   api: HarvestApi;
   booting: boolean;
   currentUser: User | null;
+  dataError: string | null;
   deliveryAddress: string;
   isAuthenticated: boolean;
+  lastSyncedAt: string | null;
   loadingData: boolean;
   notifications: HarvestNotification[];
   orders: Order[];
@@ -41,6 +43,8 @@ const MobileStateContext = createContext<MobileState | null>(null);
 export function MobileStateProvider({ children }: { children: ReactNode }) {
   const [booting, setBooting] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [dataError, setDataError] = useState<string | null>(null);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [loadingData, setLoadingData] = useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
@@ -59,6 +63,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
 
     setLoadingData(true);
     try {
+      setDataError(null);
       const [nextProducts, nextOrders, nextRentals, nextNotifications] = await Promise.all([
         api.getProducts(),
         api.getMyOrders(user.email),
@@ -70,6 +75,10 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
       setOrders([...nextOrders].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)));
       setRentals([...nextRentals].sort((a, b) => Date.parse(b.startDate) - Date.parse(a.startDate)));
       setNotifications([...nextNotifications].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)));
+      setLastSyncedAt(new Date().toISOString());
+    } catch (error) {
+      setDataError(error instanceof Error ? error.message : "Dealer data could not be refreshed.");
+      throw error;
     } finally {
       setLoadingData(false);
     }
@@ -96,6 +105,8 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     setRentals([]);
     setNotifications([]);
     setDeliveryAddress("");
+    setDataError(null);
+    setLastSyncedAt(null);
   }, []);
 
   const createOrder = useCallback(async (input: CreateOrderInput) => {
@@ -147,10 +158,12 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     createOrder,
     createRental,
     currentUser,
+    dataError,
     deleteAddress,
     deleteNotification,
     deliveryAddress,
     isAuthenticated: Boolean(currentUser),
+    lastSyncedAt,
     loadingData,
     loginDealer,
     logout,
@@ -167,9 +180,11 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     createOrder,
     createRental,
     currentUser,
+    dataError,
     deleteAddress,
     deleteNotification,
     deliveryAddress,
+    lastSyncedAt,
     loadingData,
     loginDealer,
     logout,

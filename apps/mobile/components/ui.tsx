@@ -23,6 +23,7 @@ import {
   TextInput,
   TextInputProps,
   View,
+  type StyleProp,
   type ViewStyle,
 } from "react-native";
 
@@ -151,7 +152,7 @@ export function FadeInView({
   children: ReactNode;
   delay?: number;
   distance?: number;
-  style?: ViewStyle | ViewStyle[];
+  style?: StyleProp<ViewStyle>;
 }) {
   const progress = useRef(new Animated.Value(0)).current;
 
@@ -225,6 +226,23 @@ export function EmptyState({ body, title }: { body: string; title: string }) {
   );
 }
 
+export function StatusBanner({
+  body,
+  title,
+  tone = "info",
+}: {
+  body?: string;
+  title: string;
+  tone?: "error" | "info" | "success";
+}) {
+  return (
+    <FadeInView distance={5} style={[styles.statusBanner, tone === "error" && styles.statusBannerError, tone === "success" && styles.statusBannerSuccess]}>
+      <Text style={[styles.statusTitle, tone === "error" && styles.statusTitleError]}>{title}</Text>
+      {body ? <Text style={styles.statusBody}>{body}</Text> : null}
+    </FadeInView>
+  );
+}
+
 export function Badge({ label }: { label: string }) {
   return (
     <View style={styles.badge}>
@@ -287,7 +305,15 @@ export function OutlineButton({
 }
 
 export function Field(props: TextInputProps) {
-  return <TextInput placeholderTextColor={colors.muted} {...props} style={[styles.input, props.multiline && styles.textArea, props.style]} />;
+  return (
+    <TextInput
+      autoCorrect={props.autoCorrect ?? false}
+      placeholderTextColor={colors.muted}
+      selectionColor={colors.primary}
+      {...props}
+      style={[styles.input, props.multiline && styles.textArea, props.style]}
+    />
+  );
 }
 
 export function ProductCard({
@@ -702,6 +728,36 @@ export const styles = StyleSheet.create({
   },
   stockPillMuted: {
     backgroundColor: "#eee6dc",
+  },
+  statusBanner: {
+    backgroundColor: "#fff4df",
+    borderColor: "#e2c7aa",
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 3,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  statusBannerError: {
+    backgroundColor: "#fff1ee",
+    borderColor: "#edb9ad",
+  },
+  statusBannerSuccess: {
+    backgroundColor: "#f1f7e9",
+    borderColor: "#cbdcab",
+  },
+  statusBody: {
+    color: "#6f5c4c",
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  statusTitle: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  statusTitleError: {
+    color: "#9a3412",
   },
   splashContent: {
     alignItems: "center",

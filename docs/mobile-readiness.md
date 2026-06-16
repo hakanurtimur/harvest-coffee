@@ -1,0 +1,39 @@
+# Mobile Readiness Notes
+
+## Current Scope
+
+The Expo app is currently focused on dealer mobile-web parity:
+
+- Mock dealer login/logout
+- Products and quick order
+- My Orders
+- Order Detail
+- Track Order
+- Profile and delivery addresses
+- Rentals and Create Rental
+- Notifications
+
+Admin and public marketing screens are intentionally out of this mobile phase.
+
+## Hardening Completed
+
+- Shared validation helpers for delivery addresses, profile addresses, order tracking, and rental dates.
+- Dynamic rental date defaults instead of fixed dates.
+- Consistent async error handling for order creation, rental creation, profile address creation, order lookup, and order detail loading.
+- Dealer shell loading/error banners for mock data refresh state.
+- Keyboard-safe app wrapper and native-friendly scroll behavior.
+- Accessibility roles/states for buttons, tabs, cards, selections, and quantity controls.
+- Lightweight native motion with React Native `Animated`.
+- Product list render tuning for small-to-medium catalogues.
+
+## Still Needed Before Production Release
+
+- Real brand assets: app icon, adaptive icon, splash logo, and final stamp/logo.
+- Persistent session storage with `expo-secure-store` or another approved storage layer.
+- Preview/release build setup with EAS.
+- Test coverage for domain/API validation and key mobile state flows.
+- Real API environment switching when Base44/live API access is approved.
+
+## Dependency Note
+
+`expo-secure-store` was not added in this pass because `npm install` hit the existing root peer dependency conflict between React 19 and `@hello-pangea/dnd`'s React 18 peer range. Avoiding a forced install keeps the dependency tree stable for now.

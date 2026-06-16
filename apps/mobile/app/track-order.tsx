@@ -4,6 +4,7 @@ import { Alert } from "react-native";
 import { DealerShell } from "../components/dealer-shell";
 import { EmptyState, Field, OrderDetailContent, PrimaryButton, ScrollContent, SectionTitle } from "../components/ui";
 import { useMobileState } from "../lib/mobile-state";
+import { validateOrderNumber } from "../lib/validation";
 
 export default function TrackOrderScreen() {
   const { api } = useMobileState();
@@ -13,16 +14,18 @@ export default function TrackOrderScreen() {
   const [loading, setLoading] = useState(false);
 
   const search = async () => {
-    const normalized = orderNumber.trim();
-    if (!normalized) {
-      Alert.alert("Order number required", "Enter an order number to track.");
+    const normalized = validateOrderNumber(orderNumber);
+    if (!normalized.ok) {
+      Alert.alert(normalized.title, normalized.message);
       return;
     }
 
     setLoading(true);
     try {
-      setOrder(await api.getOrderByNumber(normalized));
+      setOrder(await api.getOrderByNumber(normalized.value));
       setSearched(true);
+    } catch (error) {
+      Alert.alert("Tracking failed", error instanceof Error ? error.message : "The order lookup could not be completed.");
     } finally {
       setLoading(false);
     }
@@ -32,7 +35,7 @@ export default function TrackOrderScreen() {
     <DealerShell title="Track Order">
       <ScrollContent>
         <SectionTitle eyebrow="Tracking" title="Find an order" />
-        <Field autoCapitalize="characters" onChangeText={setOrderNumber} placeholder="HC20480914" value={orderNumber} />
+        <Field autoCapitalize="characters" onChangeText={(value) => setOrderNumber(value.toUpperCase())} placeholder="HC20480914" value={orderNumber} />
         <PrimaryButton disabled={loading} label={loading ? "Searching..." : "Track order"} onPress={search} />
         {order ? <OrderDetailContent order={order} /> : null}
         {!order && searched ? (
