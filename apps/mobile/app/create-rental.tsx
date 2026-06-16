@@ -93,11 +93,11 @@ const rentalStyles = StyleSheet.create({
   productOption: {
     alignItems: "center",
     borderColor: "#eadccb",
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
     flexDirection: "row",
     gap: 12,
-    padding: 12,
+    padding: 11,
   },
   productOptionActive: {
     backgroundColor: "#704118",

@@ -253,11 +253,11 @@ export function initials(name?: string) {
 }
 
 export const colors = {
-  background: "#f7efe4",
-  border: "#eadccb",
+  background: "#f5ecdf",
+  border: "#e2d0bd",
   foreground: "#2a1a12",
   muted: "#8b7b6c",
-  primary: "#704118",
+  primary: "#6a3814",
   secondary: "#fffaf4",
 };
 
@@ -265,8 +265,8 @@ export const styles = StyleSheet.create({
   badge: {
     backgroundColor: "#f3e8da",
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
   },
   badgeRow: {
     flexDirection: "row",
@@ -281,18 +281,18 @@ export const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.secondary,
     borderColor: colors.border,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    gap: 12,
-    padding: 14,
+    gap: 10,
+    padding: 12,
   },
   cardCopy: {
-    gap: 9,
-    padding: 14,
+    gap: 8,
+    padding: 12,
   },
   cardTitle: {
     color: colors.foreground,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "900",
   },
   category: {
@@ -310,7 +310,8 @@ export const styles = StyleSheet.create({
   },
   description: {
     color: "#615447",
-    lineHeight: 20,
+    fontSize: 14,
+    lineHeight: 19,
   },
   disabled: {
     opacity: 0.42,
@@ -319,10 +320,10 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.secondary,
     borderColor: colors.border,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     gap: 8,
-    padding: 22,
+    padding: 18,
   },
   flex: {
     flex: 1,
@@ -330,12 +331,12 @@ export const styles = StyleSheet.create({
   input: {
     backgroundColor: "#fff",
     borderColor: "#dcc9b7",
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
     color: colors.foreground,
     fontSize: 15,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
   },
   itemRow: {
     alignItems: "center",
@@ -354,9 +355,10 @@ export const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   list: {
-    gap: 14,
-    padding: 12,
-    paddingBottom: 96,
+    gap: 10,
+    paddingHorizontal: 8,
+    paddingTop: 8,
+    paddingBottom: 86,
   },
   loadingText: {
     color: colors.primary,
@@ -383,16 +385,16 @@ export const styles = StyleSheet.create({
   },
   name: {
     color: colors.foreground,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "900",
   },
   outlineButton: {
     alignItems: "center",
     borderColor: "#d9c7b5",
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   outlineButtonText: {
     color: colors.primary,
@@ -406,8 +408,8 @@ export const styles = StyleSheet.create({
   primaryButton: {
     alignItems: "center",
     backgroundColor: colors.primary,
-    borderRadius: 14,
-    paddingVertical: 14,
+    borderRadius: 12,
+    paddingVertical: 13,
   },
   primaryButtonText: {
     color: "#fff",
@@ -416,27 +418,27 @@ export const styles = StyleSheet.create({
   productCard: {
     backgroundColor: colors.secondary,
     borderColor: colors.border,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     overflow: "hidden",
   },
   productImage: {
     backgroundColor: colors.border,
-    height: 156,
+    height: 132,
     width: "100%",
   },
   quantity: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 10,
+    gap: 8,
   },
   quantityButton: {
     alignItems: "center",
     backgroundColor: colors.primary,
-    borderRadius: 12,
-    height: 38,
+    borderRadius: 10,
+    height: 36,
     justifyContent: "center",
-    width: 38,
+    width: 36,
   },
   quantityText: {
     color: "#fff",
@@ -465,7 +467,7 @@ export const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: colors.foreground,
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "900",
   },
   stock: {
@@ -475,7 +477,7 @@ export const styles = StyleSheet.create({
     textTransform: "capitalize",
   },
   textArea: {
-    minHeight: 74,
+    minHeight: 68,
     textAlignVertical: "top",
   },
   total: {

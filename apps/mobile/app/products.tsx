@@ -65,7 +65,11 @@ export default function ProductsScreen() {
       <FlatList
         data={products}
         keyExtractor={(item) => item.id}
-        ListEmptyComponent={<Card><Text style={styles.description}>{loadingData ? "Loading products..." : "No products available."}</Text></Card>}
+        ListEmptyComponent={
+          <Card>
+            <Text style={styles.description}>{loadingData ? "Loading products..." : "No products available."}</Text>
+          </Card>
+        }
         ListHeaderComponent={
           <Card>
             <Text style={styles.kicker}>Quick order</Text>
@@ -109,8 +113,8 @@ const productStyles = StyleSheet.create({
     borderColor: "#dcc9b7",
     borderRadius: 999,
     borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
   },
   methodActive: {
     backgroundColor: "#704118",

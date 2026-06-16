@@ -83,12 +83,12 @@ const profileStyles = StyleSheet.create({
     gap: 4,
   },
   addressRow: {
-    alignItems: "center",
+    alignItems: "flex-start",
     borderBottomColor: "#eadccb",
     borderBottomWidth: 1,
     flexDirection: "row",
-    gap: 12,
-    paddingBottom: 12,
+    gap: 10,
+    paddingBottom: 10,
   },
   metrics: {
     flexDirection: "row",
