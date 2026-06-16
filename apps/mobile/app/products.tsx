@@ -71,13 +71,20 @@ export default function ProductsScreen() {
           </Card>
         }
         ListHeaderComponent={
-          <Card>
-            <Text style={styles.kicker}>Quick order</Text>
-            <View style={styles.rowBetween}>
-              <Text style={styles.cardTitle}>{itemCount} items selected</Text>
-              <Text style={styles.total}>{formatCurrency(cartTotal)}</Text>
+          <View style={productStyles.quickOrder}>
+            <View style={productStyles.quickOrderHeader}>
+              <View>
+                <Text style={styles.kicker}>Quick order</Text>
+                <Text style={productStyles.quickOrderTitle}>{itemCount} items selected</Text>
+              </View>
+              <View style={productStyles.totalPill}>
+                <Text style={productStyles.totalLabel}>Total</Text>
+                <Text style={productStyles.totalValue}>{formatCurrency(cartTotal)}</Text>
+              </View>
             </View>
+            <Text style={productStyles.helper}>Build a dealer order from the catalogue below.</Text>
             <Field multiline onChangeText={setDeliveryAddress} placeholder="Delivery address" value={deliveryAddress} />
+            <Text style={productStyles.fieldLabel}>Payment method</Text>
             <View style={productStyles.methods}>
               {paymentMethods.map((method) => {
                 const active = paymentMethod === method;
@@ -92,7 +99,7 @@ export default function ProductsScreen() {
             <Pressable disabled={itemCount === 0 || saving} onPress={submitOrder} style={[styles.primaryButton, (itemCount === 0 || saving) && styles.disabled]}>
               <Text style={styles.primaryButtonText}>{saving ? "Creating order..." : "Place order"}</Text>
             </Pressable>
-          </Card>
+          </View>
         }
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
@@ -109,16 +116,29 @@ export default function ProductsScreen() {
 }
 
 const productStyles = StyleSheet.create({
+  fieldLabel: {
+    color: "#8b7b6c",
+    fontSize: 12,
+    fontWeight: "900",
+    marginBottom: -3,
+    textTransform: "uppercase",
+  },
+  helper: {
+    color: "#6f5c4c",
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: -4,
+  },
   method: {
     borderColor: "#dcc9b7",
     borderRadius: 999,
     borderWidth: 1,
-    paddingHorizontal: 9,
-    paddingVertical: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
   methodActive: {
-    backgroundColor: "#704118",
-    borderColor: "#704118",
+    backgroundColor: "#6a3814",
+    borderColor: "#6a3814",
   },
   methodText: {
     color: "#704118",
@@ -131,6 +151,46 @@ const productStyles = StyleSheet.create({
   methods: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 7,
+  },
+  quickOrder: {
+    backgroundColor: "#fff8ee",
+    borderColor: "#d9bea2",
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+    padding: 14,
+  },
+  quickOrderHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "space-between",
+  },
+  quickOrderTitle: {
+    color: "#2a1a12",
+    fontSize: 22,
+    fontWeight: "900",
+    marginTop: 3,
+  },
+  totalLabel: {
+    color: "#9b7a5c",
+    fontSize: 11,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
+  totalPill: {
+    alignItems: "flex-end",
+    backgroundColor: "#f3e3d1",
+    borderColor: "#e2c7aa",
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  totalValue: {
+    color: "#6a3814",
+    fontSize: 16,
+    fontWeight: "900",
   },
 });

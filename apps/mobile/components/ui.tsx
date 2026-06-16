@@ -144,16 +144,18 @@ export function ProductCard({
       <View style={styles.cardCopy}>
         <View style={styles.rowBetween}>
           <Text style={styles.category}>{product.category}</Text>
-          <Text style={styles.stock}>{product.stockStatus.replaceAll("_", " ")}</Text>
+          <View style={[styles.stockPill, disabled && styles.stockPillMuted]}>
+            <Text style={[styles.stock, disabled && styles.stockMuted]}>{product.stockStatus.replaceAll("_", " ")}</Text>
+          </View>
         </View>
         <Text style={styles.name}>{product.name}</Text>
         <Text style={styles.description}>{product.description}</Text>
-        <View style={styles.rowBetween}>
+        <View style={styles.productFooter}>
           <View>
             <Text style={styles.price}>{formatCurrency(product.price)}</Text>
             <Text style={styles.muted}>{product.weight || `${product.stockQuantity} in stock`}</Text>
           </View>
-          <View style={styles.quantity}>
+          <View style={styles.quantityStepper}>
             <Pressable disabled={quantity === 0} style={[styles.quantityButton, quantity === 0 && styles.disabled]} onPress={onDecrease}>
               <Text style={styles.quantityText}>-</Text>
             </Pressable>
@@ -424,21 +426,38 @@ export const styles = StyleSheet.create({
   },
   productImage: {
     backgroundColor: colors.border,
-    height: 132,
+    height: 126,
     width: "100%",
   },
-  quantity: {
+  productFooter: {
     alignItems: "center",
+    backgroundColor: "#fbf2e8",
+    borderColor: "#eadccb",
+    borderRadius: 12,
+    borderWidth: 1,
     flexDirection: "row",
-    gap: 8,
+    gap: 12,
+    justifyContent: "space-between",
+    marginTop: 2,
+    padding: 10,
+  },
+  quantityStepper: {
+    alignItems: "center",
+    backgroundColor: "#fffaf4",
+    borderColor: "#eadccb",
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 6,
+    padding: 3,
   },
   quantityButton: {
     alignItems: "center",
     backgroundColor: colors.primary,
     borderRadius: 10,
-    height: 36,
+    height: 34,
     justifyContent: "center",
-    width: 36,
+    width: 34,
   },
   quantityText: {
     color: "#fff",
@@ -471,10 +490,22 @@ export const styles = StyleSheet.create({
     fontWeight: "900",
   },
   stock: {
-    color: "#7a6b5d",
+    color: "#704118",
     fontSize: 12,
     fontWeight: "800",
     textTransform: "capitalize",
+  },
+  stockMuted: {
+    color: "#7a6b5d",
+  },
+  stockPill: {
+    backgroundColor: "#f4e3cf",
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  stockPillMuted: {
+    backgroundColor: "#eee6dc",
   },
   textArea: {
     minHeight: 68,
