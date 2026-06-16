@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -13,6 +14,8 @@
     "@harvest/api": "0.0.0",
     "@harvest/domain": "0.0.0",
     "expo": "53.0.27",
+    "expo-constants": "~17.1.8",
+    "expo-linking": "~7.1.7",
     "expo-router": "5.1.11",
     "react": "19.0.0",
     "react-native": "0.79.7",
