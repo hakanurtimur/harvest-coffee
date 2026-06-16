@@ -54,7 +54,12 @@ export default function ProfileScreen() {
             const active = deliveryAddress === address.address;
             return (
               <View key={`${address.title}-${index}`} style={profileStyles.addressRow}>
-                <Pressable style={profileStyles.addressCopy} onPress={() => setDeliveryAddress(address.address)}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  style={profileStyles.addressCopy}
+                  onPress={() => setDeliveryAddress(address.address)}
+                >
                   <Text style={styles.name}>{address.title}{active ? " (selected)" : ""}</Text>
                   <Text style={styles.description}>{address.address}</Text>
                 </Pressable>

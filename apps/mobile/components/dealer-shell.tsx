@@ -37,10 +37,10 @@ export function DealerShell({ children, title }: { children: ReactNode; title: s
           </View>
         </View>
         <View style={styles.actions}>
-          <Pressable style={styles.actionButton} onPress={() => router.push("/track-order")}>
+          <Pressable accessibilityRole="button" style={styles.actionButton} onPress={() => router.push("/track-order")}>
             <Text style={styles.actionText}>Track order</Text>
           </Pressable>
-          <Pressable style={styles.actionButton} onPress={() => router.push("/notifications")}>
+          <Pressable accessibilityRole="button" style={styles.actionButton} onPress={() => router.push("/notifications")}>
             <Text style={styles.actionText}>Notifications{unreadCount ? ` (${unreadCount})` : ""}</Text>
           </Pressable>
         </View>
@@ -50,7 +50,13 @@ export function DealerShell({ children, title }: { children: ReactNode; title: s
         {tabs.map((tab) => {
           const active = pathname === tab.href;
           return (
-            <Pressable key={tab.href} style={[styles.tab, active && styles.tabActive]} onPress={() => router.replace(tab.href)}>
+            <Pressable
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+              key={tab.href}
+              style={[styles.tab, active && styles.tabActive]}
+              onPress={() => router.replace(tab.href)}
+            >
               <Text style={[styles.tabText, active && styles.tabTextActive]}>{tab.label}</Text>
             </Pressable>
           );

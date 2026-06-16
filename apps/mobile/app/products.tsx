@@ -89,14 +89,26 @@ export default function ProductsScreen() {
               {paymentMethods.map((method) => {
                 const active = paymentMethod === method;
                 return (
-                  <Pressable key={method} onPress={() => setPaymentMethod(method)} style={[productStyles.method, active && productStyles.methodActive]}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    key={method}
+                    onPress={() => setPaymentMethod(method)}
+                    style={[productStyles.method, active && productStyles.methodActive]}
+                  >
                     <Text style={[productStyles.methodText, active && productStyles.methodTextActive]}>{paymentMethodLabels[method]}</Text>
                   </Pressable>
                 );
               })}
             </View>
             <Field onChangeText={setNotes} placeholder="Notes" value={notes} />
-            <Pressable disabled={itemCount === 0 || saving} onPress={submitOrder} style={[styles.primaryButton, (itemCount === 0 || saving) && styles.disabled]}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: itemCount === 0 || saving }}
+              disabled={itemCount === 0 || saving}
+              onPress={submitOrder}
+              style={[styles.primaryButton, (itemCount === 0 || saving) && styles.disabled]}
+            >
               <Text style={styles.primaryButtonText}>{saving ? "Creating order..." : "Place order"}</Text>
             </Pressable>
           </View>

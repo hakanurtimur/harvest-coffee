@@ -11,7 +11,9 @@ import { ReactNode } from "react";
 import {
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
   Pressable,
+  Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -32,11 +34,21 @@ const rentalStatusLabels: Record<RentalStatus, string> = {
 };
 
 export function AppScreen({ children }: { children: ReactNode }) {
-  return <SafeAreaView style={styles.screen}>{children}</SafeAreaView>;
+  return (
+    <SafeAreaView style={styles.screen}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.keyboardAvoider}>
+        {children}
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
 }
 
 export function ScrollContent({ children }: { children: ReactNode }) {
-  return <ScrollView contentContainerStyle={styles.list}>{children}</ScrollView>;
+  return (
+    <ScrollView contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      {children}
+    </ScrollView>
+  );
 }
 
 export function LoadingState({ label = "Loading" }: { label?: string }) {
@@ -99,7 +111,13 @@ export function PrimaryButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable disabled={disabled} onPress={onPress} style={[styles.primaryButton, disabled && styles.disabled]}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: Boolean(disabled) }}
+      disabled={disabled}
+      onPress={onPress}
+      style={[styles.primaryButton, disabled && styles.disabled]}
+    >
       <Text style={styles.primaryButtonText}>{label}</Text>
     </Pressable>
   );
@@ -115,7 +133,13 @@ export function OutlineButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable disabled={disabled} onPress={onPress} style={[styles.outlineButton, disabled && styles.disabled]}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: Boolean(disabled) }}
+      disabled={disabled}
+      onPress={onPress}
+      style={[styles.outlineButton, disabled && styles.disabled]}
+    >
       <Text style={styles.outlineButtonText}>{label}</Text>
     </Pressable>
   );
@@ -140,7 +164,7 @@ export function ProductCard({
 
   return (
     <View style={styles.productCard}>
-      <Image source={{ uri: product.imageUrl || fallbackImage }} style={styles.productImage} />
+      <Image accessibilityLabel={product.name} source={{ uri: product.imageUrl || fallbackImage }} style={styles.productImage} />
       <View style={styles.cardCopy}>
         <View style={styles.rowBetween}>
           <Text style={styles.category}>{product.category}</Text>
@@ -156,11 +180,25 @@ export function ProductCard({
             <Text style={styles.muted}>{product.weight || `${product.stockQuantity} in stock`}</Text>
           </View>
           <View style={styles.quantityStepper}>
-            <Pressable disabled={quantity === 0} style={[styles.quantityButton, quantity === 0 && styles.disabled]} onPress={onDecrease}>
+            <Pressable
+              accessibilityLabel={`Decrease ${product.name} quantity`}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: quantity === 0 }}
+              disabled={quantity === 0}
+              style={[styles.quantityButton, quantity === 0 && styles.disabled]}
+              onPress={onDecrease}
+            >
               <Text style={styles.quantityText}>-</Text>
             </Pressable>
             <Text style={styles.quantityValue}>{quantity}</Text>
-            <Pressable disabled={disabled} style={[styles.quantityButton, disabled && styles.disabled]} onPress={onIncrease}>
+            <Pressable
+              accessibilityLabel={`Increase ${product.name} quantity`}
+              accessibilityRole="button"
+              accessibilityState={{ disabled }}
+              disabled={disabled}
+              style={[styles.quantityButton, disabled && styles.disabled]}
+              onPress={onIncrease}
+            >
               <Text style={styles.quantityText}>+</Text>
             </Pressable>
           </View>
@@ -172,7 +210,7 @@ export function ProductCard({
 
 export function OrderCard({ order, onPress }: { order: Order; onPress: () => void }) {
   return (
-    <Pressable style={styles.card} onPress={onPress}>
+    <Pressable accessibilityLabel={`Open order ${order.orderNumber}`} accessibilityRole="button" style={styles.card} onPress={onPress}>
       <View style={styles.rowBetween}>
         <View>
           <Text style={styles.cardTitle}>{order.orderNumber}</Text>
@@ -193,7 +231,13 @@ export function OrderCard({ order, onPress }: { order: Order; onPress: () => voi
 
 export function RentalCard({ rental, onPress }: { rental: Rental; onPress?: () => void }) {
   return (
-    <Pressable disabled={!onPress} onPress={onPress} style={styles.card}>
+    <Pressable
+      accessibilityLabel={`Rental ${rental.productName}`}
+      accessibilityRole={onPress ? "button" : undefined}
+      disabled={!onPress}
+      onPress={onPress}
+      style={styles.card}
+    >
       <View style={styles.rowBetween}>
         <View style={styles.flex}>
           <Text style={styles.cardTitle}>{rental.productName}</Text>
@@ -348,6 +392,9 @@ export const styles = StyleSheet.create({
     gap: 12,
     justifyContent: "space-between",
     paddingTop: 12,
+  },
+  keyboardAvoider: {
+    flex: 1,
   },
   kicker: {
     color: "#a65b1a",

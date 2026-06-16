@@ -53,7 +53,13 @@ export default function CreateRentalScreen() {
           {(rentalProducts.length ? rentalProducts : products).map((product) => {
             const active = selectedProduct?.id === product.id;
             return (
-              <Pressable key={product.id} onPress={() => setSelectedProduct(product)} style={[rentalStyles.productOption, active && rentalStyles.productOptionActive]}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                key={product.id}
+                onPress={() => setSelectedProduct(product)}
+                style={[rentalStyles.productOption, active && rentalStyles.productOptionActive]}
+              >
                 <View style={styles.flex}>
                   <Text style={[styles.name, active && rentalStyles.activeText]}>{product.name}</Text>
                   <Text style={[styles.muted, active && rentalStyles.activeMuted]}>{product.weight || product.category}</Text>

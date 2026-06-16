@@ -47,11 +47,23 @@ export default function NotificationsScreen() {
               <Text style={styles.description}>{notification.message}</Text>
               <View style={notificationStyles.actions}>
                 {!notification.read ? (
-                  <Pressable disabled={busyId === notification.id} onPress={() => markRead(notification.id)} style={notificationStyles.action}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: busyId === notification.id }}
+                    disabled={busyId === notification.id}
+                    onPress={() => markRead(notification.id)}
+                    style={notificationStyles.action}
+                  >
                     <Text style={notificationStyles.actionText}>Mark read</Text>
                   </Pressable>
                 ) : null}
-                <Pressable disabled={busyId === notification.id} onPress={() => remove(notification.id)} style={notificationStyles.action}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: busyId === notification.id }}
+                  disabled={busyId === notification.id}
+                  onPress={() => remove(notification.id)}
+                  style={notificationStyles.action}
+                >
                   <Text style={notificationStyles.actionText}>Delete</Text>
                 </Pressable>
               </View>
