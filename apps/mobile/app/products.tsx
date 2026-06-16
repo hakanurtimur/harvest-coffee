@@ -8,7 +8,7 @@ import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { DealerShell } from "../components/dealer-shell";
-import { Card, Field, formatCurrency, ProductCard, styles } from "../components/ui";
+import { Card, FadeInView, Field, formatCurrency, ProductCard, styles } from "../components/ui";
 import { useMobileState } from "../lib/mobile-state";
 
 const paymentMethods: PaymentMethod[] = ["bank_transfer", "credit_card", "paypal", "cash_on_delivery"];
@@ -71,7 +71,7 @@ export default function ProductsScreen() {
           </Card>
         }
         ListHeaderComponent={
-          <View style={productStyles.quickOrder}>
+          <FadeInView style={productStyles.quickOrder}>
             <View style={productStyles.quickOrderHeader}>
               <View>
                 <Text style={styles.kicker}>Quick order</Text>
@@ -94,7 +94,7 @@ export default function ProductsScreen() {
                     accessibilityState={{ selected: active }}
                     key={method}
                     onPress={() => setPaymentMethod(method)}
-                    style={[productStyles.method, active && productStyles.methodActive]}
+                    style={({ pressed }) => [productStyles.method, active && productStyles.methodActive, pressed && styles.pressed]}
                   >
                     <Text style={[productStyles.methodText, active && productStyles.methodTextActive]}>{paymentMethodLabels[method]}</Text>
                   </Pressable>
@@ -107,11 +107,11 @@ export default function ProductsScreen() {
               accessibilityState={{ disabled: itemCount === 0 || saving }}
               disabled={itemCount === 0 || saving}
               onPress={submitOrder}
-              style={[styles.primaryButton, (itemCount === 0 || saving) && styles.disabled]}
+              style={({ pressed }) => [styles.primaryButton, pressed && itemCount > 0 && !saving && styles.pressed, (itemCount === 0 || saving) && styles.disabled]}
             >
               <Text style={styles.primaryButtonText}>{saving ? "Creating order..." : "Place order"}</Text>
             </Pressable>
-          </View>
+          </FadeInView>
         }
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (

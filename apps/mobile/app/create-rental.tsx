@@ -58,7 +58,7 @@ export default function CreateRentalScreen() {
                 accessibilityState={{ selected: active }}
                 key={product.id}
                 onPress={() => setSelectedProduct(product)}
-                style={[rentalStyles.productOption, active && rentalStyles.productOptionActive]}
+                style={({ pressed }) => [rentalStyles.productOption, active && rentalStyles.productOptionActive, pressed && styles.pressed]}
               >
                 <View style={styles.flex}>
                   <Text style={[styles.name, active && rentalStyles.activeText]}>{product.name}</Text>

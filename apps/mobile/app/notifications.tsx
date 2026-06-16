@@ -52,7 +52,7 @@ export default function NotificationsScreen() {
                     accessibilityState={{ disabled: busyId === notification.id }}
                     disabled={busyId === notification.id}
                     onPress={() => markRead(notification.id)}
-                    style={notificationStyles.action}
+                    style={({ pressed }) => [notificationStyles.action, pressed && styles.pressed, busyId === notification.id && styles.disabled]}
                   >
                     <Text style={notificationStyles.actionText}>Mark read</Text>
                   </Pressable>
@@ -62,7 +62,7 @@ export default function NotificationsScreen() {
                   accessibilityState={{ disabled: busyId === notification.id }}
                   disabled={busyId === notification.id}
                   onPress={() => remove(notification.id)}
-                  style={notificationStyles.action}
+                  style={({ pressed }) => [notificationStyles.action, pressed && styles.pressed, busyId === notification.id && styles.disabled]}
                 >
                   <Text style={notificationStyles.actionText}>Delete</Text>
                 </Pressable>

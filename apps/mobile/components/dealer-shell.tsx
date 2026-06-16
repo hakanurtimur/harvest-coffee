@@ -2,7 +2,7 @@ import { router, usePathname } from "expo-router";
 import { ReactNode, useEffect } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useMobileState } from "../lib/mobile-state";
-import { AppScreen, colors, initials, LoadingState } from "./ui";
+import { AppScreen, colors, FadeInView, initials, LoadingState } from "./ui";
 
 const tabs = [
   { href: "/products", label: "Products" },
@@ -25,7 +25,7 @@ export function DealerShell({ children, title }: { children: ReactNode; title: s
 
   return (
     <AppScreen>
-      <View style={styles.header}>
+      <FadeInView distance={6} style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.headerCopy}>
             <Text style={styles.kicker}>Harvest Coffee</Text>
@@ -37,16 +37,16 @@ export function DealerShell({ children, title }: { children: ReactNode; title: s
           </View>
         </View>
         <View style={styles.actions}>
-          <Pressable accessibilityRole="button" style={styles.actionButton} onPress={() => router.push("/track-order")}>
+          <Pressable accessibilityRole="button" style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]} onPress={() => router.push("/track-order")}>
             <Text style={styles.actionText}>Track order</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" style={styles.actionButton} onPress={() => router.push("/notifications")}>
+          <Pressable accessibilityRole="button" style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]} onPress={() => router.push("/notifications")}>
             <Text style={styles.actionText}>Notifications{unreadCount ? ` (${unreadCount})` : ""}</Text>
           </Pressable>
         </View>
-      </View>
+      </FadeInView>
       <View style={styles.body}>{children}</View>
-      <View style={styles.tabs}>
+      <FadeInView delay={120} distance={8} style={styles.tabs}>
         {tabs.map((tab) => {
           const active = pathname === tab.href;
           return (
@@ -54,14 +54,14 @@ export function DealerShell({ children, title }: { children: ReactNode; title: s
               accessibilityRole="tab"
               accessibilityState={{ selected: active }}
               key={tab.href}
-              style={[styles.tab, active && styles.tabActive]}
+              style={({ pressed }) => [styles.tab, active && styles.tabActive, pressed && styles.tabPressed]}
               onPress={() => router.replace(tab.href)}
             >
               <Text style={[styles.tabText, active && styles.tabTextActive]}>{tab.label}</Text>
             </Pressable>
           );
         })}
-      </View>
+      </FadeInView>
     </AppScreen>
   );
 }
@@ -127,6 +127,10 @@ const styles = StyleSheet.create({
   tabActive: {
     backgroundColor: colors.primary,
   },
+  tabPressed: {
+    opacity: 0.74,
+    transform: [{ scale: 0.98 }],
+  },
   tabText: {
     color: colors.primary,
     fontSize: 12,
@@ -164,5 +168,9 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: "center",
     width: 40,
+  },
+  pressed: {
+    opacity: 0.72,
+    transform: [{ scale: 0.98 }],
   },
 });

@@ -11,6 +11,7 @@ import {
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 const api = createMockHarvestApi();
+const BOOT_DELAY_MS = 950;
 
 interface MobileState {
   api: HarvestApi;
@@ -48,7 +49,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<HarvestNotification[]>([]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setBooting(false), 650);
+    const timer = setTimeout(() => setBooting(false), BOOT_DELAY_MS);
     return () => clearTimeout(timer);
   }, []);
 

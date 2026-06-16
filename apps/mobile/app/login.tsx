@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
-import { AppScreen, colors, PrimaryButton } from "../components/ui";
+import { AppScreen, BrandStamp, colors, FadeInView, PrimaryButton } from "../components/ui";
 import { useMobileState } from "../lib/mobile-state";
 
 export default function LoginScreen() {
@@ -27,7 +27,10 @@ export default function LoginScreen() {
   return (
     <AppScreen>
       <View style={loginStyles.wrap}>
-        <View style={loginStyles.card}>
+        <FadeInView style={loginStyles.card}>
+          <View style={loginStyles.stampWrap}>
+            <BrandStamp size={86} />
+          </View>
           <Text style={loginStyles.kicker}>Premium B2B Coffee Supply</Text>
           <Text style={loginStyles.title}>Harvest Coffee</Text>
           <Text style={loginStyles.copy}>
@@ -38,7 +41,7 @@ export default function LoginScreen() {
             <Text style={loginStyles.mockValue}>dealer@example.com</Text>
           </View>
           <PrimaryButton disabled={submitting || loadingData} label={submitting || loadingData ? "Signing in..." : "Login as dealer"} onPress={handleLogin} />
-        </View>
+        </FadeInView>
       </View>
     </AppScreen>
   );
@@ -84,6 +87,10 @@ const loginStyles = StyleSheet.create({
     color: colors.foreground,
     fontSize: 17,
     fontWeight: "900",
+  },
+  stampWrap: {
+    alignItems: "center",
+    marginBottom: 2,
   },
   title: {
     color: colors.foreground,

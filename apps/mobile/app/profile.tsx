@@ -57,7 +57,7 @@ export default function ProfileScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
-                  style={profileStyles.addressCopy}
+                  style={({ pressed }) => [profileStyles.addressCopy, pressed && styles.pressed]}
                   onPress={() => setDeliveryAddress(address.address)}
                 >
                   <Text style={styles.name}>{address.title}{active ? " (selected)" : ""}</Text>

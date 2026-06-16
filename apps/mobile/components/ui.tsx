@@ -7,9 +7,11 @@ import {
   RentalStatus,
   Order,
 } from "@harvest/domain";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   Image,
   KeyboardAvoidingView,
   Pressable,
@@ -21,6 +23,7 @@ import {
   TextInput,
   TextInputProps,
   View,
+  type ViewStyle,
 } from "react-native";
 
 export const fallbackImage =
@@ -62,25 +65,163 @@ export function LoadingState({ label = "Loading" }: { label?: string }) {
   );
 }
 
+export function SplashState() {
+  const entrance = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(entrance, {
+      delay: 80,
+      duration: 520,
+      easing: Easing.out(Easing.cubic),
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          duration: 900,
+          easing: Easing.inOut(Easing.quad),
+          toValue: 1,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          duration: 900,
+          easing: Easing.inOut(Easing.quad),
+          toValue: 0,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    pulseLoop.start();
+    return () => pulseLoop.stop();
+  }, [entrance, pulse]);
+
+  return (
+    <AppScreen>
+      <View style={styles.splashWrap}>
+        <Animated.View
+          style={[
+            styles.splashContent,
+            {
+              opacity: entrance,
+              transform: [
+                {
+                  translateY: entrance.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [14, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <Animated.View
+            style={{
+              transform: [
+                {
+                  scale: pulse.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 1.035],
+                  }),
+                },
+              ],
+            }}
+          >
+            <BrandStamp size={132} />
+          </Animated.View>
+          <View style={styles.splashCopy}>
+            <Text style={styles.splashTitle}>Harvest Coffee</Text>
+            <Text style={styles.splashSubtitle}>Premium B2B Coffee Supply</Text>
+          </View>
+        </Animated.View>
+      </View>
+    </AppScreen>
+  );
+}
+
+export function FadeInView({
+  children,
+  delay = 0,
+  distance = 10,
+  style,
+}: {
+  children: ReactNode;
+  delay?: number;
+  distance?: number;
+  style?: ViewStyle | ViewStyle[];
+}) {
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    progress.setValue(0);
+    Animated.timing(progress, {
+      delay,
+      duration: 380,
+      easing: Easing.out(Easing.cubic),
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+  }, [delay, progress]);
+
+  return (
+    <Animated.View
+      style={[
+        style,
+        {
+          opacity: progress,
+          transform: [
+            {
+              translateY: progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [distance, 0],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
+export function BrandStamp({ size = 96 }: { size?: number }) {
+  const outerSize = size;
+  const innerSize = Math.round(size * 0.58);
+
+  return (
+    <View style={[styles.stamp, { height: outerSize, width: outerSize }]}>
+      <View style={[styles.stampInner, { height: innerSize, width: innerSize }]}>
+        <Text style={styles.stampIcon}>HC</Text>
+      </View>
+      <Text style={styles.stampTop}>Harvest Coffee</Text>
+      <Text style={styles.stampBottom}>Premium B2B Supply</Text>
+    </View>
+  );
+}
+
 export function Card({ children }: { children: ReactNode }) {
-  return <View style={styles.card}>{children}</View>;
+  return <FadeInView style={styles.card}>{children}</FadeInView>;
 }
 
 export function SectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
-    <View style={styles.sectionHeader}>
+    <FadeInView distance={6} style={styles.sectionHeader}>
       <Text style={styles.kicker}>{eyebrow}</Text>
       <Text style={styles.sectionTitle}>{title}</Text>
-    </View>
+    </FadeInView>
   );
 }
 
 export function EmptyState({ body, title }: { body: string; title: string }) {
   return (
-    <View style={styles.empty}>
+    <FadeInView style={styles.empty}>
       <Text style={styles.cardTitle}>{title}</Text>
       <Text style={styles.description}>{body}</Text>
-    </View>
+    </FadeInView>
   );
 }
 
@@ -116,7 +257,7 @@ export function PrimaryButton({
       accessibilityState={{ disabled: Boolean(disabled) }}
       disabled={disabled}
       onPress={onPress}
-      style={[styles.primaryButton, disabled && styles.disabled]}
+      style={({ pressed }) => [styles.primaryButton, pressed && !disabled && styles.pressed, disabled && styles.disabled]}
     >
       <Text style={styles.primaryButtonText}>{label}</Text>
     </Pressable>
@@ -138,7 +279,7 @@ export function OutlineButton({
       accessibilityState={{ disabled: Boolean(disabled) }}
       disabled={disabled}
       onPress={onPress}
-      style={[styles.outlineButton, disabled && styles.disabled]}
+      style={({ pressed }) => [styles.outlineButton, pressed && !disabled && styles.pressed, disabled && styles.disabled]}
     >
       <Text style={styles.outlineButtonText}>{label}</Text>
     </Pressable>
@@ -163,7 +304,7 @@ export function ProductCard({
   const disabled = product.stockStatus === "out_of_stock" || product.stockQuantity === 0;
 
   return (
-    <View style={styles.productCard}>
+    <FadeInView style={styles.productCard}>
       <Image accessibilityLabel={product.name} source={{ uri: product.imageUrl || fallbackImage }} style={styles.productImage} />
       <View style={styles.cardCopy}>
         <View style={styles.rowBetween}>
@@ -204,50 +345,54 @@ export function ProductCard({
           </View>
         </View>
       </View>
-    </View>
+    </FadeInView>
   );
 }
 
 export function OrderCard({ order, onPress }: { order: Order; onPress: () => void }) {
   return (
-    <Pressable accessibilityLabel={`Open order ${order.orderNumber}`} accessibilityRole="button" style={styles.card} onPress={onPress}>
-      <View style={styles.rowBetween}>
-        <View>
-          <Text style={styles.cardTitle}>{order.orderNumber}</Text>
-          <Text style={styles.muted}>{formatDate(order.createdAt)}</Text>
+    <FadeInView>
+      <Pressable accessibilityLabel={`Open order ${order.orderNumber}`} accessibilityRole="button" style={({ pressed }) => [styles.card, pressed && styles.pressed]} onPress={onPress}>
+        <View style={styles.rowBetween}>
+          <View>
+            <Text style={styles.cardTitle}>{order.orderNumber}</Text>
+            <Text style={styles.muted}>{formatDate(order.createdAt)}</Text>
+          </View>
+          <Text style={styles.total}>{formatCurrency(order.totalAmount)}</Text>
         </View>
-        <Text style={styles.total}>{formatCurrency(order.totalAmount)}</Text>
-      </View>
-      <View style={styles.badgeRow}>
-        <Badge label={orderStatusLabels[order.status]} />
-        <Badge label={paymentStatusLabels[order.paymentStatus]} />
-      </View>
-      <Text style={styles.description} numberOfLines={1}>
-        {order.items.map((item) => `${item.quantity}x ${item.productName}`).join(", ")}
-      </Text>
-    </Pressable>
+        <View style={styles.badgeRow}>
+          <Badge label={orderStatusLabels[order.status]} />
+          <Badge label={paymentStatusLabels[order.paymentStatus]} />
+        </View>
+        <Text style={styles.description} numberOfLines={1}>
+          {order.items.map((item) => `${item.quantity}x ${item.productName}`).join(", ")}
+        </Text>
+      </Pressable>
+    </FadeInView>
   );
 }
 
 export function RentalCard({ rental, onPress }: { rental: Rental; onPress?: () => void }) {
   return (
-    <Pressable
-      accessibilityLabel={`Rental ${rental.productName}`}
-      accessibilityRole={onPress ? "button" : undefined}
-      disabled={!onPress}
-      onPress={onPress}
-      style={styles.card}
-    >
-      <View style={styles.rowBetween}>
-        <View style={styles.flex}>
-          <Text style={styles.cardTitle}>{rental.productName}</Text>
-          <Text style={styles.muted}>{rental.customerName || rental.customerEmail}</Text>
+    <FadeInView>
+      <Pressable
+        accessibilityLabel={`Rental ${rental.productName}`}
+        accessibilityRole={onPress ? "button" : undefined}
+        disabled={!onPress}
+        onPress={onPress}
+        style={({ pressed }) => [styles.card, pressed && onPress && styles.pressed]}
+      >
+        <View style={styles.rowBetween}>
+          <View style={styles.flex}>
+            <Text style={styles.cardTitle}>{rental.productName}</Text>
+            <Text style={styles.muted}>{rental.customerName || rental.customerEmail}</Text>
+          </View>
+          <Badge label={rentalStatusLabels[rental.status]} />
         </View>
-        <Badge label={rentalStatusLabels[rental.status]} />
-      </View>
-      <Metric label="Rental dates" value={`${formatDate(rental.startDate)} - ${formatDate(rental.endDate)}`} />
-      {rental.notes ? <Text style={styles.description}>{rental.notes}</Text> : null}
-    </Pressable>
+        <Metric label="Rental dates" value={`${formatDate(rental.startDate)} - ${formatDate(rental.endDate)}`} />
+        {rental.notes ? <Text style={styles.description}>{rental.notes}</Text> : null}
+      </Pressable>
+    </FadeInView>
   );
 }
 
@@ -454,6 +599,10 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "900",
   },
+  pressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.985 }],
+  },
   primaryButton: {
     alignItems: "center",
     backgroundColor: colors.primary,
@@ -553,6 +702,71 @@ export const styles = StyleSheet.create({
   },
   stockPillMuted: {
     backgroundColor: "#eee6dc",
+  },
+  splashContent: {
+    alignItems: "center",
+    gap: 18,
+  },
+  splashCopy: {
+    alignItems: "center",
+    gap: 5,
+  },
+  splashSubtitle: {
+    color: "#a65b1a",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1.8,
+    textTransform: "uppercase",
+  },
+  splashTitle: {
+    color: colors.foreground,
+    fontSize: 34,
+    fontWeight: "900",
+  },
+  splashWrap: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+    padding: 24,
+  },
+  stamp: {
+    alignItems: "center",
+    borderColor: "rgba(106, 56, 20, 0.38)",
+    borderRadius: 999,
+    borderWidth: 1.5,
+    justifyContent: "center",
+    position: "relative",
+  },
+  stampBottom: {
+    bottom: 15,
+    color: "rgba(106, 56, 20, 0.58)",
+    fontSize: 7,
+    fontWeight: "900",
+    letterSpacing: 1.5,
+    position: "absolute",
+    textTransform: "uppercase",
+  },
+  stampIcon: {
+    color: "rgba(106, 56, 20, 0.72)",
+    fontSize: 20,
+    fontWeight: "900",
+    letterSpacing: 1.5,
+  },
+  stampInner: {
+    alignItems: "center",
+    borderColor: "rgba(106, 56, 20, 0.24)",
+    borderRadius: 999,
+    borderWidth: 1,
+    justifyContent: "center",
+  },
+  stampTop: {
+    color: "rgba(106, 56, 20, 0.62)",
+    fontSize: 8,
+    fontWeight: "900",
+    letterSpacing: 1.7,
+    position: "absolute",
+    textTransform: "uppercase",
+    top: 14,
   },
   textArea: {
     minHeight: 68,

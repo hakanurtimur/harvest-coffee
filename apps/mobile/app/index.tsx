@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { useEffect } from "react";
 import { Text, View } from "react-native";
-import { AppScreen, colors, LoadingState, styles } from "../components/ui";
+import { AppScreen, colors, SplashState, styles } from "../components/ui";
 import { useMobileState } from "../lib/mobile-state";
 
 export default function BootScreen() {
@@ -12,7 +12,7 @@ export default function BootScreen() {
     router.replace(isAuthenticated ? "/products" : "/login");
   }, [booting, isAuthenticated]);
 
-  if (booting) return <LoadingState label="Preparing Harvest Coffee" />;
+  if (booting) return <SplashState />;
 
   return (
     <AppScreen>
