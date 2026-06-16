@@ -1,5 +1,10 @@
 import { Stack } from "expo-router";
+import { MobileStateProvider } from "../lib/mobile-state";
 
 export default function RootLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <MobileStateProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </MobileStateProvider>
+  );
 }
