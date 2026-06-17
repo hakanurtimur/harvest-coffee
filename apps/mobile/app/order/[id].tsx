@@ -1,16 +1,18 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { Order } from "@harvest/domain";
+import { AdminShell } from "../../components/admin-shell";
 import { DealerShell } from "../../components/dealer-shell";
 import { EmptyState, LoadingState, OrderDetailContent, OutlineButton, ScrollContent, SectionTitle, StatusBanner } from "../../components/ui";
 import { useMobileState } from "../../lib/mobile-state";
 
 export default function OrderDetailScreen() {
-  const { api, orders } = useMobileState();
+  const { api, currentUser, orders } = useMobileState();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [order, setOrder] = useState<Order | null>(orders.find((item) => item.id === id) ?? null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!order);
+  const isAdmin = currentUser?.role === "admin";
 
   useEffect(() => {
     let mounted = true;
@@ -35,10 +37,9 @@ export default function OrderDetailScreen() {
 
   if (loading) return <LoadingState label="Loading order" />;
 
-  return (
-    <DealerShell title="Order Detail">
+  const content = (
       <ScrollContent>
-        <OutlineButton label="Back to orders" onPress={() => router.replace("/orders")} />
+        <OutlineButton label={isAdmin ? "Back to admin orders" : "Back to orders"} onPress={() => router.replace(isAdmin ? "/admin-orders" : "/orders")} />
         {order ? (
           <>
             <SectionTitle eyebrow="Order detail" title={order.orderNumber} />
@@ -51,6 +52,8 @@ export default function OrderDetailScreen() {
           </>
         )}
       </ScrollContent>
-    </DealerShell>
   );
+
+  if (isAdmin) return <AdminShell title="Order Detail">{content}</AdminShell>;
+  return <DealerShell title="Order Detail">{content}</DealerShell>;
 }

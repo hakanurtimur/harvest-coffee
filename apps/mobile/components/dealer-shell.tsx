@@ -17,11 +17,13 @@ export function DealerShell({ children, title }: { children: ReactNode; title: s
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 
   useEffect(() => {
-    if (!booting && !isAuthenticated) router.replace("/login");
-  }, [booting, isAuthenticated]);
+    if (booting) return;
+    if (!isAuthenticated) router.replace("/login");
+    else if (currentUser?.role === "admin") router.replace("/admin-dashboard");
+  }, [booting, currentUser?.role, isAuthenticated]);
 
   if (booting || (!isAuthenticated && loadingData)) return <LoadingState label="Loading dealer workspace" />;
-  if (!currentUser) return null;
+  if (!currentUser || currentUser.role === "admin") return null;
 
   return (
     <AppScreen>
