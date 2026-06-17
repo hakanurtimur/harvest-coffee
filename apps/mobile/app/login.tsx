@@ -5,22 +5,34 @@ import { AppScreen, BrandStamp, colors, FadeInView, PrimaryButton } from "../com
 import { useMobileState } from "../lib/mobile-state";
 
 export default function LoginScreen() {
-  const { booting, isAuthenticated, loadingData, loginDealer } = useMobileState();
-  const [submitting, setSubmitting] = useState(false);
+  const { booting, currentUser, isAuthenticated, loadingData, loginAdmin, loginDealer } = useMobileState();
+  const [submitting, setSubmitting] = useState<"admin" | "dealer" | null>(null);
 
   useEffect(() => {
-    if (!booting && isAuthenticated) router.replace("/products");
-  }, [booting, isAuthenticated]);
+    if (!booting && isAuthenticated) router.replace(currentUser?.role === "admin" ? "/admin-dashboard" : "/products");
+  }, [booting, currentUser?.role, isAuthenticated]);
 
-  const handleLogin = async () => {
-    setSubmitting(true);
+  const handleDealerLogin = async () => {
+    setSubmitting("dealer");
     try {
       await loginDealer();
       router.replace("/products");
     } catch (error) {
       Alert.alert("Login failed", error instanceof Error ? error.message : "Mock dealer login failed.");
     } finally {
-      setSubmitting(false);
+      setSubmitting(null);
+    }
+  };
+
+  const handleAdminLogin = async () => {
+    setSubmitting("admin");
+    try {
+      await loginAdmin();
+      router.replace("/admin-dashboard");
+    } catch (error) {
+      Alert.alert("Login failed", error instanceof Error ? error.message : "Mock admin login failed.");
+    } finally {
+      setSubmitting(null);
     }
   };
 
@@ -33,14 +45,19 @@ export default function LoginScreen() {
           </View>
           <Text style={loginStyles.kicker}>Premium B2B Coffee Supply</Text>
           <Text style={loginStyles.title}>Harvest Coffee</Text>
-          <Text style={loginStyles.copy}>
-            Sign in with the mock dealer account to test products, orders, rentals, tracking, notifications, and profile flows.
-          </Text>
-          <View style={loginStyles.mockBox}>
-            <Text style={loginStyles.mockLabel}>Mock dealer</Text>
-            <Text style={loginStyles.mockValue}>dealer@example.com</Text>
+          <Text style={loginStyles.copy}>Sign in with mock dealer or admin accounts to test the native parity flows.</Text>
+          <View style={loginStyles.mockGrid}>
+            <View style={loginStyles.mockBox}>
+              <Text style={loginStyles.mockLabel}>Mock dealer</Text>
+              <Text style={loginStyles.mockValue}>dealer@example.com</Text>
+              <PrimaryButton disabled={Boolean(submitting) || loadingData} label={submitting === "dealer" || loadingData ? "Signing in..." : "Login as dealer"} onPress={handleDealerLogin} />
+            </View>
+            <View style={loginStyles.mockBox}>
+              <Text style={loginStyles.mockLabel}>Mock admin</Text>
+              <Text style={loginStyles.mockValue}>ops@example.com</Text>
+              <PrimaryButton disabled={Boolean(submitting) || loadingData} label={submitting === "admin" || loadingData ? "Signing in..." : "Login as admin"} onPress={handleAdminLogin} />
+            </View>
           </View>
-          <PrimaryButton disabled={submitting || loadingData} label={submitting || loadingData ? "Signing in..." : "Login as dealer"} onPress={handleLogin} />
         </FadeInView>
       </View>
     </AppScreen>
@@ -74,8 +91,11 @@ const loginStyles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
-    gap: 4,
+    gap: 10,
     padding: 12,
+  },
+  mockGrid: {
+    gap: 10,
   },
   mockLabel: {
     color: colors.muted,

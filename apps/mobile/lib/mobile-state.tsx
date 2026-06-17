@@ -1,11 +1,15 @@
 import { createMockHarvestApi, HarvestApi } from "@harvest/api";
 import {
+  AdminSettings,
+  CreateProductInput,
   CreateOrderInput,
   CreateRentalInput,
   Notification as HarvestNotification,
   Order,
   Product,
   Rental,
+  UpdateOrderInput,
+  UpdateProductInput,
   User,
 } from "@harvest/domain";
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
@@ -26,16 +30,25 @@ interface MobileState {
   orders: Order[];
   products: Product[];
   rentals: Rental[];
+  users: User[];
   addAddress(title: string, address: string): Promise<void>;
+  createProduct(input: CreateProductInput): Promise<Product>;
   createOrder(input: CreateOrderInput): Promise<Order>;
   createRental(input: CreateRentalInput): Promise<Rental>;
   deleteAddress(index: number): Promise<void>;
   deleteNotification(id: string): Promise<void>;
+  deleteProduct(id: string): Promise<void>;
+  loginAdmin(): Promise<void>;
   loginDealer(): Promise<void>;
   logout(): void;
   markNotificationRead(id: string): Promise<void>;
+  refreshAdminData(userOverride?: User): Promise<void>;
   refreshDealerData(userOverride?: User): Promise<void>;
+  saveAdminSettings(settings: AdminSettings): Promise<User>;
   setDeliveryAddress(address: string): void;
+  updateOrder(id: string, input: UpdateOrderInput): Promise<Order>;
+  updateProduct(id: string, input: UpdateProductInput): Promise<Product>;
+  updateUser(id: string, input: Partial<User>): Promise<User>;
 }
 
 const MobileStateContext = createContext<MobileState | null>(null);
@@ -51,6 +64,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [notifications, setNotifications] = useState<HarvestNotification[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
     const timer = setTimeout(() => setBooting(false), BOOT_DELAY_MS);
@@ -98,12 +112,56 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     }
   }, [refreshDealerData]);
 
+  const refreshAdminData = useCallback(async (userOverride?: User) => {
+    const user = userOverride ?? currentUser;
+    if (!user) return;
+
+    setLoadingData(true);
+    try {
+      setDataError(null);
+      const [nextProducts, nextOrders, nextRentals, nextNotifications, nextUsers] = await Promise.all([
+        api.getProducts(),
+        api.getOrders(),
+        api.getRentals(),
+        api.getNotifications(user.email),
+        api.getUsers(),
+      ]);
+
+      setProducts(nextProducts);
+      setOrders([...nextOrders].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)));
+      setRentals([...nextRentals].sort((a, b) => Date.parse(b.startDate) - Date.parse(a.startDate)));
+      setNotifications([...nextNotifications].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)));
+      setUsers(nextUsers);
+      setLastSyncedAt(new Date().toISOString());
+    } catch (error) {
+      setDataError(error instanceof Error ? error.message : "Admin data could not be refreshed.");
+      throw error;
+    } finally {
+      setLoadingData(false);
+    }
+  }, [currentUser]);
+
+  const loginAdmin = useCallback(async () => {
+    setLoadingData(true);
+    try {
+      const nextUsers = await api.getUsers();
+      const admin = nextUsers.find((user) => user.role === "admin") ?? null;
+      if (!admin) throw new Error("Mock admin user was not found.");
+      setCurrentUser(admin);
+      setDeliveryAddress("");
+      await refreshAdminData(admin);
+    } finally {
+      setLoadingData(false);
+    }
+  }, [refreshAdminData]);
+
   const logout = useCallback(() => {
     setCurrentUser(null);
     setProducts([]);
     setOrders([]);
     setRentals([]);
     setNotifications([]);
+    setUsers([]);
     setDeliveryAddress("");
     setDataError(null);
     setLastSyncedAt(null);
@@ -117,9 +175,49 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
 
   const createRental = useCallback(async (input: CreateRentalInput) => {
     const rental = await api.createRental(input);
-    await refreshDealerData();
+    if (currentUser?.role === "admin") await refreshAdminData();
+    else await refreshDealerData();
     return rental;
-  }, [refreshDealerData]);
+  }, [currentUser?.role, refreshAdminData, refreshDealerData]);
+
+  const updateOrder = useCallback(async (id: string, input: UpdateOrderInput) => {
+    const order = await api.updateOrder(id, input);
+    if (currentUser?.role === "admin") await refreshAdminData();
+    else await refreshDealerData();
+    return order;
+  }, [currentUser?.role, refreshAdminData, refreshDealerData]);
+
+  const createProduct = useCallback(async (input: CreateProductInput) => {
+    const product = await api.createProduct(input);
+    await refreshAdminData();
+    return product;
+  }, [refreshAdminData]);
+
+  const updateProduct = useCallback(async (id: string, input: UpdateProductInput) => {
+    const product = await api.updateProduct(id, input);
+    await refreshAdminData();
+    return product;
+  }, [refreshAdminData]);
+
+  const deleteProduct = useCallback(async (id: string) => {
+    await api.deleteProduct(id);
+    await refreshAdminData();
+  }, [refreshAdminData]);
+
+  const updateUser = useCallback(async (id: string, input: Partial<User>) => {
+    const user = await api.updateUser(id, input);
+    setUsers((current) => current.map((item) => item.id === id ? user : item));
+    if (currentUser?.id === id) setCurrentUser(user);
+    return user;
+  }, [currentUser?.id]);
+
+  const saveAdminSettings = useCallback(async (settings: AdminSettings) => {
+    if (!currentUser) throw new Error("Admin session is not active.");
+    const user = await api.updateUser(currentUser.id, { adminSettings: settings });
+    setCurrentUser(user);
+    setUsers((current) => current.map((item) => item.id === user.id ? user : item));
+    return user;
+  }, [currentUser]);
 
   const addAddress = useCallback(async (title: string, address: string) => {
     if (!currentUser) return;
@@ -155,45 +253,63 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     api,
     addAddress,
     booting,
+    createProduct,
     createOrder,
     createRental,
     currentUser,
     dataError,
     deleteAddress,
     deleteNotification,
+    deleteProduct,
     deliveryAddress,
     isAuthenticated: Boolean(currentUser),
     lastSyncedAt,
     loadingData,
+    loginAdmin,
     loginDealer,
     logout,
     markNotificationRead,
     notifications,
     orders,
     products,
+    refreshAdminData,
     refreshDealerData,
     rentals,
+    saveAdminSettings,
     setDeliveryAddress,
+    updateOrder,
+    updateProduct,
+    updateUser,
+    users,
   }), [
     addAddress,
     booting,
+    createProduct,
     createOrder,
     createRental,
     currentUser,
     dataError,
     deleteAddress,
     deleteNotification,
+    deleteProduct,
     deliveryAddress,
     lastSyncedAt,
     loadingData,
+    loginAdmin,
     loginDealer,
     logout,
     markNotificationRead,
     notifications,
     orders,
     products,
+    refreshAdminData,
     refreshDealerData,
     rentals,
+    saveAdminSettings,
+    updateOrder,
+    updateProduct,
+    updateUser,
+    users,
   ]);
 
   return <MobileStateContext.Provider value={value}>{children}</MobileStateContext.Provider>;

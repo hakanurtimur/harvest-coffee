@@ -5,12 +5,12 @@ import { AppScreen, colors, SplashState, styles } from "../components/ui";
 import { useMobileState } from "../lib/mobile-state";
 
 export default function BootScreen() {
-  const { booting, isAuthenticated } = useMobileState();
+  const { booting, currentUser, isAuthenticated } = useMobileState();
 
   useEffect(() => {
     if (booting) return;
-    router.replace(isAuthenticated ? "/products" : "/login");
-  }, [booting, isAuthenticated]);
+    router.replace(isAuthenticated ? currentUser?.role === "admin" ? "/admin-dashboard" : "/products" : "/login");
+  }, [booting, currentUser?.role, isAuthenticated]);
 
   if (booting) return <SplashState />;
 

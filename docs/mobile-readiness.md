@@ -2,7 +2,7 @@
 
 ## Current Scope
 
-The Expo app is currently focused on dealer mobile-web parity:
+The Expo app currently covers dealer mobile-web parity and the first admin mobile parity pass:
 
 - Mock dealer login/logout
 - Products and quick order
@@ -13,7 +13,19 @@ The Expo app is currently focused on dealer mobile-web parity:
 - Rentals and Create Rental
 - Notifications
 
-Admin and public marketing screens are intentionally out of this mobile phase.
+Admin mobile parity currently includes:
+
+- Mock admin login/logout
+- Admin Dashboard
+- Admin Orders
+- Admin Products
+- Stock Management
+- Customer Management
+- Reports
+- Admin Settings
+- Rental Calendar
+
+Public marketing screens are intentionally out of this mobile phase.
 
 ## Hardening Completed
 
@@ -25,6 +37,8 @@ Admin and public marketing screens are intentionally out of this mobile phase.
 - Accessibility roles/states for buttons, tabs, cards, selections, and quantity controls.
 - Lightweight native motion with React Native `Animated`.
 - Product list render tuning for small-to-medium catalogues.
+- Admin shell with role guard and horizontal admin navigation.
+- Admin mock flows for orders, products, stock, customers, settings, reports, and rental calendar.
 
 ## Still Needed Before Production Release
 
