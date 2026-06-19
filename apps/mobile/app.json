@@ -6,6 +6,9 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true
+    "newArchEnabled": true,
+    "plugins": [
+      "@react-native-community/datetimepicker"
+    ]
   }
 }

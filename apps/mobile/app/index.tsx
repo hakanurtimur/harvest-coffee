@@ -9,7 +9,7 @@ export default function BootScreen() {
 
   useEffect(() => {
     if (booting) return;
-    router.replace(isAuthenticated ? currentUser?.role === "admin" ? "/admin-dashboard" : "/products" : "/login");
+    router.replace(isAuthenticated ? currentUser?.role === "admin" ? "/admin-dashboard" : "/products" : "/home");
   }, [booting, currentUser?.role, isAuthenticated]);
 
   if (booting) return <SplashState />;

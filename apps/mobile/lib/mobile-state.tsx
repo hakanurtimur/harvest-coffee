@@ -20,6 +20,9 @@ const BOOT_DELAY_MS = 950;
 interface MobileState {
   api: HarvestApi;
   booting: boolean;
+  cartItemCount: number;
+  cartOpen: boolean;
+  cartQuantities: Record<string, number>;
   currentUser: User | null;
   dataError: string | null;
   deliveryAddress: string;
@@ -32,6 +35,8 @@ interface MobileState {
   rentals: Rental[];
   users: User[];
   addAddress(title: string, address: string): Promise<void>;
+  clearCart(): void;
+  closeCart(): void;
   createProduct(input: CreateProductInput): Promise<Product>;
   createOrder(input: CreateOrderInput): Promise<Order>;
   createRental(input: CreateRentalInput): Promise<Rental>;
@@ -42,11 +47,15 @@ interface MobileState {
   loginDealer(): Promise<void>;
   logout(): void;
   markNotificationRead(id: string): Promise<void>;
+  openCart(): void;
   refreshAdminData(userOverride?: User): Promise<void>;
   refreshDealerData(userOverride?: User): Promise<void>;
   saveAdminSettings(settings: AdminSettings): Promise<User>;
   setDeliveryAddress(address: string): void;
+  setProductQuantity(productId: string, quantity: number): void;
+  updateCartQuantity(productId: string, delta: number): void;
   updateOrder(id: string, input: UpdateOrderInput): Promise<Order>;
+  updateAddress(index: number, title: string, address: string): Promise<void>;
   updateProduct(id: string, input: UpdateProductInput): Promise<Product>;
   updateUser(id: string, input: Partial<User>): Promise<User>;
 }
@@ -55,6 +64,8 @@ const MobileStateContext = createContext<MobileState | null>(null);
 
 export function MobileStateProvider({ children }: { children: ReactNode }) {
   const [booting, setBooting] = useState(true);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [cartQuantities, setCartQuantities] = useState<Record<string, number>>({});
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [dataError, setDataError] = useState<string | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
@@ -65,6 +76,42 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [notifications, setNotifications] = useState<HarvestNotification[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+
+  const cartItemCount = useMemo(
+    () => Object.values(cartQuantities).reduce((sum, quantity) => sum + quantity, 0),
+    [cartQuantities],
+  );
+
+  const updateCartQuantity = useCallback((productId: string, delta: number) => {
+    setCartQuantities((current) => {
+      const nextQuantity = Math.max(0, (current[productId] ?? 0) + delta);
+      const next = { ...current };
+      if (nextQuantity === 0) delete next[productId];
+      else next[productId] = nextQuantity;
+      return next;
+    });
+  }, []);
+
+  const setProductQuantity = useCallback((productId: string, quantity: number) => {
+    setCartQuantities((current) => {
+      const next = { ...current };
+      if (quantity <= 0) delete next[productId];
+      else next[productId] = quantity;
+      return next;
+    });
+  }, []);
+
+  const clearCart = useCallback(() => {
+    setCartQuantities({});
+  }, []);
+
+  const openCart = useCallback(() => {
+    setCartOpen(true);
+  }, []);
+
+  const closeCart = useCallback(() => {
+    setCartOpen(false);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setBooting(false), BOOT_DELAY_MS);
@@ -157,6 +204,8 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     setCurrentUser(null);
+    setCartOpen(false);
+    setCartQuantities({});
     setProducts([]);
     setOrders([]);
     setRentals([]);
@@ -228,6 +277,20 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     setDeliveryAddress(address);
   }, [currentUser]);
 
+  const updateAddress = useCallback(async (index: number, title: string, address: string) => {
+    if (!currentUser?.addresses[index]) return;
+    const previousAddress = currentUser.addresses[index].address;
+    const nextUser = await api.updateUser(currentUser.id, {
+      addresses: currentUser.addresses.map((item, itemIndex) => (
+        itemIndex === index ? { title, address } : item
+      )),
+    });
+    setCurrentUser(nextUser);
+    if (deliveryAddress === previousAddress) {
+      setDeliveryAddress(address);
+    }
+  }, [currentUser, deliveryAddress]);
+
   const deleteAddress = useCallback(async (index: number) => {
     if (!currentUser) return;
     const nextUser = await api.updateUser(currentUser.id, {
@@ -253,6 +316,11 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     api,
     addAddress,
     booting,
+    cartItemCount,
+    cartOpen,
+    cartQuantities,
+    clearCart,
+    closeCart,
     createProduct,
     createOrder,
     createRental,
@@ -270,6 +338,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     logout,
     markNotificationRead,
     notifications,
+    openCart,
     orders,
     products,
     refreshAdminData,
@@ -277,13 +346,21 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     rentals,
     saveAdminSettings,
     setDeliveryAddress,
+    setProductQuantity,
+    updateAddress,
     updateOrder,
+    updateCartQuantity,
     updateProduct,
     updateUser,
     users,
   }), [
     addAddress,
     booting,
+    cartItemCount,
+    cartOpen,
+    cartQuantities,
+    clearCart,
+    closeCart,
     createProduct,
     createOrder,
     createRental,
@@ -300,13 +377,17 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     logout,
     markNotificationRead,
     notifications,
+    openCart,
     orders,
     products,
     refreshAdminData,
     refreshDealerData,
     rentals,
     saveAdminSettings,
+    setProductQuantity,
+    updateAddress,
     updateOrder,
+    updateCartQuantity,
     updateProduct,
     updateUser,
     users,

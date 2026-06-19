@@ -26,6 +26,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import Svg, { Circle, Defs, G, Path, Text as SvgText, TextPath } from "react-native-svg";
 
 export const fallbackImage =
   "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=1200&q=80";
@@ -190,17 +191,34 @@ export function FadeInView({
 }
 
 export function BrandStamp({ size = 96 }: { size?: number }) {
-  const outerSize = size;
-  const innerSize = Math.round(size * 0.58);
-
   return (
-    <View style={[styles.stamp, { height: outerSize, width: outerSize }]}>
-      <View style={[styles.stampInner, { height: innerSize, width: innerSize }]}>
-        <Text style={styles.stampIcon}>HC</Text>
-      </View>
-      <Text style={styles.stampTop}>Harvest Coffee</Text>
-      <Text style={styles.stampBottom}>Premium B2B Supply</Text>
-    </View>
+    <Svg accessibilityRole="image" height={size} viewBox="0 0 160 160" width={size}>
+      <Defs>
+        <Path d="M 34 80 A 46 46 0 1 1 126 80" id="stampTopArc" />
+        <Path d="M 126 80 A 46 46 0 1 1 34 80" id="stampBottomArc" />
+      </Defs>
+      <Circle cx="80" cy="80" fill="transparent" r="58" stroke={stampColor} strokeOpacity={0.5} strokeWidth="1.4" />
+      <Circle cx="80" cy="80" fill="transparent" r="36" stroke={stampColor} strokeOpacity={0.32} strokeWidth="1.1" />
+      <SvgText fill={stampColor} fontFamily={fontFamilies.extraBold} fontSize="8.7" fontWeight="900" letterSpacing="3.1">
+        <TextPath href="#stampTopArc" startOffset="50%" textAnchor="middle">
+          HARVEST COFFEE
+        </TextPath>
+      </SvgText>
+      <SvgText fill={stampColor} fontFamily={fontFamilies.extraBold} fontSize="7" fontWeight="900" letterSpacing="2.3">
+        <TextPath href="#stampBottomArc" startOffset="50%" textAnchor="middle">
+          PREMIUM B2B SUPPLY
+        </TextPath>
+      </SvgText>
+      <G opacity={0.48} stroke={stampColor} strokeLinecap="round" strokeLinejoin="round" strokeWidth="2">
+        <Path d="M80 101 C79 91 80 80 84 66" fill="none" />
+        <Path d="M84 70 C75 69 68 63 66 54 C76 54 83 59 84 70Z" fill="none" />
+        <Path d="M83 81 C94 79 102 72 104 62 C92 62 84 70 83 81Z" fill="none" />
+        <Path d="M80 91 C69 90 61 83 59 73 C70 73 78 80 80 91Z" fill="none" />
+        <Path d="M87 91 C96 91 104 86 108 78 C98 77 91 82 87 91Z" fill="none" />
+        <Path d="M76 105 C78 96 70 90 62 91 C64 99 68 103 76 105Z" fill="none" />
+      </G>
+      <Circle cx="80" cy="80" fill={stampColor} opacity={0.12} r="2.2" />
+    </Svg>
   );
 }
 
@@ -328,46 +346,54 @@ export function ProductCard({
   quantity: number;
 }) {
   const disabled = product.stockStatus === "out_of_stock" || product.stockQuantity === 0;
+  const subtotal = quantity * product.price;
 
   return (
     <FadeInView style={styles.productCard}>
       <Image accessibilityLabel={product.name} source={{ uri: product.imageUrl || fallbackImage }} style={styles.productImage} />
-      <View style={styles.cardCopy}>
-        <View style={styles.rowBetween}>
-          <Text style={styles.category}>{product.category}</Text>
-          <View style={[styles.stockPill, disabled && styles.stockPillMuted]}>
-            <Text style={[styles.stock, disabled && styles.stockMuted]}>{product.stockStatus.replaceAll("_", " ")}</Text>
+      <View style={styles.productInfo}>
+        <View style={styles.productTitleRow}>
+          <View style={styles.productCopy}>
+            <Text style={styles.category}>{product.category}</Text>
+            <Text style={styles.name} numberOfLines={2}>{product.name}</Text>
           </View>
+          <Text style={styles.price}>{formatCurrency(product.price)}</Text>
         </View>
-        <Text style={styles.name}>{product.name}</Text>
-        <Text style={styles.description}>{product.description}</Text>
-        <View style={styles.productFooter}>
-          <View>
-            <Text style={styles.price}>{formatCurrency(product.price)}</Text>
+        <Text style={styles.description} numberOfLines={1}>{product.description}</Text>
+        <View style={styles.productMetaRow}>
+          <View style={styles.productMeta}>
+            <View style={[styles.stockPill, disabled && styles.stockPillMuted]}>
+              <Text style={[styles.stock, disabled && styles.stockMuted]}>{product.stockStatus.replaceAll("_", " ")}</Text>
+            </View>
             <Text style={styles.muted}>{product.weight || `${product.stockQuantity} in stock`}</Text>
           </View>
-          <View style={styles.quantityStepper}>
-            <Pressable
-              accessibilityLabel={`Decrease ${product.name} quantity`}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: quantity === 0 }}
-              disabled={quantity === 0}
-              style={[styles.quantityButton, quantity === 0 && styles.disabled]}
-              onPress={onDecrease}
-            >
-              <Text style={styles.quantityText}>-</Text>
-            </Pressable>
-            <Text style={styles.quantityValue}>{quantity}</Text>
-            <Pressable
-              accessibilityLabel={`Increase ${product.name} quantity`}
-              accessibilityRole="button"
-              accessibilityState={{ disabled }}
-              disabled={disabled}
-              style={[styles.quantityButton, disabled && styles.disabled]}
-              onPress={onIncrease}
-            >
-              <Text style={styles.quantityText}>+</Text>
-            </Pressable>
+          <View style={styles.productAction}>
+            <Text style={[styles.lineTotal, quantity === 0 && styles.lineTotalHidden]}>
+              {quantity > 0 ? formatCurrency(subtotal) : formatCurrency(0)}
+            </Text>
+            <View style={styles.quantityStepper}>
+              <Pressable
+                accessibilityLabel={`Decrease ${product.name} quantity`}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: quantity === 0 }}
+                disabled={quantity === 0}
+                style={[styles.quantityButton, quantity === 0 && styles.disabled]}
+                onPress={onDecrease}
+              >
+                <Text style={styles.quantityText}>-</Text>
+              </Pressable>
+              <Text style={styles.quantityValue}>{quantity}</Text>
+              <Pressable
+                accessibilityLabel={`Increase ${product.name} quantity`}
+                accessibilityRole="button"
+                accessibilityState={{ disabled }}
+                disabled={disabled}
+                style={[styles.quantityButton, disabled && styles.disabled]}
+                onPress={onIncrease}
+              >
+                <Text style={styles.quantityText}>+</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </View>
@@ -470,17 +496,89 @@ export function initials(name?: string) {
 }
 
 export const colors = {
-  background: "#f5ecdf",
-  border: "#e2d0bd",
-  foreground: "#2a1a12",
-  muted: "#8b7b6c",
-  primary: "#6a3814",
-  secondary: "#fffaf4",
+  background: "#f7f6f4",
+  border: "#e5e0da",
+  borderWarm: "#d9c7b5",
+  chart: {
+    amber: "#d88b2a",
+    areaFill: "rgba(91, 62, 45, 0.085)",
+    axisFrame: "rgba(125, 96, 72, 0.16)",
+    green: "#4f8f58",
+    gridHidden: "rgba(125, 96, 72, 0)",
+    gridLine: "rgba(125, 96, 72, 0.15)",
+    guideActive: "rgba(154, 84, 28, 0.62)",
+    guideIdle: "rgba(154, 84, 28, 0.40)",
+    guideSoftActive: "rgba(154, 84, 28, 0.34)",
+    guideSoftIdle: "rgba(154, 84, 28, 0.22)",
+    muted: "#b89c82",
+    pointSurface: "#fffaf4",
+    primarySoft: "#d89962",
+    primaryTint: "rgba(91, 62, 45, 0.07)",
+    purple: "#8361c5",
+    series: ["#4d382b", "#d88b2a", "#4f8f58", "#8361c5", "#b89c82", "#9a5a12"],
+    tooltipForeground: "#fffaf4",
+    tooltipMuted: "rgba(255,255,255,0.68)",
+    tooltipSurface: "#201a16",
+    xAxisFrame: "rgba(125, 96, 72, 0.20)",
+  },
+  foreground: "#161311",
+  inverse: "#181715",
+  metric: {
+    blue: { background: "#eef3ff", color: "#31599d" },
+    green: { background: "#eef7e9", color: "#2f6b38" },
+    orange: { background: "#fff4df", color: "#9a5a12" },
+    purple: { background: "#f4efff", color: "#6d4ba8" },
+  },
+  muted: "#6f6963",
+  navigation: {
+    activeGradient: ["#24211d", "#171615", "#241d18"],
+    highlightGradient: ["rgba(255, 245, 232, 0.5)", "rgba(255, 245, 232, 0.16)", "rgba(255, 245, 232, 0)"],
+    highlightGradientStrong: ["rgba(255, 245, 232, 0.55)", "rgba(255, 245, 232, 0.18)", "rgba(255, 245, 232, 0)"],
+    warmGlow: ["rgba(117, 89, 68, 0.7)", "rgba(117, 89, 68, 0.22)", "rgba(117, 89, 68, 0)"],
+    warmGlowStrong: ["rgba(117, 89, 68, 0.72)", "rgba(117, 89, 68, 0.24)", "rgba(117, 89, 68, 0)"],
+  },
+  overlay: {
+    heroBorder: "rgba(255, 250, 244, 0.72)",
+    heroScrim: "rgba(16, 8, 4, 0.64)",
+    heroText: "rgba(255, 250, 244, 0.88)",
+    heroTextMuted: "rgba(255, 255, 255, 0.72)",
+    publicHeader: "rgba(255, 255, 255, 0.94)",
+    publicHeaderBorder: "rgba(229, 224, 218, 0.92)",
+    scrim: "rgba(25, 22, 19, 0.38)",
+    shellScrim: "rgba(17, 15, 13, 0.34)",
+  },
+  onPrimary: "#ffffff",
+  primary: "#4d382b",
+  progressTrack: "#eadccb",
+  secondary: "#ffffff",
+  status: {
+    danger: { background: "#fff1ee", border: "#edb9ad", color: "#9a3412" },
+    info: { background: "#eef3ff", border: "#cfe0f5", color: "#31599d" },
+    neutral: { background: "#f1efec", border: "#e5e0da", color: "#6f6963" },
+    success: { background: "#eef7e9", border: "#cbdcab", color: "#2f6b38" },
+    warning: { background: "#fff4df", border: "#e2c7aa", color: "#9a5a12" },
+  },
+  surfaceMuted: "#f1efec",
+  surfaceSoft: "#f5efe7",
+  surfaceSubtle: "#f4f2ef",
+  surfaceRaised: "#fbfaf8",
+  surfaceWarm: "#f4ede4",
+  textSubtle: "#5f5a54",
 };
+
+export const fontFamilies = {
+  bold: "PlusJakartaSans_700Bold",
+  extraBold: "PlusJakartaSans_800ExtraBold",
+  medium: "PlusJakartaSans_500Medium",
+  regular: "PlusJakartaSans_400Regular",
+  semiBold: "PlusJakartaSans_600SemiBold",
+};
+
+const stampColor = colors.primary;
 
 export const styles = StyleSheet.create({
   badge: {
-    backgroundColor: "#f3e8da",
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 999,
     paddingHorizontal: 9,
     paddingVertical: 5,
@@ -492,8 +590,8 @@ export const styles = StyleSheet.create({
   },
   badgeText: {
     color: colors.primary,
+    fontFamily: fontFamilies.semiBold,
     fontSize: 12,
-    fontWeight: "800",
   },
   card: {
     backgroundColor: colors.secondary,
@@ -509,14 +607,14 @@ export const styles = StyleSheet.create({
   },
   cardTitle: {
     color: colors.foreground,
-    fontSize: 17,
-    fontWeight: "900",
+    fontFamily: fontFamilies.semiBold,
+    fontSize: 16,
   },
   category: {
-    color: "#a65b1a",
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 1.2,
+    color: colors.muted,
+    fontFamily: fontFamilies.semiBold,
+    fontSize: 11,
+    letterSpacing: 0.9,
     textTransform: "uppercase",
   },
   center: {
@@ -526,7 +624,8 @@ export const styles = StyleSheet.create({
     padding: 24,
   },
   description: {
-    color: "#615447",
+    color: colors.textSubtle,
+    fontFamily: fontFamilies.regular,
     fontSize: 14,
     lineHeight: 19,
   },
@@ -546,11 +645,12 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   input: {
-    backgroundColor: "#fff",
-    borderColor: "#dcc9b7",
+    backgroundColor: colors.secondary,
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
     color: colors.foreground,
+    fontFamily: fontFamilies.regular,
     fontSize: 15,
     paddingHorizontal: 12,
     paddingVertical: 11,
@@ -568,21 +668,31 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   kicker: {
-    color: "#a65b1a",
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.8,
+    color: colors.muted,
+    fontFamily: fontFamilies.semiBold,
+    fontSize: 10,
+    letterSpacing: 1.2,
     textTransform: "uppercase",
   },
   list: {
-    gap: 10,
+    gap: 8,
     paddingHorizontal: 8,
     paddingTop: 8,
     paddingBottom: 86,
   },
+  lineTotal: {
+    color: colors.primary,
+    fontFamily: fontFamilies.semiBold,
+    fontSize: 12,
+    lineHeight: 16,
+    textAlign: "right",
+  },
+  lineTotalHidden: {
+    opacity: 0,
+  },
   loadingText: {
     color: colors.primary,
-    fontWeight: "800",
+    fontFamily: fontFamilies.semiBold,
     marginTop: 14,
   },
   metric: {
@@ -590,27 +700,28 @@ export const styles = StyleSheet.create({
   },
   metricLabel: {
     color: colors.muted,
+    fontFamily: fontFamilies.semiBold,
     fontSize: 12,
-    fontWeight: "800",
     textTransform: "uppercase",
   },
   metricValue: {
     color: colors.foreground,
+    fontFamily: fontFamilies.semiBold,
     fontSize: 16,
-    fontWeight: "800",
   },
   muted: {
     color: colors.muted,
+    fontFamily: fontFamilies.regular,
     fontSize: 13,
   },
   name: {
     color: colors.foreground,
-    fontSize: 16,
-    fontWeight: "900",
+    fontFamily: fontFamilies.semiBold,
+    fontSize: 15,
   },
   outlineButton: {
     alignItems: "center",
-    borderColor: "#d9c7b5",
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 12,
@@ -618,12 +729,12 @@ export const styles = StyleSheet.create({
   },
   outlineButtonText: {
     color: colors.primary,
-    fontWeight: "900",
+    fontFamily: fontFamilies.semiBold,
   },
   price: {
     color: colors.foreground,
+    fontFamily: fontFamilies.semiBold,
     fontSize: 15,
-    fontWeight: "900",
   },
   pressed: {
     opacity: 0.78,
@@ -636,25 +747,44 @@ export const styles = StyleSheet.create({
     paddingVertical: 13,
   },
   primaryButtonText: {
-    color: "#fff",
-    fontWeight: "900",
+    color: colors.onPrimary,
+    fontFamily: fontFamilies.semiBold,
   },
   productCard: {
+    alignItems: "center",
     backgroundColor: colors.secondary,
     borderColor: colors.border,
-    borderRadius: 12,
+    borderRadius: 13,
     borderWidth: 1,
-    overflow: "hidden",
+    flexDirection: "row",
+    gap: 10,
+    padding: 10,
+    shadowColor: colors.foreground,
+    shadowOffset: { height: 6, width: 0 },
+    shadowOpacity: 0.035,
+    shadowRadius: 12,
   },
   productImage: {
     backgroundColor: colors.border,
-    height: 126,
-    width: "100%",
+    borderRadius: 11,
+    height: 74,
+    width: 74,
+  },
+  productAction: {
+    alignItems: "flex-end",
+    gap: 5,
+    minHeight: 53,
+    justifyContent: "flex-end",
+  },
+  productCopy: {
+    flex: 1,
+    gap: 3,
+    minWidth: 0,
   },
   productFooter: {
     alignItems: "center",
-    backgroundColor: "#fbf2e8",
-    borderColor: "#eadccb",
+    backgroundColor: colors.background,
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
     flexDirection: "row",
@@ -663,34 +793,59 @@ export const styles = StyleSheet.create({
     marginTop: 2,
     padding: 10,
   },
+  productInfo: {
+    flex: 1,
+    gap: 7,
+    minWidth: 0,
+  },
+  productMeta: {
+    alignItems: "center",
+    flexDirection: "row",
+    flex: 1,
+    flexWrap: "wrap",
+    gap: 7,
+  },
+  productMetaRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "space-between",
+  },
+  productTitleRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "space-between",
+  },
   quantityStepper: {
     alignItems: "center",
-    backgroundColor: "#fffaf4",
-    borderColor: "#eadccb",
-    borderRadius: 14,
+    backgroundColor: colors.secondary,
+    borderColor: colors.border,
+    borderRadius: 13,
     borderWidth: 1,
     flexDirection: "row",
-    gap: 6,
-    padding: 3,
+    gap: 5,
+    padding: 2,
   },
   quantityButton: {
     alignItems: "center",
     backgroundColor: colors.primary,
-    borderRadius: 10,
-    height: 34,
+    borderRadius: 11,
+    height: 29,
     justifyContent: "center",
-    width: 34,
+    width: 29,
   },
   quantityText: {
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: "900",
+    color: colors.onPrimary,
+    fontFamily: fontFamilies.bold,
+    fontSize: 20,
+    lineHeight: 22,
   },
   quantityValue: {
     color: colors.foreground,
-    fontSize: 16,
-    fontWeight: "900",
-    minWidth: 20,
+    fontFamily: fontFamilies.bold,
+    fontSize: 15,
+    minWidth: 18,
     textAlign: "center",
   },
   rowBetween: {
@@ -708,30 +863,30 @@ export const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: colors.foreground,
-    fontSize: 24,
-    fontWeight: "900",
+    fontFamily: fontFamilies.semiBold,
+    fontSize: 22,
   },
   stock: {
-    color: "#704118",
+    color: colors.foreground,
+    fontFamily: fontFamilies.semiBold,
     fontSize: 12,
-    fontWeight: "800",
     textTransform: "capitalize",
   },
   stockMuted: {
-    color: "#7a6b5d",
+    color: colors.status.neutral.color,
   },
   stockPill: {
-    backgroundColor: "#f4e3cf",
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 999,
     paddingHorizontal: 9,
     paddingVertical: 5,
   },
   stockPillMuted: {
-    backgroundColor: "#eee6dc",
+    backgroundColor: colors.status.neutral.background,
   },
   statusBanner: {
-    backgroundColor: "#fff4df",
-    borderColor: "#e2c7aa",
+    backgroundColor: colors.status.warning.background,
+    borderColor: colors.status.warning.border,
     borderRadius: 12,
     borderWidth: 1,
     gap: 3,
@@ -739,25 +894,25 @@ export const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   statusBannerError: {
-    backgroundColor: "#fff1ee",
-    borderColor: "#edb9ad",
+    backgroundColor: colors.status.danger.background,
+    borderColor: colors.status.danger.border,
   },
   statusBannerSuccess: {
-    backgroundColor: "#f1f7e9",
-    borderColor: "#cbdcab",
+    backgroundColor: colors.status.success.background,
+    borderColor: colors.status.success.border,
   },
   statusBody: {
-    color: "#6f5c4c",
+    color: colors.muted,
     fontSize: 12,
     lineHeight: 16,
   },
   statusTitle: {
     color: colors.primary,
+    fontFamily: fontFamilies.semiBold,
     fontSize: 13,
-    fontWeight: "900",
   },
   statusTitleError: {
-    color: "#9a3412",
+    color: colors.status.danger.color,
   },
   splashContent: {
     alignItems: "center",
@@ -768,16 +923,16 @@ export const styles = StyleSheet.create({
     gap: 5,
   },
   splashSubtitle: {
-    color: "#a65b1a",
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.8,
+    color: colors.muted,
+    fontFamily: fontFamilies.semiBold,
+    fontSize: 10,
+    letterSpacing: 1.2,
     textTransform: "uppercase",
   },
   splashTitle: {
     color: colors.foreground,
-    fontSize: 34,
-    fontWeight: "900",
+    fontFamily: fontFamilies.semiBold,
+    fontSize: 30,
   },
   splashWrap: {
     alignItems: "center",
@@ -785,52 +940,13 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 24,
   },
-  stamp: {
-    alignItems: "center",
-    borderColor: "rgba(106, 56, 20, 0.38)",
-    borderRadius: 999,
-    borderWidth: 1.5,
-    justifyContent: "center",
-    position: "relative",
-  },
-  stampBottom: {
-    bottom: 15,
-    color: "rgba(106, 56, 20, 0.58)",
-    fontSize: 7,
-    fontWeight: "900",
-    letterSpacing: 1.5,
-    position: "absolute",
-    textTransform: "uppercase",
-  },
-  stampIcon: {
-    color: "rgba(106, 56, 20, 0.72)",
-    fontSize: 20,
-    fontWeight: "900",
-    letterSpacing: 1.5,
-  },
-  stampInner: {
-    alignItems: "center",
-    borderColor: "rgba(106, 56, 20, 0.24)",
-    borderRadius: 999,
-    borderWidth: 1,
-    justifyContent: "center",
-  },
-  stampTop: {
-    color: "rgba(106, 56, 20, 0.62)",
-    fontSize: 8,
-    fontWeight: "900",
-    letterSpacing: 1.7,
-    position: "absolute",
-    textTransform: "uppercase",
-    top: 14,
-  },
   textArea: {
     minHeight: 68,
     textAlignVertical: "top",
   },
   total: {
     color: colors.primary,
-    fontSize: 18,
-    fontWeight: "900",
+    fontFamily: fontFamilies.semiBold,
+    fontSize: 17,
   },
 });

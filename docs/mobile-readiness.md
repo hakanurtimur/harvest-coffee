@@ -2,7 +2,11 @@
 
 ## Current Scope
 
-The Expo app currently covers dealer mobile-web parity and the first admin mobile parity pass:
+The Expo app currently covers native public entry screens, dealer mobile-web parity, and the first admin mobile parity pass:
+
+- Public Home
+- Public About
+- Public Contact with mocked form submission
 
 - Mock dealer login/logout
 - Products and quick order
@@ -25,7 +29,7 @@ Admin mobile parity currently includes:
 - Admin Settings
 - Rental Calendar
 
-Public marketing screens are intentionally out of this mobile phase.
+Unauthenticated users now boot into the native Public Home screen before choosing mock login.
 
 ## Hardening Completed
 

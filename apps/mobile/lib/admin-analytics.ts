@@ -10,7 +10,7 @@ export function getTopProducts(orders: Order[]) {
       products.set(item.productName, current);
     });
   });
-  return [...products.values()].sort((a, b) => b.revenue - a.revenue);
+  return [...products.values()].sort((a, b) => b.quantity - a.quantity);
 }
 
 export function getTopCustomers(orders: Order[]) {

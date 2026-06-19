@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
-import { DealerShell } from "../components/dealer-shell";
-import { Badge, Card, EmptyState, ScrollContent, SectionTitle, formatDate, styles } from "../components/ui";
+import { Badge, Card, colors, EmptyState, ScrollContent, SectionTitle, formatDate, styles } from "../components/ui";
 import { useMobileState } from "../lib/mobile-state";
 
 export default function NotificationsScreen() {
@@ -29,62 +28,60 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <DealerShell title="Notifications">
-      <ScrollContent>
-        <SectionTitle eyebrow="Activity" title="Notifications" />
-        {notifications.length === 0 ? (
-          <EmptyState title="No notifications" body="Dealer notifications will appear here." />
-        ) : (
-          notifications.map((notification) => (
-            <Card key={notification.id}>
-              <View style={styles.rowBetween}>
-                <View style={styles.flex}>
-                  <Text style={styles.cardTitle}>{notification.title}</Text>
-                  <Text style={styles.muted}>{formatDate(notification.createdAt)}</Text>
-                </View>
-                <Badge label={notification.read ? "Read" : "Unread"} />
+    <ScrollContent>
+      <SectionTitle eyebrow="Activity" title="Notifications" />
+      {notifications.length === 0 ? (
+        <EmptyState title="No notifications" body="Dealer notifications will appear here." />
+      ) : (
+        notifications.map((notification) => (
+          <Card key={notification.id}>
+            <View style={styles.rowBetween}>
+              <View style={styles.flex}>
+                <Text style={styles.cardTitle}>{notification.title}</Text>
+                <Text style={styles.muted}>{formatDate(notification.createdAt)}</Text>
               </View>
-              <Text style={styles.description}>{notification.message}</Text>
-              <View style={notificationStyles.actions}>
-                {!notification.read ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{ disabled: busyId === notification.id }}
-                    disabled={busyId === notification.id}
-                    onPress={() => markRead(notification.id)}
-                    style={({ pressed }) => [notificationStyles.action, pressed && styles.pressed, busyId === notification.id && styles.disabled]}
-                  >
-                    <Text style={notificationStyles.actionText}>Mark read</Text>
-                  </Pressable>
-                ) : null}
+              <Badge label={notification.read ? "Read" : "Unread"} />
+            </View>
+            <Text style={styles.description}>{notification.message}</Text>
+            <View style={notificationStyles.actions}>
+              {!notification.read ? (
                 <Pressable
                   accessibilityRole="button"
                   accessibilityState={{ disabled: busyId === notification.id }}
                   disabled={busyId === notification.id}
-                  onPress={() => remove(notification.id)}
+                  onPress={() => markRead(notification.id)}
                   style={({ pressed }) => [notificationStyles.action, pressed && styles.pressed, busyId === notification.id && styles.disabled]}
                 >
-                  <Text style={notificationStyles.actionText}>Delete</Text>
+                  <Text style={notificationStyles.actionText}>Mark read</Text>
                 </Pressable>
-              </View>
-            </Card>
-          ))
-        )}
-      </ScrollContent>
-    </DealerShell>
+              ) : null}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ disabled: busyId === notification.id }}
+                disabled={busyId === notification.id}
+                onPress={() => remove(notification.id)}
+                style={({ pressed }) => [notificationStyles.action, pressed && styles.pressed, busyId === notification.id && styles.disabled]}
+              >
+                <Text style={notificationStyles.actionText}>Delete</Text>
+              </Pressable>
+            </View>
+          </Card>
+        ))
+      )}
+    </ScrollContent>
   );
 }
 
 const notificationStyles = StyleSheet.create({
   action: {
-    borderColor: "#d9c7b5",
+    borderColor: colors.borderWarm,
     borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   actionText: {
-    color: "#704118",
+    color: colors.primary,
     fontSize: 12,
     fontWeight: "900",
   },

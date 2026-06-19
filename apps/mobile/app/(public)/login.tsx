@@ -1,8 +1,8 @@
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
-import { AppScreen, BrandStamp, colors, FadeInView, PrimaryButton } from "../components/ui";
-import { useMobileState } from "../lib/mobile-state";
+import { BrandStamp, colors, FadeInView, fontFamilies, OutlineButton, PrimaryButton } from "../../components/ui";
+import { useMobileState } from "../../lib/mobile-state";
 
 export default function LoginScreen() {
   const { booting, currentUser, isAuthenticated, loadingData, loginAdmin, loginDealer } = useMobileState();
@@ -37,30 +37,29 @@ export default function LoginScreen() {
   };
 
   return (
-    <AppScreen>
-      <View style={loginStyles.wrap}>
-        <FadeInView style={loginStyles.card}>
-          <View style={loginStyles.stampWrap}>
-            <BrandStamp size={86} />
+    <View style={loginStyles.wrap}>
+      <FadeInView style={loginStyles.card}>
+        <View style={loginStyles.stampWrap}>
+          <BrandStamp size={86} />
+        </View>
+        <Text style={loginStyles.kicker}>Premium B2B Coffee Supply</Text>
+        <Text style={loginStyles.title}>Harvest Coffee</Text>
+        <Text style={loginStyles.copy}>Sign in with mock dealer or admin accounts to test the native parity flows.</Text>
+        <View style={loginStyles.mockGrid}>
+          <View style={loginStyles.mockBox}>
+            <Text style={loginStyles.mockLabel}>Mock dealer</Text>
+            <Text style={loginStyles.mockValue}>dealer@example.com</Text>
+            <PrimaryButton disabled={Boolean(submitting) || loadingData} label={submitting === "dealer" || loadingData ? "Signing in..." : "Login as dealer"} onPress={handleDealerLogin} />
           </View>
-          <Text style={loginStyles.kicker}>Premium B2B Coffee Supply</Text>
-          <Text style={loginStyles.title}>Harvest Coffee</Text>
-          <Text style={loginStyles.copy}>Sign in with mock dealer or admin accounts to test the native parity flows.</Text>
-          <View style={loginStyles.mockGrid}>
-            <View style={loginStyles.mockBox}>
-              <Text style={loginStyles.mockLabel}>Mock dealer</Text>
-              <Text style={loginStyles.mockValue}>dealer@example.com</Text>
-              <PrimaryButton disabled={Boolean(submitting) || loadingData} label={submitting === "dealer" || loadingData ? "Signing in..." : "Login as dealer"} onPress={handleDealerLogin} />
-            </View>
-            <View style={loginStyles.mockBox}>
-              <Text style={loginStyles.mockLabel}>Mock admin</Text>
-              <Text style={loginStyles.mockValue}>ops@example.com</Text>
-              <PrimaryButton disabled={Boolean(submitting) || loadingData} label={submitting === "admin" || loadingData ? "Signing in..." : "Login as admin"} onPress={handleAdminLogin} />
-            </View>
+          <View style={loginStyles.mockBox}>
+            <Text style={loginStyles.mockLabel}>Mock admin</Text>
+            <Text style={loginStyles.mockValue}>ops@example.com</Text>
+            <PrimaryButton disabled={Boolean(submitting) || loadingData} label={submitting === "admin" || loadingData ? "Signing in..." : "Login as admin"} onPress={handleAdminLogin} />
           </View>
-        </FadeInView>
-      </View>
-    </AppScreen>
+        </View>
+        <OutlineButton label="Back to public home" onPress={() => router.replace("/home")} />
+      </FadeInView>
+    </View>
   );
 }
 
@@ -76,18 +75,19 @@ const loginStyles = StyleSheet.create({
   },
   copy: {
     color: colors.muted,
+    fontFamily: fontFamilies.regular,
     fontSize: 15,
     lineHeight: 21,
   },
   kicker: {
-    color: "#a65b1a",
+    color: colors.muted,
+    fontFamily: fontFamilies.semiBold,
     fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 1.5,
+    letterSpacing: 1.1,
     textTransform: "uppercase",
   },
   mockBox: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.secondary,
     borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
@@ -99,14 +99,14 @@ const loginStyles = StyleSheet.create({
   },
   mockLabel: {
     color: colors.muted,
+    fontFamily: fontFamilies.semiBold,
     fontSize: 12,
-    fontWeight: "800",
     textTransform: "uppercase",
   },
   mockValue: {
     color: colors.foreground,
-    fontSize: 17,
-    fontWeight: "900",
+    fontFamily: fontFamilies.semiBold,
+    fontSize: 16,
   },
   stampWrap: {
     alignItems: "center",
@@ -114,12 +114,12 @@ const loginStyles = StyleSheet.create({
   },
   title: {
     color: colors.foreground,
-    fontSize: 34,
-    fontWeight: "900",
+    fontFamily: fontFamilies.bold,
+    fontSize: 30,
   },
   wrap: {
-    flex: 1,
     justifyContent: "center",
     padding: 12,
+    paddingVertical: 28,
   },
 });

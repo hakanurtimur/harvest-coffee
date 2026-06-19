@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Card, colors } from "./ui";
+import { Card, colors, fontFamilies } from "./ui";
 
 export function AdminMetricCard({ label, value }: { label: string; value: string }) {
   return (
@@ -70,7 +70,7 @@ export function OptionChip({
 
 const styles = StyleSheet.create({
   chip: {
-    borderColor: "#d9c7b5",
+    borderColor: colors.borderWarm,
     borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: 11,
@@ -82,31 +82,31 @@ const styles = StyleSheet.create({
   },
   chipText: {
     color: colors.primary,
+    fontFamily: fontFamilies.semiBold,
     fontSize: 12,
-    fontWeight: "900",
   },
   chipTextActive: {
-    color: "#fff",
+    color: colors.onPrimary,
   },
   flex: {
     flex: 1,
   },
   metricLabel: {
     color: colors.muted,
+    fontFamily: fontFamilies.semiBold,
     fontSize: 12,
-    fontWeight: "900",
     textTransform: "uppercase",
   },
   metricValue: {
     color: colors.foreground,
+    fontFamily: fontFamilies.bold,
     fontSize: 26,
-    fontWeight: "900",
     marginTop: 4,
   },
   panelTitle: {
     color: colors.foreground,
+    fontFamily: fontFamilies.semiBold,
     fontSize: 18,
-    fontWeight: "900",
   },
   pressed: {
     opacity: 0.74,
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
     paddingTop: 11,
   },
   progressTrack: {
-    backgroundColor: "#eadccb",
+    backgroundColor: colors.progressTrack,
     borderRadius: 999,
     height: 7,
     overflow: "hidden",
@@ -137,17 +137,17 @@ const styles = StyleSheet.create({
   },
   rowSub: {
     color: colors.muted,
+    fontFamily: fontFamilies.regular,
     fontSize: 12,
-    fontWeight: "700",
     marginTop: 2,
   },
   rowTitle: {
     color: colors.foreground,
+    fontFamily: fontFamilies.semiBold,
     fontSize: 14,
-    fontWeight: "900",
   },
   rowValue: {
     color: colors.primary,
-    fontWeight: "900",
+    fontFamily: fontFamilies.semiBold,
   },
 });

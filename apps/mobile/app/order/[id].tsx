@@ -1,8 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { Order } from "@harvest/domain";
-import { AdminShell } from "../../components/admin-shell";
-import { DealerShell } from "../../components/dealer-shell";
 import { EmptyState, LoadingState, OrderDetailContent, OutlineButton, ScrollContent, SectionTitle, StatusBanner } from "../../components/ui";
 import { useMobileState } from "../../lib/mobile-state";
 
@@ -54,6 +52,5 @@ export default function OrderDetailScreen() {
       </ScrollContent>
   );
 
-  if (isAdmin) return <AdminShell title="Order Detail">{content}</AdminShell>;
-  return <DealerShell title="Order Detail">{content}</DealerShell>;
+  return content;
 }

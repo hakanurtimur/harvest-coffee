@@ -1,7 +1,6 @@
 import { Order } from "@harvest/domain";
 import { useState } from "react";
 import { Alert } from "react-native";
-import { DealerShell } from "../components/dealer-shell";
 import { EmptyState, Field, OrderDetailContent, PrimaryButton, ScrollContent, SectionTitle } from "../components/ui";
 import { useMobileState } from "../lib/mobile-state";
 import { validateOrderNumber } from "../lib/validation";
@@ -32,16 +31,14 @@ export default function TrackOrderScreen() {
   };
 
   return (
-    <DealerShell title="Track Order">
-      <ScrollContent>
-        <SectionTitle eyebrow="Tracking" title="Find an order" />
-        <Field autoCapitalize="characters" onChangeText={(value) => setOrderNumber(value.toUpperCase())} placeholder="HC20480914" value={orderNumber} />
-        <PrimaryButton disabled={loading} label={loading ? "Searching..." : "Track order"} onPress={search} />
-        {order ? <OrderDetailContent order={order} /> : null}
-        {!order && searched ? (
-          <EmptyState title="Order not found" body="No order matched that order number in the mock dealer data." />
-        ) : null}
-      </ScrollContent>
-    </DealerShell>
+    <ScrollContent>
+      <SectionTitle eyebrow="Tracking" title="Find an order" />
+      <Field autoCapitalize="characters" onChangeText={(value) => setOrderNumber(value.toUpperCase())} placeholder="HC20480914" value={orderNumber} />
+      <PrimaryButton disabled={loading} label={loading ? "Searching..." : "Track order"} onPress={search} />
+      {order ? <OrderDetailContent order={order} /> : null}
+      {!order && searched ? (
+        <EmptyState title="Order not found" body="No order matched that order number in the mock dealer data." />
+      ) : null}
+    </ScrollContent>
   );
 }
