@@ -14,6 +14,7 @@ const adminTabs = [
   { href: "/admin-customers", icon: "users", label: "Customers" },
   { href: "/admin-reports", icon: "bar-chart-2", label: "Reports" },
   { href: "/admin-settings", icon: "settings", label: "Settings" },
+  { href: "/admin-rentals", icon: "truck", label: "Rentals" },
   { href: "/admin-rental-calendar", icon: "calendar", label: "Calendar" },
 ] as const;
 
@@ -25,6 +26,7 @@ const adminRouteTitles: Record<string, string> = {
   "/admin-dashboard": "Dashboard",
   "/admin-orders": "Orders",
   "/admin-products": "Products",
+  "/admin-rentals": "Rentals",
   "/admin-rental-calendar": "Calendar",
   "/admin-reports": "Reports",
   "/admin-settings": "Settings",

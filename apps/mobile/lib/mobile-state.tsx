@@ -10,6 +10,7 @@ import {
   Rental,
   UpdateOrderInput,
   UpdateProductInput,
+  UpdateRentalInput,
   User,
 } from "@harvest/domain";
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
@@ -43,6 +44,7 @@ interface MobileState {
   deleteAddress(index: number): Promise<void>;
   deleteNotification(id: string): Promise<void>;
   deleteProduct(id: string): Promise<void>;
+  deleteRental(id: string): Promise<void>;
   loginAdmin(): Promise<void>;
   loginDealer(): Promise<void>;
   logout(): void;
@@ -57,6 +59,7 @@ interface MobileState {
   updateOrder(id: string, input: UpdateOrderInput): Promise<Order>;
   updateAddress(index: number, title: string, address: string): Promise<void>;
   updateProduct(id: string, input: UpdateProductInput): Promise<Product>;
+  updateRental(id: string, input: UpdateRentalInput): Promise<Rental>;
   updateUser(id: string, input: Partial<User>): Promise<User>;
 }
 
@@ -253,6 +256,19 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     await refreshAdminData();
   }, [refreshAdminData]);
 
+  const updateRental = useCallback(async (id: string, input: UpdateRentalInput) => {
+    const rental = await api.updateRental(id, input);
+    if (currentUser?.role === "admin") await refreshAdminData();
+    else await refreshDealerData();
+    return rental;
+  }, [currentUser?.role, refreshAdminData, refreshDealerData]);
+
+  const deleteRental = useCallback(async (id: string) => {
+    await api.deleteRental(id);
+    if (currentUser?.role === "admin") await refreshAdminData();
+    else await refreshDealerData();
+  }, [currentUser?.role, refreshAdminData, refreshDealerData]);
+
   const updateUser = useCallback(async (id: string, input: Partial<User>) => {
     const user = await api.updateUser(id, input);
     setUsers((current) => current.map((item) => item.id === id ? user : item));
@@ -304,13 +320,15 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
 
   const markNotificationRead = useCallback(async (id: string) => {
     await api.markNotificationRead(id);
-    await refreshDealerData();
-  }, [refreshDealerData]);
+    if (currentUser?.role === "admin") await refreshAdminData();
+    else await refreshDealerData();
+  }, [currentUser?.role, refreshAdminData, refreshDealerData]);
 
   const deleteNotification = useCallback(async (id: string) => {
     await api.deleteNotification(id);
-    await refreshDealerData();
-  }, [refreshDealerData]);
+    if (currentUser?.role === "admin") await refreshAdminData();
+    else await refreshDealerData();
+  }, [currentUser?.role, refreshAdminData, refreshDealerData]);
 
   const value = useMemo<MobileState>(() => ({
     api,
@@ -329,6 +347,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     deleteAddress,
     deleteNotification,
     deleteProduct,
+    deleteRental,
     deliveryAddress,
     isAuthenticated: Boolean(currentUser),
     lastSyncedAt,
@@ -351,6 +370,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     updateOrder,
     updateCartQuantity,
     updateProduct,
+    updateRental,
     updateUser,
     users,
   }), [
@@ -369,6 +389,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     deleteAddress,
     deleteNotification,
     deleteProduct,
+    deleteRental,
     deliveryAddress,
     lastSyncedAt,
     loadingData,
@@ -389,6 +410,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     updateOrder,
     updateCartQuantity,
     updateProduct,
+    updateRental,
     updateUser,
     users,
   ]);

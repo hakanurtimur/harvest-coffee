@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getHarvestApi } from "@/lib/harvest-api";
+import { getHarvestIntegrations } from "@/lib/integrations";
 import type { Product } from "@/lib/domain";
 import { Edit2, Loader2, Package, Plus, Save, Sparkles, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -41,6 +42,7 @@ const stockStatusConfig = {
 
 export default function AdminProductsV2Workspace() {
   const api = useMemo(() => getHarvestApi(), []);
+  const integrations = useMemo(() => getHarvestIntegrations(), []);
   const [products, setProducts] = useState<Product[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -139,14 +141,22 @@ export default function AdminProductsV2Workspace() {
     }
 
     setAiLoading(true);
-    window.setTimeout(() => {
+    try {
+      const generated = await integrations.generateProductDescription({
+        category: form.category,
+        productName: form.name,
+        weight: form.weight,
+      });
       setForm((current) => ({
         ...current,
-        description: `${current.name} is prepared for professional coffee shops, cafes, and hospitality businesses. It is selected for reliable service, practical stock handling, and consistent quality across busy service periods.`,
+        description: generated.description,
       }));
+      setMessage(generated.message);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Description could not be generated.");
+    } finally {
       setAiLoading(false);
-      setMessage("AI description is mocked for now; Base44 InvokeLLM will be wired later.");
-    }, 350);
+    }
   };
 
   return (

@@ -2,6 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { getHarvestApi } from "@/lib/harvest-api";
+import { getHarvestIntegrations } from "@/lib/integrations";
 import type { Product } from "@/lib/domain";
 import { AlertTriangle, Edit2, Package, Save, TrendingDown, TrendingUp, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -13,6 +14,7 @@ type EditValues = {
 
 export default function StockManagementV2Workspace() {
   const api = useMemo(() => getHarvestApi(), []);
+  const integrations = useMemo(() => getHarvestIntegrations(), []);
   const [products, setProducts] = useState<Product[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<EditValues>({ stockQuantity: "0", lowStockThreshold: "10" });
@@ -60,7 +62,12 @@ export default function StockManagementV2Workspace() {
       setEditingId(null);
       setEditValues({ stockQuantity: "0", lowStockThreshold: "10" });
       if (updated.stockQuantity <= updated.lowStockThreshold && updated.stockQuantity > 0) {
-        setMessage("Low stock email notification is mocked for now; Base44 SendEmail will be wired later.");
+        const notification = await integrations.sendLowStockEmail({
+          lowStockThreshold: updated.lowStockThreshold,
+          productName: updated.name,
+          stockQuantity: updated.stockQuantity,
+        });
+        setMessage(notification.message);
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Stock could not be updated.");

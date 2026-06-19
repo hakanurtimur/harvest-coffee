@@ -69,7 +69,7 @@ export default function AdminRentalsWorkspace() {
             <RefreshCw size={16} />
             Refresh
           </button>
-          <Link className="primary-link" href="/rentals/new">
+          <Link className="primary-link" href="/CreateRental">
             <Plus size={16} />
             New rental
           </Link>

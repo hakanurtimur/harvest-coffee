@@ -375,6 +375,26 @@ export const v2PageConfigs: V2PageConfig[] = [
     ],
   },
   {
+    path: "/adminrentals",
+    label: "Admin Rentals",
+    supported: true,
+    summary: "Admin Rentals sayfası mevcut rental listeleme, status update ve delete aksiyonları korunarak admin route ağında görünür hale getirilir.",
+    changes: [
+      "Rental management component mevcut API davranışıyla /adminrentals route'una bağlanır.",
+      "Status filtresi, rental metrikleri, status update ve delete aksiyonları korunur.",
+      "New rental linki mevcut /CreateRental route'una yönlenir.",
+    ],
+    functionalNotes: [
+      "Rental datası hâlâ api.getRentals üzerinden yüklenir.",
+      "Status update api.updateRental, delete api.deleteRental üzerinden çalışır.",
+      "Yeni invoice, email veya scheduler yan etkisi eklenmez.",
+    ],
+    mobileNotes: [
+      "Mobil admin tarafında /admin-rentals route'u aynı liste, filtre, status update ve delete davranışlarını taşır.",
+      "Calendar ayrı /admin-rental-calendar route'u olarak kalır.",
+    ],
+  },
+  {
     path: "/rentalcalendar",
     label: "Rental Calendar",
     supported: true,
@@ -435,6 +455,7 @@ export function normalizeV2Path(pathname: string | null | undefined) {
   if (pathname.startsWith("/customermanagement")) return "/customermanagement";
   if (pathname.startsWith("/reports")) return "/reports";
   if (pathname.startsWith("/adminsettings")) return "/adminsettings";
+  if (pathname.startsWith("/adminrentals")) return "/adminrentals";
   if (pathname.startsWith("/rentalcalendar")) return "/rentalcalendar";
   if (pathname.startsWith("/notifications")) return "/notifications";
   if (pathname === "/admin" || pathname.startsWith("/admin/")) return "/admin";

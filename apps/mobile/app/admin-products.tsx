@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { createMockHarvestIntegrations } from "@harvest/api";
 import { Product } from "@harvest/domain";
 import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
 import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
@@ -40,6 +41,8 @@ const stockStatusConfig: Record<Product["stockStatus"], { icon: keyof typeof Fea
   low_stock: { icon: "alert-triangle", label: "Low Stock", tone: colors.status.warning },
   out_of_stock: { icon: "x-circle", label: "Out of Stock", tone: colors.status.danger },
 };
+
+const integrations = createMockHarvestIntegrations();
 
 export default function AdminProductsScreen() {
   const { createProduct, deleteProduct, products, updateProduct } = useMobileState();
@@ -135,16 +138,25 @@ export default function AdminProductsScreen() {
     ]);
   };
 
-  const generateDescription = () => {
+  const generateDescription = async () => {
     if (!form.name.trim()) {
       setMessage({ text: "Please enter a product name first.", tone: "error" });
       return;
     }
-    setForm((current) => ({
-      ...current,
-      description: `${current.name} is prepared for professional coffee shops, cafes, and hospitality businesses. It is selected for reliable service, practical stock handling, and consistent quality across busy service periods.`,
-    }));
-    setMessage({ text: "AI description is mocked for now; Base44 InvokeLLM will be wired later.", tone: "info" });
+    try {
+      const generated = await integrations.generateProductDescription({
+        category: form.category,
+        productName: form.name,
+        weight: form.weight,
+      });
+      setForm((current) => ({
+        ...current,
+        description: generated.description,
+      }));
+      setMessage({ text: generated.message, tone: "info" });
+    } catch (error) {
+      setMessage({ text: error instanceof Error ? error.message : "Description could not be generated.", tone: "error" });
+    }
   };
 
   return (

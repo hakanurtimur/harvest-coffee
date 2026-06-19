@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { createMockHarvestIntegrations } from "@harvest/api";
 import { Product } from "@harvest/domain";
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -22,6 +23,8 @@ const stockStatusConfig: Record<Product["stockStatus"], { icon: keyof typeof Fea
   low_stock: { icon: "alert-triangle", label: "Low stock", tone: colors.status.warning },
   out_of_stock: { icon: "x-circle", label: "Out of stock", tone: colors.status.danger },
 };
+
+const integrations = createMockHarvestIntegrations();
 
 export default function AdminStockScreen() {
   const { products, updateProduct } = useMobileState();
@@ -92,8 +95,13 @@ export default function AdminStockScreen() {
       });
       cancel();
       if (updated.stockQuantity <= updated.lowStockThreshold && updated.stockQuantity > 0) {
+        const notification = await integrations.sendLowStockEmail({
+          lowStockThreshold: updated.lowStockThreshold,
+          productName: updated.name,
+          stockQuantity: updated.stockQuantity,
+        });
         setMessage({
-          body: "Base44 SendEmail will be wired later; this is still mock-only.",
+          body: notification.message,
           text: "Low stock notification mocked",
           tone: "info",
         });

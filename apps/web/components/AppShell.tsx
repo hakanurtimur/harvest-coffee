@@ -23,6 +23,7 @@ const adminNavItems = [
   { href: "/customermanagement", label: "Customers", icon: Users },
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/adminsettings", label: "Settings", icon: Settings },
+  { href: "/adminrentals", label: "Rentals", icon: CalendarDays },
 ];
 
 const adminRoutePrefixes = [
@@ -33,6 +34,7 @@ const adminRoutePrefixes = [
   "/customermanagement",
   "/reports",
   "/adminsettings",
+  "/adminrentals",
   "/rentalcalendar",
 ];
 
@@ -256,6 +258,7 @@ function isModernAdminV2Route(pathname: string) {
     pathname.startsWith("/customermanagement") ||
     pathname.startsWith("/reports") ||
     pathname.startsWith("/adminsettings") ||
+    pathname.startsWith("/adminrentals") ||
     pathname.startsWith("/rentalcalendar") ||
     pathname.startsWith("/notifications")
   );
