@@ -13,18 +13,15 @@ const filters: { label: string; value: OrderFilter }[] = [
   { label: "Preparing", value: "preparing" },
   { label: "In transit", value: "in_transit" },
   { label: "Delivered", value: "delivered" },
-  { label: "Cancelled", value: "cancelled" },
 ];
 
 const statusIcon: Record<OrderStatus, keyof typeof Feather.glyphMap> = {
-  cancelled: "x-circle",
   delivered: "check-circle",
   in_transit: "truck",
   preparing: "package",
 };
 
 const statusTone: Record<OrderStatus, { background: string; color: string }> = {
-  cancelled: colors.status.danger,
   delivered: colors.status.success,
   in_transit: colors.status.warning,
   preparing: colors.status.info,

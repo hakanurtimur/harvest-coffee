@@ -343,7 +343,7 @@ export function mapBase44Product(product: RawRecord): Product {
     description: stringValue(product.description),
     price: numberValue(product.price),
     imageUrl: stringValue(product.image_url),
-    category: stringValue(product.category, "Products"),
+    category: mapProductCategory(product.category),
     weight: stringValue(product.weight),
     stockStatus: mapStockStatus(product.stock_status),
     stockQuantity: numberValue(product.stock_quantity),
@@ -412,9 +412,11 @@ export function mapBase44User(user: RawRecord): User {
     id: stringValue(user.id),
     email: stringValue(user.email),
     fullName: optionalString(user.full_name),
+    phone: optionalString(user.phone),
     companyName: optionalString(user.company_name),
     role: mapUserRole(user.role),
     customerSegment: mapCustomerSegment(user.customer_segment),
+    acquisitionSource: mapAcquisitionSource(user.acquisition_source),
     addresses: arrayValue(user.addresses).map((address) => {
       const row = asRecord(address);
       return {
@@ -492,9 +494,11 @@ export function toBase44UserUpdate(input: Partial<User>): RawRecord {
   return dropUndefined({
     email: input.email,
     full_name: input.fullName,
+    phone: input.phone,
     company_name: input.companyName,
-    role: input.role,
+    role: input.role === "dealer" ? "user" : input.role,
     customer_segment: input.customerSegment,
+    acquisition_source: input.acquisitionSource,
     addresses: input.addresses,
     admin_settings: input.adminSettings ? toBase44AdminSettings(input.adminSettings) : undefined,
   });
@@ -544,8 +548,21 @@ function mapStockStatus(value: unknown): ProductStatus {
   return "in_stock";
 }
 
+function mapProductCategory(value: unknown): Product["category"] {
+  if (
+    value === "Single Origin" ||
+    value === "Blend" ||
+    value === "Decaf" ||
+    value === "Specialty" ||
+    value === "Cups & Lids" ||
+    value === "Cleaning & Maintenance" ||
+    value === "Accessories"
+  ) return value;
+  return "Accessories";
+}
+
 function mapOrderStatus(value: unknown): OrderStatus {
-  if (value === "in_transit" || value === "delivered" || value === "cancelled") return value;
+  if (value === "in_transit" || value === "delivered") return value;
   return "preparing";
 }
 
@@ -566,12 +583,25 @@ function mapRentalStatus(value: unknown): RentalStatus {
 
 function mapUserRole(value: unknown): UserRole {
   if (value === "admin" || value === "dealer") return value;
-  return "user";
+  return "dealer";
 }
 
 function mapCustomerSegment(value: unknown): CustomerSegment {
   if (value === "regular" || value === "vip" || value === "lapsed" || value === "at_risk") return value;
   return "new";
+}
+
+function mapAcquisitionSource(value: unknown): User["acquisitionSource"] {
+  if (
+    value === "direct" ||
+    value === "referral" ||
+    value === "social_media" ||
+    value === "search_engine" ||
+    value === "email_campaign" ||
+    value === "trade_show" ||
+    value === "other"
+  ) return value;
+  return undefined;
 }
 
 function mapNotificationType(value: unknown): Notification["type"] {

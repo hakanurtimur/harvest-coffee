@@ -7,7 +7,7 @@ import { colors, EmptyState, fallbackImage, Field, fontFamilies, formatCurrency,
 import { useMobileState } from "../lib/mobile-state";
 
 type ProductForm = {
-  category: string;
+  category: Product["category"];
   description: string;
   imageUrl: string;
   lowStockThreshold: string;
@@ -33,7 +33,7 @@ const emptyForm: ProductForm = {
   weight: "",
 };
 
-const categories = ["Single Origin", "Blend", "Decaf", "Specialty", "Cups & Lids", "Cleaning & Maintenance", "Accessories", "Machines"];
+const categories: Product["category"][] = ["Single Origin", "Blend", "Decaf", "Specialty", "Cups & Lids", "Cleaning & Maintenance", "Accessories"];
 const stockStatusOptions: Product["stockStatus"][] = ["in_stock", "low_stock", "out_of_stock"];
 
 const stockStatusConfig: Record<Product["stockStatus"], { icon: keyof typeof Feather.glyphMap; label: string; tone: typeof colors.status.success }> = {
@@ -319,7 +319,7 @@ function ProductFormCard({
         label="Category"
         options={categories}
         value={form.category}
-        onChange={(category) => setForm((current) => ({ ...current, category }))}
+        onChange={(category) => setForm((current) => ({ ...current, category: category as Product["category"] }))}
       />
       <ChoiceSection
         label="Stock status"

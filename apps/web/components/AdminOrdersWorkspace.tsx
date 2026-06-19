@@ -13,7 +13,7 @@ import {
 import { RefreshCw, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-const orderStatusOptions: OrderStatus[] = ["preparing", "in_transit", "delivered", "cancelled"];
+const orderStatusOptions: OrderStatus[] = ["preparing", "in_transit", "delivered"];
 const paymentStatusOptions: PaymentStatus[] = ["pending", "paid", "failed"];
 
 export default function AdminOrdersWorkspace() {
@@ -58,7 +58,7 @@ function LegacyAdminOrdersWorkspace() {
     }
   };
 
-  const openOrders = orders.filter((order) => order.status !== "delivered" && order.status !== "cancelled").length;
+  const openOrders = orders.filter((order) => order.status !== "delivered").length;
   const pendingPayments = orders.filter((order) => order.paymentStatus === "pending").length;
   const revenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
 

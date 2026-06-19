@@ -13,7 +13,7 @@ type ProductForm = {
   description: string;
   price: string;
   imageUrl: string;
-  category: string;
+  category: Product["category"];
   weight: string;
   stockStatus: Product["stockStatus"];
   stockQuantity: string;
@@ -32,7 +32,7 @@ const emptyForm: ProductForm = {
   lowStockThreshold: "10",
 };
 
-const categories = ["Single Origin", "Blend", "Decaf", "Specialty", "Cups & Lids", "Cleaning & Maintenance", "Accessories"];
+const categories: Product["category"][] = ["Single Origin", "Blend", "Decaf", "Specialty", "Cups & Lids", "Cleaning & Maintenance", "Accessories"];
 
 const stockStatusConfig = {
   in_stock: { label: "In Stock", className: "bg-green-100 text-green-800" },
@@ -198,7 +198,7 @@ function LegacyAdminProductsWorkspace() {
               <TextInput label="Price (£) *" type="number" value={form.price} onChange={(value) => setForm({ ...form, price: value })} placeholder="10.00" required />
               <label className="block">
                 <span className="text-sm font-medium text-gray-700 mb-1 block">Kategori</span>
-                <select className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-gray-900" value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })}>
+                <select className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-gray-900" value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value as Product["category"] })}>
                   {categories.map((category) => <option key={category} value={category}>{category}</option>)}
                 </select>
               </label>

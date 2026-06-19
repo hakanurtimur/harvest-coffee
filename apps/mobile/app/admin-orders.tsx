@@ -6,21 +6,19 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, EmptyState, Field, fontFamilies, formatCurrency, formatDate, ScrollContent, SectionTitle, StatusBanner, styles } from "../components/ui";
 import { useMobileState } from "../lib/mobile-state";
 
-const orderStatusOptions: OrderStatus[] = ["preparing", "in_transit", "delivered", "cancelled"];
+const orderStatusOptions: OrderStatus[] = ["preparing", "in_transit", "delivered"];
 const paymentStatusOptions: PaymentStatus[] = ["pending", "paid", "failed"];
 type StatusFilter = "all" | OrderStatus;
 type PaymentFilter = "all" | PaymentStatus;
 type ViewMode = "cards" | "list";
 
 const statusIcon: Record<OrderStatus, keyof typeof Feather.glyphMap> = {
-  cancelled: "x-circle",
   delivered: "check-circle",
   in_transit: "truck",
   preparing: "package",
 };
 
 const statusTone: Record<OrderStatus, { background: string; border: string; color: string }> = {
-  cancelled: colors.status.danger,
   delivered: colors.status.success,
   in_transit: colors.status.warning,
   preparing: colors.status.info,
@@ -52,7 +50,7 @@ export default function AdminOrdersScreen() {
     }),
     [paymentFilter, sortedOrders, statusFilter],
   );
-  const openOrders = orders.filter((order) => order.status !== "delivered" && order.status !== "cancelled").length;
+  const openOrders = orders.filter((order) => order.status !== "delivered").length;
   const pendingPayments = orders.filter((order) => order.paymentStatus === "pending").length;
   const revenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
 

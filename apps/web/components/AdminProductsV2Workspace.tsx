@@ -13,7 +13,7 @@ type ProductForm = {
   description: string;
   price: string;
   imageUrl: string;
-  category: string;
+  category: Product["category"];
   weight: string;
   stockStatus: Product["stockStatus"];
   stockQuantity: string;
@@ -32,7 +32,7 @@ const emptyForm: ProductForm = {
   lowStockThreshold: "10",
 };
 
-const categories = ["Single Origin", "Blend", "Decaf", "Specialty", "Cups & Lids", "Cleaning & Maintenance", "Accessories"];
+const categories: Product["category"][] = ["Single Origin", "Blend", "Decaf", "Specialty", "Cups & Lids", "Cleaning & Maintenance", "Accessories"];
 
 const stockStatusConfig = {
   in_stock: { label: "In Stock", className: "border-green-200 bg-green-50 text-green-800" },
@@ -191,7 +191,7 @@ export default function AdminProductsV2Workspace() {
             <div className="grid gap-4 md:grid-cols-2">
               <TextInput label="Product Name *" value={form.name} onChange={(value) => setForm({ ...form, name: value })} placeholder="e.g., 12oz Black Ripple Cup" required />
               <TextInput label="Price (£) *" type="number" value={form.price} onChange={(value) => setForm({ ...form, price: value })} placeholder="10.00" required />
-              <SelectInput label="Kategori" value={form.category} onChange={(value) => setForm({ ...form, category: value })}>
+              <SelectInput label="Kategori" value={form.category} onChange={(value) => setForm({ ...form, category: value as Product["category"] })}>
                 {categories.map((category) => <option key={category} value={category}>{category}</option>)}
               </SelectInput>
               <TextInput label="Size / Weight" value={form.weight} onChange={(value) => setForm({ ...form, weight: value })} placeholder="e.g., 12oz, 900g, 1000pcs" />

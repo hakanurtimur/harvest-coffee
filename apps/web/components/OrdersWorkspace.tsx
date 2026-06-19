@@ -146,11 +146,6 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
       icon: CheckCircle,
       className: "bg-green-100 text-green-800 border-green-200",
     },
-    cancelled: {
-      label: "Cancelled",
-      icon: XCircle,
-      className: "bg-red-100 text-red-800 border-red-200",
-    },
   }[status];
 
   const Icon = config.icon;

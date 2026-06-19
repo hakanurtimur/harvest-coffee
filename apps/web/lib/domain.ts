@@ -1,12 +1,30 @@
 import { z } from "zod";
 
 export const ProductStatusSchema = z.enum(["in_stock", "low_stock", "out_of_stock"]);
-export const OrderStatusSchema = z.enum(["preparing", "in_transit", "delivered", "cancelled"]);
+export const ProductCategorySchema = z.enum([
+  "Single Origin",
+  "Blend",
+  "Decaf",
+  "Specialty",
+  "Cups & Lids",
+  "Cleaning & Maintenance",
+  "Accessories",
+]);
+export const OrderStatusSchema = z.enum(["preparing", "in_transit", "delivered"]);
 export const PaymentStatusSchema = z.enum(["pending", "paid", "failed"]);
 export const PaymentMethodSchema = z.enum(["bank_transfer", "credit_card", "paypal", "cash_on_delivery"]);
 export const RentalStatusSchema = z.enum(["active", "upcoming", "expired", "cancelled"]);
 export const UserRoleSchema = z.enum(["admin", "user", "dealer"]);
 export const CustomerSegmentSchema = z.enum(["new", "regular", "vip", "lapsed", "at_risk"]);
+export const AcquisitionSourceSchema = z.enum([
+  "direct",
+  "referral",
+  "social_media",
+  "search_engine",
+  "email_campaign",
+  "trade_show",
+  "other",
+]);
 export const NotificationTypeSchema = z.enum([
   "order_created",
   "order_status",
@@ -32,7 +50,7 @@ export const ProductSchema = z.object({
   description: z.string().default(""),
   price: z.number().nonnegative(),
   imageUrl: z.string().url().optional().or(z.literal("")),
-  category: z.string().default("Products"),
+  category: ProductCategorySchema.default("Accessories"),
   weight: z.string().optional().or(z.literal("")),
   stockStatus: ProductStatusSchema.default("in_stock"),
   stockQuantity: z.number().int().nonnegative().default(0),
@@ -100,9 +118,11 @@ export const UserSchema = z.object({
   id: z.string(),
   email: z.string().email(),
   fullName: z.string().optional().or(z.literal("")),
+  phone: z.string().optional().or(z.literal("")),
   companyName: z.string().optional().or(z.literal("")),
   role: UserRoleSchema.default("user"),
   customerSegment: CustomerSegmentSchema.default("new"),
+  acquisitionSource: AcquisitionSourceSchema.optional(),
   addresses: z.array(AddressSchema).default([]),
   adminSettings: AdminSettingsSchema.optional(),
   createdAt: z.string().optional(),
@@ -160,7 +180,9 @@ export const UpdateRentalInputSchema = z.object({
 
 export type Address = z.infer<typeof AddressSchema>;
 export type AdminSettings = z.infer<typeof AdminSettingsSchema>;
+export type AcquisitionSource = z.infer<typeof AcquisitionSourceSchema>;
 export type Product = z.infer<typeof ProductSchema>;
+export type ProductCategory = z.infer<typeof ProductCategorySchema>;
 export type ProductStatus = z.infer<typeof ProductStatusSchema>;
 export type CreateProductInput = z.infer<typeof CreateProductInputSchema>;
 export type UpdateProductInput = z.infer<typeof UpdateProductInputSchema>;
@@ -185,7 +207,6 @@ export const orderStatusLabels: Record<OrderStatus, string> = {
   preparing: "Preparing",
   in_transit: "In transit",
   delivered: "Delivered",
-  cancelled: "Cancelled",
 };
 
 export const paymentStatusLabels: Record<PaymentStatus, string> = {

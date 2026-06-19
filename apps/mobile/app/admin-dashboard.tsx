@@ -78,7 +78,6 @@ function getChartSeriesColor(index: number) {
 
 function getStatusChartColor(status: OrderStatus) {
   const statusColorMap: Record<OrderStatus, string> = {
-    cancelled: chartPalette.muted,
     delivered: chartPalette.green,
     in_transit: chartPalette.amber,
     preparing: chartPalette.primary,
@@ -787,7 +786,6 @@ function shortStatusLabel(status: string) {
   if (status === "preparing") return "Prep";
   if (status === "in_transit") return "Transit";
   if (status === "delivered") return "Done";
-  if (status === "cancelled") return "Cancel";
   return status;
 }
 

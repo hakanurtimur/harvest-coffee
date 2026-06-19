@@ -31,7 +31,7 @@ export function getTopCustomers(orders: Order[]) {
 }
 
 export function getStatusStats(orders: Order[]) {
-  const statuses: OrderStatus[] = ["preparing", "in_transit", "delivered", "cancelled"];
+  const statuses: OrderStatus[] = ["preparing", "in_transit", "delivered"];
   return statuses.map((status) => {
     const statusOrders = orders.filter((order) => order.status === status);
     return {
@@ -43,12 +43,12 @@ export function getStatusStats(orders: Order[]) {
 }
 
 export function getCategorySales(orders: Order[], products: Product[]) {
-  const productCategory = new Map(products.map((product) => [product.id, product.category || "Products"]));
+  const productCategory = new Map(products.map((product) => [product.id, product.category || "Accessories"]));
   const categories = new Map<string, { category: string; quantity: number; revenue: number }>();
 
   orders.forEach((order) => {
     order.items.forEach((item) => {
-      const category = productCategory.get(item.productId) ?? "Products";
+      const category = productCategory.get(item.productId) ?? "Accessories";
       const current = categories.get(category) ?? { category, quantity: 0, revenue: 0 };
       current.quantity += item.quantity;
       current.revenue += item.subtotal;

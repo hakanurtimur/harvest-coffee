@@ -143,7 +143,6 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
     preparing: { label: "Preparing", icon: Package, className: "border-blue-200 bg-blue-50 text-blue-800" },
     in_transit: { label: "In Transit", icon: Truck, className: "border-orange-200 bg-orange-50 text-orange-800" },
     delivered: { label: "Delivered", icon: CheckCircle, className: "border-green-200 bg-green-50 text-green-800" },
-    cancelled: { label: "Cancelled", icon: XCircle, className: "border-red-200 bg-red-50 text-red-800" },
   }[status];
   const Icon = config.icon;
   return (

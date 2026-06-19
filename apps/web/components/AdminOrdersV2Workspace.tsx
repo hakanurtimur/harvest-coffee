@@ -9,7 +9,7 @@ import { ArrowRight, Calendar, CheckCircle, Clock, Filter, Package, RefreshCw, S
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-const orderStatusOptions: OrderStatus[] = ["preparing", "in_transit", "delivered", "cancelled"];
+const orderStatusOptions: OrderStatus[] = ["preparing", "in_transit", "delivered"];
 const paymentStatusOptions: PaymentStatus[] = ["pending", "paid", "failed"];
 type StatusFilter = "all" | OrderStatus;
 type PaymentFilter = "all" | PaymentStatus;
@@ -49,7 +49,7 @@ export default function AdminOrdersV2Workspace() {
     }
   };
 
-  const openOrders = orders.filter((order) => order.status !== "delivered" && order.status !== "cancelled").length;
+  const openOrders = orders.filter((order) => order.status !== "delivered").length;
   const pendingPayments = orders.filter((order) => order.paymentStatus === "pending").length;
   const revenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
   const filteredOrders = orders.filter((order) => {
@@ -308,7 +308,6 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
     preparing: { icon: Package, className: "border-blue-200 bg-blue-50 text-blue-800" },
     in_transit: { icon: Truck, className: "border-orange-200 bg-orange-50 text-orange-800" },
     delivered: { icon: CheckCircle, className: "border-green-200 bg-green-50 text-green-800" },
-    cancelled: { icon: XCircle, className: "border-red-200 bg-red-50 text-red-800" },
   }[status];
   const Icon = config.icon;
   return (
