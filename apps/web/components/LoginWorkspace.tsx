@@ -26,12 +26,12 @@ export default function LoginWorkspace() {
   };
 
   const googleLogin = () => {
-    const from = new URL(window.location.href);
-    if (from.hostname === "0.0.0.0") {
-      from.hostname = "localhost";
+    const callbackUrl = new URL("/auth/callback", window.location.origin);
+    if (callbackUrl.hostname === "0.0.0.0") {
+      callbackUrl.hostname = "localhost";
     }
-    from.searchParams.set("next", next);
-    window.location.assign(`/api/harvest?mode=google-login&from=${encodeURIComponent(from.toString())}`);
+    callbackUrl.searchParams.set("next", next);
+    window.location.assign(`/api/harvest?mode=google-login&from=${encodeURIComponent(callbackUrl.toString())}`);
   };
 
   if (v2Enabled) {
