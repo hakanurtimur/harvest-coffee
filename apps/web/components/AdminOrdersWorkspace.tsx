@@ -1,6 +1,9 @@
 "use client";
 
 import AdminOrdersV2Workspace from "@/components/AdminOrdersV2Workspace";
+import LoadingState from "@/components/LoadingState";
+import { Combobox } from "@/components/ui/combobox";
+import { DatePicker } from "@/components/ui/date-picker";
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
 import {
@@ -15,6 +18,8 @@ import { useEffect, useMemo, useState } from "react";
 
 const orderStatusOptions: OrderStatus[] = ["preparing", "in_transit", "delivered"];
 const paymentStatusOptions: PaymentStatus[] = ["pending", "paid", "failed"];
+const orderStatusComboboxOptions = orderStatusOptions.map((status) => ({ label: orderStatusLabels[status], value: status }));
+const paymentStatusComboboxOptions = paymentStatusOptions.map((status) => ({ label: paymentStatusLabels[status], value: status }));
 
 export default function AdminOrdersWorkspace() {
   const v2Enabled = useV2Enabled("/adminorders");
@@ -103,7 +108,11 @@ function LegacyAdminOrdersWorkspace() {
 
         <div className="admin-orders-list">
           {isLoading ? (
-            <div className="loading-panel">Loading orders...</div>
+            <LoadingState
+              description="Fetching the latest order queue and payment statuses."
+              minHeight="min-h-[260px]"
+              title="Loading orders"
+            />
           ) : orders.map((order) => (
             <article className="admin-order-card" key={order.id}>
               <div className="admin-order-main">
@@ -116,28 +125,26 @@ function LegacyAdminOrdersWorkspace() {
               <div className="admin-order-controls">
                 <label>
                   <span>Status</span>
-                  <select
+                  <Combobox
                     value={order.status}
-                    onChange={(event) => updateOrder(order.id, { status: event.target.value as OrderStatus })}
+                    onChange={(value) => updateOrder(order.id, { status: value as OrderStatus })}
                     disabled={savingOrderId === order.id}
-                  >
-                    {orderStatusOptions.map((status) => (
-                      <option value={status} key={status}>{orderStatusLabels[status]}</option>
-                    ))}
-                  </select>
+                    loading={savingOrderId === order.id}
+                    options={orderStatusComboboxOptions}
+                    placeholder="Status"
+                  />
                 </label>
 
                 <label>
                   <span>Payment</span>
-                  <select
+                  <Combobox
                     value={order.paymentStatus}
-                    onChange={(event) => updateOrder(order.id, { paymentStatus: event.target.value as PaymentStatus })}
+                    onChange={(value) => updateOrder(order.id, { paymentStatus: value as PaymentStatus })}
                     disabled={savingOrderId === order.id}
-                  >
-                    {paymentStatusOptions.map((status) => (
-                      <option value={status} key={status}>{paymentStatusLabels[status]}</option>
-                    ))}
-                  </select>
+                    loading={savingOrderId === order.id}
+                    options={paymentStatusComboboxOptions}
+                    placeholder="Payment"
+                  />
                 </label>
 
                 <label>
@@ -156,15 +163,16 @@ function LegacyAdminOrdersWorkspace() {
 
                 <label>
                   <span>ETA</span>
-                  <input
-                    type="date"
-                    defaultValue={order.estimatedDeliveryDate}
-                    onBlur={(event) => {
-                      if (event.target.value !== (order.estimatedDeliveryDate ?? "")) {
-                        void updateOrder(order.id, { estimatedDeliveryDate: event.target.value });
+                  <DatePicker
+                    disabled={savingOrderId === order.id}
+                    id={`legacy-admin-order-eta-${order.id}`}
+                    onChange={(value) => {
+                      if (value !== (order.estimatedDeliveryDate ?? "")) {
+                        void updateOrder(order.id, { estimatedDeliveryDate: value });
                       }
                     }}
-                    disabled={savingOrderId === order.id}
+                    placeholder="Select ETA"
+                    value={order.estimatedDeliveryDate ?? ""}
                   />
                 </label>
 

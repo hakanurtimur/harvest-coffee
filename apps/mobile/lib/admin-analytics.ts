@@ -16,8 +16,9 @@ export function getTopProducts(orders: Order[]) {
 export function getTopCustomers(orders: Order[]) {
   const customers = new Map<string, { email: string; orderCount: number; pendingPayment: number; totalSpent: number }>();
   orders.forEach((order) => {
-    const current = customers.get(order.customerEmail) ?? {
-      email: order.customerEmail,
+    const customerKey = order.customerEmail || order.createdById || "unknown-customer";
+    const current = customers.get(customerKey) ?? {
+      email: order.customerEmail || customerKey,
       orderCount: 0,
       pendingPayment: 0,
       totalSpent: 0,
@@ -25,7 +26,7 @@ export function getTopCustomers(orders: Order[]) {
     current.orderCount += 1;
     current.totalSpent += order.totalAmount;
     if (order.paymentStatus === "pending") current.pendingPayment += order.totalAmount;
-    customers.set(order.customerEmail, current);
+    customers.set(customerKey, current);
   });
   return [...customers.values()].sort((a, b) => b.totalSpent - a.totalSpent);
 }

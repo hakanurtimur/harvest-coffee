@@ -1,56 +1,54 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
-import { getHarvestApi } from "@/lib/harvest-api";
+import { Combobox } from "@/components/ui/combobox";
+import AdminPageHeader from "@/components/AdminPageHeader";
+import { useOrdersQuery, useUpdateUserMutation, useUsersQuery } from "@/lib/harvest-query";
 import type { CustomerSegment, Order, User } from "@/lib/domain";
 import { DollarSign, Package, TrendingUp, Users } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 
 const segmentOptions: CustomerSegment[] = ["new", "regular", "vip", "lapsed", "at_risk"];
 
 const segmentConfig: Record<CustomerSegment, { label: string; className: string }> = {
-  new: { label: "Yeni", className: "border-blue-200 bg-blue-50 text-blue-800" },
-  regular: { label: "Düzenli", className: "border-green-200 bg-green-50 text-green-800" },
-  vip: { label: "VIP", className: "border-purple-200 bg-purple-50 text-purple-800" },
-  lapsed: { label: "Pasif", className: "border-gray-200 bg-gray-50 text-gray-800" },
-  at_risk: { label: "Risk Altında", className: "border-red-200 bg-red-50 text-red-800" },
+  new: { label: "Yeni", className: "border-[hsl(var(--status-info)/0.24)] bg-[hsl(var(--status-info)/0.08)] text-[hsl(var(--status-info))]" },
+  regular: { label: "Düzenli", className: "border-[hsl(var(--status-success)/0.24)] bg-[hsl(var(--status-success)/0.08)] text-[hsl(var(--status-success))]" },
+  vip: { label: "VIP", className: "border-[hsl(var(--chart-4)/0.24)] bg-[hsl(var(--chart-4)/0.08)] text-[hsl(var(--chart-4))]" },
+  lapsed: { label: "Pasif", className: "border-border bg-muted text-muted-foreground" },
+  at_risk: { label: "Risk Altında", className: "border-[hsl(var(--status-danger)/0.24)] bg-[hsl(var(--status-danger)/0.08)] text-[hsl(var(--status-danger))]" },
 };
 
+const segmentComboboxOptions = segmentOptions.map((segment) => ({
+  label: segmentConfig[segment].label,
+  value: segment,
+}));
+
 type CustomerRow = User & {
+  lastOrderAt?: string;
   orderCount: number;
   totalSpent: number;
 };
 
 export default function AdminCustomersV2Workspace() {
-  const api = useMemo(() => getHarvestApi(), []);
-  const [users, setUsers] = useState<User[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const usersQuery = useUsersQuery();
+  const ordersQuery = useOrdersQuery();
+  const updateUserMutation = useUpdateUserMutation();
   const [message, setMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
-
-  const loadCustomers = async () => {
-    setIsLoading(true);
-    setMessage("");
-    const [nextUsers, nextOrders] = await Promise.all([
-      api.getUsers(),
-      api.getOrders(),
-    ]);
-    setUsers(nextUsers);
-    setOrders(nextOrders);
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    void loadCustomers();
-  }, []);
+  const users = usersQuery.data ?? [];
+  const orders = ordersQuery.data ?? [];
+  const isLoading = usersQuery.isLoading || ordersQuery.isLoading;
 
   const customerStats: CustomerRow[] = users
     .map((customer) => {
-      const customerOrders = orders.filter((order) => order.customerEmail === customer.email);
+      const customerOrders = orders
+        .filter((order) => isCustomerOrder(order, customer))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       const totalSpent = customerOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+      const lastOrderAt = customerOrders[0]?.createdAt;
       return {
         ...customer,
+        lastOrderAt,
         orderCount: customerOrders.length,
         totalSpent,
       };
@@ -65,8 +63,7 @@ export default function AdminCustomersV2Workspace() {
     setSavingUserId(userId);
     setMessage("");
     try {
-      const updated = await api.updateUser(userId, { customerSegment });
-      setUsers((current) => current.map((user) => (user.id === userId ? updated : user)));
+      await updateUserMutation.mutateAsync({ id: userId, input: { customerSegment } });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Müşteri segmenti güncellenemedi.");
     } finally {
@@ -75,15 +72,11 @@ export default function AdminCustomersV2Workspace() {
   };
 
   return (
-    <div className="space-y-5 text-[#3a2619]">
-      <section className="rounded-lg border border-[#e8daca] bg-[#fffdf8] p-5 shadow-sm shadow-[#8a461c]/5 md:p-6">
-        <p className="text-xs font-black uppercase tracking-[0.22em] text-[#b3692c]">Admin</p>
-        <h1 className="mt-2 text-3xl font-black tracking-normal text-[#3a2619] md:text-4xl">Müşteri Yönetimi</h1>
-        <p className="mt-2 text-sm font-semibold text-[#8f7461]">Müşteri bilgileri ve segmentasyon</p>
-      </section>
+    <div className="harvest-theme space-y-5 text-foreground">
+      <AdminPageHeader title="Müşteri Yönetimi" description="Müşteri bilgileri ve segmentasyon" />
 
       {message && (
-        <section className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">
+        <section className="rounded-xl border border-[hsl(var(--status-danger)/0.24)] bg-[hsl(var(--status-danger)/0.08)] px-4 py-3 text-sm font-bold text-[hsl(var(--status-danger))]">
           {message}
         </section>
       )}
@@ -95,37 +88,38 @@ export default function AdminCustomersV2Workspace() {
         <SummaryCard label="Toplam Sipariş" value={String(orders.length)} icon={Package} tone="amber" />
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-[#e8daca] bg-[#fffdf8] shadow-sm shadow-[#8a461c]/5">
-        <header className="border-b border-[#eadccf] px-5 py-4">
-          <h2 className="text-lg font-black text-[#3a2619]">Müşteriler</h2>
+      <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm shadow-primary/5">
+        <header className="border-b border-border px-5 py-4">
+          <h2 className="text-lg font-black text-foreground">Müşteriler</h2>
         </header>
         <div className="p-5">
           {isLoading ? (
-            <div className="h-48 animate-pulse rounded-lg bg-[#f3e8da]" />
+            <div className="h-48 animate-pulse rounded-lg bg-muted" />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[900px]">
-                <thead className="border-b-2 border-[#e8daca] bg-[#fff8ed]">
+                <thead className="border-b-2 border-border bg-muted">
                   <tr>
                     <TableHead align="left">Müşteri</TableHead>
                     <TableHead>Segment</TableHead>
                     <TableHead>Sipariş Sayısı</TableHead>
                     <TableHead align="right">Toplam Harcama</TableHead>
+                    <TableHead>Son Sipariş</TableHead>
                     <TableHead>İşlemler</TableHead>
                   </tr>
                 </thead>
                 <tbody>
                   {customerStats.map((customer) => (
-                    <tr className="border-b border-[#f0e2d4] transition-colors hover:bg-[#fff8ed]" key={customer.id}>
+                    <tr className="border-b border-border transition-colors hover:bg-muted" key={customer.id}>
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-full bg-[#f0dfca] text-sm font-black uppercase text-[#8a461c]">
+                          <div className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-full bg-muted text-sm font-black uppercase text-primary">
                             {(customer.fullName || customer.email || "HC").slice(0, 2)}
                           </div>
                           <div>
-                            <p className="font-black text-[#3a2619]">{customer.fullName || customer.email}</p>
-                            <p className="text-sm font-semibold text-[#7f6554]">{customer.email}</p>
-                            {customer.companyName && <p className="text-xs font-semibold text-[#9a8373]">{customer.companyName}</p>}
+                            <p className="font-black text-foreground">{customer.fullName || customer.email}</p>
+                            <p className="text-sm font-semibold text-muted-foreground">{customer.email}</p>
+                            {customer.companyName && <p className="text-xs font-semibold text-muted-foreground/80">{customer.companyName}</p>}
                           </div>
                         </div>
                       </td>
@@ -133,22 +127,24 @@ export default function AdminCustomersV2Workspace() {
                         <SegmentBadge segment={customer.customerSegment || "new"} />
                       </td>
                       <td className="p-4 text-center">
-                        <span className="font-black text-[#3a2619]">{customer.orderCount}</span>
+                        <span className="font-black text-foreground">{customer.orderCount}</span>
                       </td>
                       <td className="p-4 text-right">
-                        <span className="font-black text-green-700">£{customer.totalSpent.toFixed(2)}</span>
+                        <span className="font-black text-[hsl(var(--status-success))]">£{customer.totalSpent.toFixed(2)}</span>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span className="text-sm font-bold text-muted-foreground">{customer.lastOrderAt ? formatDate(customer.lastOrderAt) : "-"}</span>
                       </td>
                       <td className="p-4">
-                        <select
-                          className="mx-auto block h-10 w-40 rounded-md border border-[#e3d1bd] bg-white px-3 text-sm font-bold text-[#3a2619] outline-none transition-colors focus:border-[#8a461c] disabled:cursor-not-allowed disabled:opacity-60"
+                        <Combobox
+                          className="mx-auto h-10 w-40 rounded-md"
                           disabled={savingUserId === customer.id}
-                          onChange={(event) => void handleSegmentChange(customer.id, event.target.value as CustomerSegment)}
+                          loading={savingUserId === customer.id}
+                          onChange={(value) => void handleSegmentChange(customer.id, value as CustomerSegment)}
+                          options={segmentComboboxOptions}
+                          placeholder="Segment"
                           value={customer.customerSegment || "new"}
-                        >
-                          {segmentOptions.map((segment) => (
-                            <option value={segment} key={segment}>{segmentConfig[segment].label}</option>
-                          ))}
-                        </select>
+                        />
                       </td>
                     </tr>
                   ))}
@@ -162,12 +158,17 @@ export default function AdminCustomersV2Workspace() {
   );
 }
 
+function isCustomerOrder(order: Order, customer: User) {
+  if (order.createdById && order.createdById === customer.id) return true;
+  return Boolean(order.customerEmail && order.customerEmail === customer.email);
+}
+
 function SummaryCard({ icon: Icon, label, tone, value }: { icon: React.ComponentType<{ className?: string }>; label: string; tone: "blue" | "purple" | "green" | "amber"; value: string }) {
   const tones = {
-    blue: "border-blue-100 bg-blue-50 text-blue-950",
-    purple: "border-purple-100 bg-purple-50 text-purple-950",
-    green: "border-green-100 bg-green-50 text-green-950",
-    amber: "border-amber-100 bg-amber-50 text-amber-950",
+    blue: "border-[hsl(var(--status-info)/0.24)] bg-[hsl(var(--status-info)/0.08)] text-[hsl(var(--status-info))]",
+    purple: "border-[hsl(var(--chart-4)/0.24)] bg-[hsl(var(--chart-4)/0.08)] text-[hsl(var(--chart-4))]",
+    green: "border-[hsl(var(--status-success)/0.24)] bg-[hsl(var(--status-success)/0.08)] text-[hsl(var(--status-success))]",
+    amber: "border-[hsl(var(--status-warning)/0.24)] bg-[hsl(var(--status-warning)/0.08)] text-[hsl(var(--status-warning))]",
   };
 
   return (
@@ -185,10 +186,16 @@ function SummaryCard({ icon: Icon, label, tone, value }: { icon: React.Component
 
 function TableHead({ align = "center", children }: { align?: "left" | "center" | "right"; children: React.ReactNode }) {
   const alignment = align === "left" ? "text-left" : align === "right" ? "text-right" : "text-center";
-  return <th className={`p-4 text-sm font-black text-[#5c3a25] ${alignment}`}>{children}</th>;
+  return <th className={`p-4 text-sm font-black text-foreground ${alignment}`}>{children}</th>;
 }
 
 function SegmentBadge({ segment }: { segment: CustomerSegment }) {
   const config = segmentConfig[segment] || segmentConfig.new;
   return <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-black ${config.className}`}>{config.label}</span>;
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(date);
 }

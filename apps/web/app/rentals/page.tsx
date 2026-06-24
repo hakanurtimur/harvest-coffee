@@ -1,10 +1,10 @@
-import PublicShell from "@/components/PublicShell";
+import AppShell from "@/components/AppShell";
 import RentalsWorkspace from "@/components/RentalsWorkspace";
 
 export default function RentalsPage() {
   return (
-    <PublicShell>
+    <AppShell>
       <RentalsWorkspace />
-    </PublicShell>
+    </AppShell>
   );
 }

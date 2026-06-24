@@ -2,11 +2,15 @@
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getHarvestApi } from "@/lib/harvest-api";
+import { AlertDialog } from "@/components/ui/alert-dialog";
+import { requestToast } from "@/components/ui/sonner";
+import { Combobox } from "@/components/ui/combobox";
+import AdminPageHeader from "@/components/AdminPageHeader";
+import { useCreateProductMutation, useDeleteProductMutation, useProductsQuery, useUpdateProductMutation } from "@/lib/harvest-query";
 import { getHarvestIntegrations } from "@/lib/integrations";
 import type { Product } from "@/lib/domain";
 import { Edit2, Loader2, Package, Plus, Save, Sparkles, Trash2, X } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 
 type ProductForm = {
   name: string;
@@ -33,35 +37,30 @@ const emptyForm: ProductForm = {
 };
 
 const categories: Product["category"][] = ["Single Origin", "Blend", "Decaf", "Specialty", "Cups & Lids", "Cleaning & Maintenance", "Accessories"];
+const categoryOptions = categories.map((category) => ({ label: category, value: category }));
 
 const stockStatusConfig = {
-  in_stock: { label: "In Stock", className: "border-green-200 bg-green-50 text-green-800" },
-  low_stock: { label: "Low Stock", className: "border-yellow-200 bg-yellow-50 text-yellow-800" },
-  out_of_stock: { label: "Out of Stock", className: "border-red-200 bg-red-50 text-red-800" },
+  in_stock: { label: "In Stock", className: "border-[hsl(var(--status-success)/0.24)] bg-[hsl(var(--status-success)/0.08)] text-[hsl(var(--status-success))]" },
+  low_stock: { label: "Low Stock", className: "border-[hsl(var(--status-warning)/0.24)] bg-[hsl(var(--status-warning)/0.08)] text-[hsl(var(--status-warning))]" },
+  out_of_stock: { label: "Out of Stock", className: "border-[hsl(var(--status-danger)/0.24)] bg-[hsl(var(--status-danger)/0.08)] text-[hsl(var(--status-danger))]" },
 } satisfies Record<Product["stockStatus"], { label: string; className: string }>;
+const stockStatusOptions = Object.entries(stockStatusConfig).map(([value, config]) => ({ label: config.label, value }));
 
 export default function AdminProductsV2Workspace() {
-  const api = useMemo(() => getHarvestApi(), []);
   const integrations = useMemo(() => getHarvestIntegrations(), []);
-  const [products, setProducts] = useState<Product[]>([]);
+  const productsQuery = useProductsQuery();
+  const createProductMutation = useCreateProductMutation();
+  const updateProductMutation = useUpdateProductMutation();
+  const deleteProductMutation = useDeleteProductMutation();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [message, setMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
-
-  const loadProducts = async () => {
-    setIsLoading(true);
-    const nextProducts = await api.getProducts();
-    setProducts(nextProducts);
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    void loadProducts();
-  }, []);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const products = productsQuery.data ?? [];
+  const isLoading = productsQuery.isLoading;
+  const isSaving = createProductMutation.isPending || updateProductMutation.isPending;
 
   const handleEdit = (product: Product) => {
     setEditingId(product.id);
@@ -83,7 +82,6 @@ export default function AdminProductsV2Workspace() {
 
   const handleSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setIsSaving(true);
     setMessage("");
     try {
       const input = {
@@ -99,19 +97,15 @@ export default function AdminProductsV2Workspace() {
       };
 
       if (editingId) {
-        const updated = await api.updateProduct(editingId, input);
-        setProducts((current) => current.map((product) => (product.id === updated.id ? updated : product)));
+        await updateProductMutation.mutateAsync({ id: editingId, input });
         setMessage("Product updated.");
       } else {
-        const created = await api.createProduct(input);
-        setProducts((current) => [created, ...current]);
+        await createProductMutation.mutateAsync(input);
         setMessage("Product created.");
       }
       handleCancel();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Product could not be saved.");
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -122,13 +116,13 @@ export default function AdminProductsV2Workspace() {
     setAiLoading(false);
   };
 
-  const handleDelete = async (product: Product) => {
-    if (!window.confirm("Are you sure you want to delete this product?")) return;
+  const handleDelete = async () => {
+    if (!productToDelete) return;
     setMessage("");
     try {
-      await api.deleteProduct(product.id);
-      setProducts((current) => current.filter((item) => item.id !== product.id));
+      await deleteProductMutation.mutateAsync(productToDelete.id);
       setMessage("Product deleted.");
+      setProductToDelete(null);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Product could not be deleted.");
     }
@@ -136,17 +130,24 @@ export default function AdminProductsV2Workspace() {
 
   const handleGenerateAI = async () => {
     if (!form.name) {
-      window.alert("Please enter a product name first.");
+      requestToast.error({ title: "Please enter a product name first." });
       return;
     }
 
     setAiLoading(true);
     try {
-      const generated = await integrations.generateProductDescription({
-        category: form.category,
-        productName: form.name,
-        weight: form.weight,
-      });
+      const generated = await requestToast.promise(
+        integrations.generateProductDescription({
+          category: form.category,
+          productName: form.name,
+          weight: form.weight,
+        }),
+        {
+          loading: "Generating description...",
+          success: "Description generated.",
+          error: (error) => error instanceof Error ? error.message : "Description could not be generated.",
+        },
+      );
       setForm((current) => ({
         ...current,
         description: generated.description,
@@ -160,46 +161,38 @@ export default function AdminProductsV2Workspace() {
   };
 
   return (
-    <div className="space-y-5 text-[#3a2619]">
-      <section className="rounded-lg border border-[#e8daca] bg-[#fffdf8] p-5 shadow-sm shadow-[#8a461c]/5 md:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h1 className="text-3xl font-black tracking-normal text-[#3a2619] md:text-4xl">Product Management</h1>
-            <p className="mt-2 text-sm font-semibold text-[#8f7461]">Add, edit products and generate content with AI</p>
-          </div>
-          {!showForm && (
+    <div className="harvest-theme space-y-5 text-foreground">
+      <AdminPageHeader
+        title="Product Management"
+        description="Add, edit products and generate content with AI"
+        actions={
+          !showForm ? (
             <Button className="h-10 rounded-md px-4" onClick={() => setShowForm(true)} type="button">
               <Plus className="h-4 w-4" />
               New Product
             </Button>
-          )}
-        </div>
-      </section>
+          ) : null
+        }
+      />
 
       {message && (
-        <section className="rounded-lg border border-[#ead7b8] bg-[#fff8e8] px-4 py-3 text-sm font-bold text-[#7c3514]">
+        <section className="rounded-xl border border-[hsl(var(--status-warning)/0.24)] bg-[hsl(var(--status-warning)/0.08)] px-4 py-3 text-sm font-bold text-[hsl(var(--status-warning))]">
           {message}
         </section>
       )}
 
       {showForm && (
-        <form className="overflow-hidden rounded-lg border border-[#e8daca] bg-[#fffdf8] shadow-sm shadow-[#8a461c]/5" onSubmit={handleSave}>
-          <header className="border-b border-[#eadccf] bg-[#fff8ed] px-5 py-4">
-            <h2 className="text-lg font-black text-[#3a2619]">{editingId ? "Edit Product" : "Add New Product"}</h2>
+        <form className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm shadow-primary/5" onSubmit={handleSave}>
+          <header className="border-b border-border bg-muted px-5 py-4">
+            <h2 className="text-lg font-black text-foreground">{editingId ? "Edit Product" : "Add New Product"}</h2>
           </header>
           <div className="space-y-4 p-5">
             <div className="grid gap-4 md:grid-cols-2">
               <TextInput label="Product Name *" value={form.name} onChange={(value) => setForm({ ...form, name: value })} placeholder="e.g., 12oz Black Ripple Cup" required />
               <TextInput label="Price (£) *" type="number" value={form.price} onChange={(value) => setForm({ ...form, price: value })} placeholder="10.00" required />
-              <SelectInput label="Kategori" value={form.category} onChange={(value) => setForm({ ...form, category: value as Product["category"] })}>
-                {categories.map((category) => <option key={category} value={category}>{category}</option>)}
-              </SelectInput>
+              <SelectInput disabled={isSaving} label="Kategori" options={categoryOptions} value={form.category} onChange={(value) => setForm({ ...form, category: value as Product["category"] })} />
               <TextInput label="Size / Weight" value={form.weight} onChange={(value) => setForm({ ...form, weight: value })} placeholder="e.g., 12oz, 900g, 1000pcs" />
-              <SelectInput label="Stock Status" value={form.stockStatus} onChange={(value) => setForm({ ...form, stockStatus: value as Product["stockStatus"] })}>
-                <option value="in_stock">In Stock</option>
-                <option value="low_stock">Low Stock</option>
-                <option value="out_of_stock">Out of Stock</option>
-              </SelectInput>
+              <SelectInput disabled={isSaving} label="Stock Status" options={stockStatusOptions} value={form.stockStatus} onChange={(value) => setForm({ ...form, stockStatus: value as Product["stockStatus"] })} />
               <TextInput label="Stock Quantity" type="number" value={form.stockQuantity} onChange={(value) => setForm({ ...form, stockQuantity: value })} />
             </div>
 
@@ -207,9 +200,9 @@ export default function AdminProductsV2Workspace() {
 
             <div>
               <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <label className="text-sm font-black text-[#5c3a25]">Product Description</label>
+                <label className="text-sm font-black text-foreground">Product Description</label>
                 <button
-                  className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-purple-200 bg-purple-50 px-3 text-sm font-black text-purple-800 transition-colors hover:bg-purple-100 disabled:opacity-60"
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[hsl(var(--chart-4)/0.24)] bg-[hsl(var(--chart-4)/0.08)] px-3 text-sm font-black text-[hsl(var(--chart-4))] transition-colors hover:bg-[hsl(var(--chart-4)/0.12)] disabled:opacity-60"
                   disabled={aiLoading}
                   onClick={() => void handleGenerateAI()}
                   type="button"
@@ -219,7 +212,7 @@ export default function AdminProductsV2Workspace() {
                 </button>
               </div>
               <textarea
-                className="min-h-28 w-full rounded-md border border-[#e3d1bd] bg-white px-3 py-2 text-sm font-semibold text-[#3a2619] outline-none transition-colors focus:border-[#8a461c]"
+                className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground outline-none transition-colors focus:border-primary"
                 value={form.description}
                 onChange={(event) => setForm({ ...form, description: event.target.value })}
                 placeholder="Product description... or generate automatically with AI"
@@ -242,53 +235,64 @@ export default function AdminProductsV2Workspace() {
 
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {[0, 1, 2, 3, 4, 5].map((item) => <div key={item} className="h-64 animate-pulse rounded-lg bg-[#f3e8da]" />)}
+          {[0, 1, 2, 3, 4, 5].map((item) => <div key={item} className="h-64 animate-pulse rounded-lg bg-muted" />)}
         </div>
       ) : products.length === 0 ? (
-        <section className="rounded-lg border-2 border-dashed border-[#e0cdb9] bg-[#fffdf8]">
+        <section className="rounded-2xl border-2 border-dashed border-border bg-card">
           <div className="p-12 text-center">
-            <Package className="mx-auto mb-4 h-16 w-16 text-[#cda66d]" />
-            <p className="font-black text-[#3a2619]">No products yet</p>
-            <p className="text-sm font-semibold text-[#8f7461]">Click the button above to add a new product</p>
+            <Package className="mx-auto mb-4 h-16 w-16 text-primary/35" />
+            <p className="font-black text-foreground">No products yet</p>
+            <p className="text-sm font-semibold text-muted-foreground">Click the button above to add a new product</p>
           </div>
         </section>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {products.map((product) => (
-            <ProductCard handleDelete={handleDelete} handleEdit={handleEdit} key={product.id} product={product} />
+            <ProductCard handleDelete={setProductToDelete} handleEdit={handleEdit} key={product.id} product={product} />
           ))}
         </div>
       )}
+      <AlertDialog
+        confirmLabel="Delete product"
+        description={productToDelete ? `This will permanently delete "${productToDelete.name}" from the product catalog.` : "This product will be deleted."}
+        onConfirm={() => void handleDelete()}
+        onOpenChange={(open) => {
+          if (!open) setProductToDelete(null);
+        }}
+        open={Boolean(productToDelete)}
+        title="Delete product?"
+        tone="destructive"
+      />
     </div>
   );
 }
 
-function ProductCard({ handleDelete, handleEdit, product }: { handleDelete: (product: Product) => Promise<void>; handleEdit: (product: Product) => void; product: Product }) {
+function ProductCard({ handleDelete, handleEdit, product }: { handleDelete: (product: Product) => void; handleEdit: (product: Product) => void; product: Product }) {
   return (
-    <article className="overflow-hidden rounded-lg border border-[#e8daca] bg-[#fffdf8] shadow-sm shadow-[#8a461c]/5 transition-shadow hover:shadow-md hover:shadow-[#8a461c]/10">
+    <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm shadow-primary/5 transition-shadow hover:shadow-md hover:shadow-primary/10">
       {product.imageUrl && (
-        <div className="h-40 overflow-hidden bg-[#f8efe3]">
+        <div className="h-40 overflow-hidden bg-muted">
           <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
         </div>
       )}
       <div className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate text-base font-black text-[#3a2619]">{product.name}</h3>
-            <p className="mt-1 text-xs font-semibold text-[#8f7461]">{product.category}{product.weight ? ` • ${product.weight}` : ""}</p>
+            <h3 className="truncate text-base font-black text-foreground">{product.name}</h3>
+            <p className="mt-1 text-xs font-semibold text-muted-foreground">{product.category}{product.weight ? ` • ${product.weight}` : ""}</p>
           </div>
-          <span className="whitespace-nowrap text-lg font-black text-[#7c3514]">£{product.price?.toFixed(2)}</span>
+          <span className="whitespace-nowrap text-lg font-black text-primary">£{product.price?.toFixed(2)}</span>
         </div>
-        {product.description && <p className="line-clamp-2 text-xs font-semibold leading-5 text-[#7f6554]">{product.description}</p>}
+        {product.description && <p className="line-clamp-2 text-xs font-semibold leading-5 text-muted-foreground">{product.description}</p>}
         <div className="flex items-center justify-between gap-3">
           <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-black ${stockStatusConfig[product.stockStatus]?.className || "border-gray-200 bg-gray-50 text-gray-700"}`}>
             {stockStatusConfig[product.stockStatus]?.label}
           </span>
           <div className="flex gap-1">
-            <button className="rounded-md p-2 text-blue-700 transition-colors hover:bg-blue-50" onClick={() => handleEdit(product)} type="button" aria-label={`Edit ${product.name}`}>
+            <button className="rounded-md p-2 text-[hsl(var(--status-info))] transition-colors hover:bg-[hsl(var(--status-info)/0.08)]" onClick={() => handleEdit(product)} type="button" aria-label={`Edit ${product.name}`}>
               <Edit2 className="h-4 w-4" />
             </button>
-            <button className="rounded-md p-2 text-red-700 transition-colors hover:bg-red-50" onClick={() => void handleDelete(product)} type="button" aria-label={`Delete ${product.name}`}>
+            <button className="rounded-md p-2 text-[hsl(var(--status-danger))] transition-colors hover:bg-[hsl(var(--status-danger)/0.08)]" onClick={() => handleDelete(product)} type="button" aria-label={`Delete ${product.name}`}>
               <Trash2 className="h-4 w-4" />
             </button>
           </div>
@@ -315,9 +319,9 @@ function TextInput({
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-sm font-black text-[#5c3a25]">{label}</span>
+      <span className="mb-1.5 block text-sm font-black text-foreground">{label}</span>
       <input
-        className="h-11 w-full rounded-md border border-[#e3d1bd] bg-white px-3 text-sm font-semibold text-[#3a2619] outline-none transition-colors focus:border-[#8a461c]"
+        className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground outline-none transition-colors focus:border-primary"
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -328,17 +332,31 @@ function TextInput({
   );
 }
 
-function SelectInput({ children, label, onChange, value }: { children: React.ReactNode; label: string; onChange: (value: string) => void; value: string }) {
+function SelectInput({
+  disabled = false,
+  label,
+  onChange,
+  options,
+  value,
+}: {
+  disabled?: boolean;
+  label: string;
+  onChange: (value: string) => void;
+  options: Array<{ label: string; value: string }>;
+  value: string;
+}) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-sm font-black text-[#5c3a25]">{label}</span>
-      <select
-        className="h-11 w-full rounded-md border border-[#e3d1bd] bg-white px-3 text-sm font-semibold text-[#3a2619] outline-none transition-colors focus:border-[#8a461c]"
+      <span className="mb-1.5 block text-sm font-black text-foreground">{label}</span>
+      <Combobox
+        className="rounded-md"
+        disabled={disabled}
+        loading={disabled}
         value={value}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        {children}
-      </select>
+        onChange={onChange}
+        options={options}
+        placeholder={label}
+      />
     </label>
   );
 }

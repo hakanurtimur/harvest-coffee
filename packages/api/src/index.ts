@@ -1,4 +1,5 @@
 import {
+  Address,
   AdminSettings,
   calculateOrderTotal,
   CreateOrderInput,
@@ -32,9 +33,14 @@ import {
 
 type RawRecord = Record<string, unknown>;
 
+export interface NotificationQueryOptions {
+  includeAdmin?: boolean;
+}
+
 export interface HarvestApi {
   getCurrentUser(): Promise<User | null>;
   updateCurrentUser(input: Partial<User>): Promise<User>;
+  deleteCurrentUser(): Promise<void>;
   getProducts(): Promise<Product[]>;
   createProduct(input: CreateProductInput): Promise<Product>;
   updateProduct(id: string, input: UpdateProductInput): Promise<Product>;
@@ -51,9 +57,15 @@ export interface HarvestApi {
   deleteRental(id: string): Promise<void>;
   getUsers(): Promise<User[]>;
   updateUser(id: string, input: Partial<User>): Promise<User>;
-  getNotifications(recipientEmail: string): Promise<Notification[]>;
+  getNotifications(recipientEmail: string, options?: NotificationQueryOptions): Promise<Notification[]>;
   markNotificationRead(id: string): Promise<Notification>;
   deleteNotification(id: string): Promise<void>;
+}
+
+export interface HarvestProxyOptions {
+  endpoint: string;
+  getAccessToken?: () => string | null | undefined;
+  setAccessToken?: (token: string | null) => void;
 }
 
 export interface GenerateProductDescriptionInput {
@@ -287,6 +299,7 @@ export interface Base44ClientLike {
 }
 
 interface EntityClient {
+  get?(id: string): Promise<RawRecord>;
   list(order?: string): Promise<RawRecord[]>;
   filter(filter: RawRecord, order?: string): Promise<RawRecord[]>;
   create(data: RawRecord): Promise<RawRecord>;
@@ -311,6 +324,10 @@ export function createMockHarvestApi(): HarvestApi {
       if (!demoUsers[0]) throw new Error("User not found");
       demoUsers[0] = { ...demoUsers[0], ...input, updatedAt: nowIso() };
       return demoUsers[0];
+    },
+    async deleteCurrentUser() {
+      if (!demoUsers[0]) throw new Error("User not found");
+      demoUsers = demoUsers.slice(1);
     },
     async getProducts() {
       return demoProducts;
@@ -408,8 +425,11 @@ export function createMockHarvestApi(): HarvestApi {
       demoUsers[index] = { ...demoUsers[index], ...input, updatedAt: nowIso() };
       return demoUsers[index];
     },
-    async getNotifications(recipientEmail) {
-      return demoNotifications.filter((notification) => notification.recipientEmail === recipientEmail);
+    async getNotifications(recipientEmail, options) {
+      return demoNotifications.filter((notification) => (
+        notification.recipientEmail === recipientEmail ||
+        Boolean(options?.includeAdmin && isAdminNotification(notification))
+      ));
     },
     async markNotificationRead(id) {
       const index = demoNotifications.findIndex((notification) => notification.id === id);
@@ -433,6 +453,11 @@ export function createBase44HarvestApi(base44: Base44ClientLike): HarvestApi {
       if (!base44.auth) throw new Error("Auth client is not available");
       return mapBase44User(await base44.auth.updateMe(toBase44UserUpdate(input)));
     },
+    async deleteCurrentUser() {
+      if (!base44.auth) throw new Error("Auth client is not available");
+      const user = await base44.auth.me();
+      await base44.entities.User.delete(stringValue(user.id));
+    },
     async getProducts() {
       return (await base44.entities.Product.list()).map(mapBase44Product);
     },
@@ -446,18 +471,30 @@ export function createBase44HarvestApi(base44: Base44ClientLike): HarvestApi {
       await base44.entities.Product.delete(id);
     },
     async getMyOrders(customerEmail) {
-      return (await base44.entities.Order.filter({ created_by: customerEmail }, "-created_date")).map(mapBase44Order);
+      const records = await safeEntityFilter(base44.entities.Order, { customer_email: customerEmail }, "-created_date");
+      return records
+        .map(mapBase44Order)
+        .filter((order) => sameEmail(order.customerEmail, customerEmail))
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
     },
     async getOrders() {
       return (await base44.entities.Order.list("-created_date")).map(mapBase44Order);
     },
     async getOrder(id) {
-      const orders = await base44.entities.Order.filter({ id });
-      return orders[0] ? mapBase44Order(orders[0]) : null;
+      if (!id) return null;
+      const orderById = await safeEntityGet(base44.entities.Order, id);
+      if (orderById) return mapBase44Order(orderById);
+      return null;
     },
     async getOrderByNumber(orderNumber) {
-      const orders = await base44.entities.Order.filter({ order_number: orderNumber });
-      return orders[0] ? mapBase44Order(orders[0]) : null;
+      if (!orderNumber) return null;
+      const orders = await safeEntityFilter(base44.entities.Order, { order_number: orderNumber });
+      const filteredOrder = orders.find((order) => stringValue(order.order_number) === orderNumber) ?? orders[0];
+      if (filteredOrder) return mapBase44Order(filteredOrder);
+
+      const listedOrders = await safeEntityList(base44.entities.Order, "-created_date");
+      const listedOrder = listedOrders.find((order) => stringValue(order.order_number) === orderNumber);
+      return listedOrder ? mapBase44Order(listedOrder) : null;
     },
     async createOrder(input) {
       return mapBase44Order(await base44.entities.Order.create(toBase44OrderCreate(input)));
@@ -486,8 +523,16 @@ export function createBase44HarvestApi(base44: Base44ClientLike): HarvestApi {
     async updateUser(id, input) {
       return mapBase44User(await base44.entities.User.update(id, toBase44UserUpdate(input)));
     },
-    async getNotifications(recipientEmail) {
-      return (await base44.entities.Notification.filter({ recipient_email: recipientEmail }, "-created_date")).map(mapBase44Notification);
+    async getNotifications(recipientEmail, options) {
+      const records = options?.includeAdmin
+        ? await base44.entities.Notification.list("-created_date")
+        : await base44.entities.Notification.filter({ recipient_email: recipientEmail }, "-created_date");
+      return records
+        .map(mapBase44Notification)
+        .filter((notification) => (
+          notification.recipientEmail === recipientEmail ||
+          Boolean(options?.includeAdmin && isAdminNotification(notification))
+        ));
     },
     async markNotificationRead(id) {
       return mapBase44Notification(await base44.entities.Notification.update(id, { read: true }));
@@ -506,6 +551,9 @@ export function createReadOnlyHarvestApi(api: HarvestApi): HarvestApi {
   return {
     getCurrentUser: api.getCurrentUser.bind(api),
     async updateCurrentUser() {
+      return readOnlyError();
+    },
+    async deleteCurrentUser() {
       return readOnlyError();
     },
     getProducts: api.getProducts.bind(api),
@@ -552,6 +600,52 @@ export function createReadOnlyHarvestApi(api: HarvestApi): HarvestApi {
   };
 }
 
+export function createProxyHarvestApi(options: HarvestProxyOptions): HarvestApi {
+  const call = async <T>(action: string, input?: RawRecord): Promise<T> => {
+    const response = await fetch(options.endpoint, {
+      body: JSON.stringify({
+        action,
+        input,
+        token: options.getAccessToken?.() ?? undefined,
+      }),
+      headers: {
+        "content-type": "application/json",
+      },
+      method: "POST",
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(stringValue(payload.error, `Harvest proxy action failed: ${action}`));
+    }
+    return payload.data as T;
+  };
+
+  return {
+    getCurrentUser: () => call<User | null>("getCurrentUser"),
+    updateCurrentUser: (input) => call<User>("updateCurrentUser", input as RawRecord),
+    deleteCurrentUser: () => call<void>("deleteCurrentUser"),
+    getProducts: () => call<Product[]>("getProducts"),
+    createProduct: (input) => call<Product>("createProduct", input as RawRecord),
+    updateProduct: (id, input) => call<Product>("updateProduct", { id, input }),
+    deleteProduct: (id) => call<void>("deleteProduct", { id }),
+    getMyOrders: (customerEmail) => call<Order[]>("getMyOrders", { customerEmail }),
+    getOrders: () => call<Order[]>("getOrders"),
+    getOrder: (id) => call<Order | null>("getOrder", { id }),
+    getOrderByNumber: (orderNumber) => call<Order | null>("getOrderByNumber", { orderNumber }),
+    createOrder: (input) => call<Order>("createOrder", input as RawRecord),
+    updateOrder: (id, input) => call<Order>("updateOrder", { id, input }),
+    getRentals: (customerEmail) => call<Rental[]>("getRentals", { customerEmail }),
+    createRental: (input) => call<Rental>("createRental", input as RawRecord),
+    updateRental: (id, input) => call<Rental>("updateRental", { id, input }),
+    deleteRental: (id) => call<void>("deleteRental", { id }),
+    getUsers: () => call<User[]>("getUsers"),
+    updateUser: (id, input) => call<User>("updateUser", { id, input }),
+    getNotifications: (recipientEmail, options) => call<Notification[]>("getNotifications", { recipientEmail, includeAdmin: options?.includeAdmin }),
+    markNotificationRead: (id) => call<Notification>("markNotificationRead", { id }),
+    deleteNotification: (id) => call<void>("deleteNotification", { id }),
+  };
+}
+
 export function mapBase44Product(product: RawRecord): Product {
   return {
     id: stringValue(product.id),
@@ -574,8 +668,9 @@ export function mapBase44Order(order: RawRecord): Order {
   return {
     id: stringValue(order.id),
     orderNumber: stringValue(order.order_number),
-    customerEmail: stringValue(order.created_by ?? order.customer_email),
-    customerName: optionalString(order.customer_name),
+    customerEmail: "",
+    customerName: undefined,
+    createdById: optionalString(order.created_by_id),
     items,
     totalAmount: numberValue(order.total_amount, calculateOrderTotal(items)),
     status: mapOrderStatus(order.status),
@@ -633,13 +728,7 @@ export function mapBase44User(user: RawRecord): User {
     role: mapUserRole(user.role),
     customerSegment: mapCustomerSegment(user.customer_segment),
     acquisitionSource: mapAcquisitionSource(user.acquisition_source),
-    addresses: arrayValue(user.addresses).map((address) => {
-      const row = asRecord(address);
-      return {
-        title: stringValue(row.title),
-        address: stringValue(row.address),
-      };
-    }),
+    addresses: arrayValue(user.addresses).map(mapBase44Address).filter((address) => address.address.trim()),
     adminSettings: mapAdminSettings(user.admin_settings),
     createdAt: optionalString(user.created_date),
     updatedAt: optionalString(user.updated_date),
@@ -715,7 +804,7 @@ export function toBase44UserUpdate(input: Partial<User>): RawRecord {
     role: input.role === "dealer" ? "user" : input.role,
     customer_segment: input.customerSegment,
     acquisition_source: input.acquisitionSource,
-    addresses: input.addresses,
+    addresses: input.addresses?.map(toBase44Address),
     admin_settings: input.adminSettings ? toBase44AdminSettings(input.adminSettings) : undefined,
   });
 }
@@ -739,6 +828,66 @@ function toBase44OrderItem(item: OrderItem): RawRecord {
     price: item.price,
     subtotal: item.subtotal,
   };
+}
+
+function mapBase44Address(address: unknown, index: number): Address {
+  if (typeof address === "string") {
+    return {
+      title: address.split("\n")[0]?.trim() || `Address ${index + 1}`,
+      address,
+    };
+  }
+
+  const row = asRecord(address);
+  const addressText =
+    optionalString(row.address) ||
+    optionalString(row.delivery_address) ||
+    optionalString(row.full_address) ||
+    optionalString(row.value) ||
+    optionalString(row.text) ||
+    formatAddressParts(row) ||
+    JSON.stringify(row);
+  const title =
+    optionalString(row.title) ||
+    optionalString(row.label) ||
+    optionalString(row.name) ||
+    addressText.split("\n")[0]?.trim() ||
+    `Address ${index + 1}`;
+
+  return {
+    title,
+    address: addressText,
+  };
+}
+
+function toBase44Address(address: Address): RawRecord {
+  return dropUndefined({
+    title: address.title,
+    address: address.address,
+  });
+}
+
+function formatAddressParts(row: RawRecord) {
+  const parts = [
+    row.line1,
+    row.line_1,
+    row.address_line_1,
+    row.line2,
+    row.line_2,
+    row.address_line_2,
+    row.city,
+    row.town,
+    row.county,
+    row.state,
+    row.postcode,
+    row.post_code,
+    row.zip,
+    row.country,
+  ]
+    .map((part) => optionalString(part)?.trim())
+    .filter(Boolean);
+
+  return parts.length ? parts.join("\n") : "";
 }
 
 function mapAdminSettings(value: unknown): AdminSettings | undefined {
@@ -795,6 +944,13 @@ function mapPaymentMethod(value: unknown): PaymentMethod {
 function mapRentalStatus(value: unknown): RentalStatus {
   if (value === "active" || value === "expired" || value === "cancelled") return value;
   return "upcoming";
+}
+
+function isAdminNotification(notification: Notification) {
+  return notification.isAdmin ||
+    notification.type === "new_order_admin" ||
+    notification.type === "low_stock" ||
+    notification.type === "rental_expiring";
 }
 
 function mapUserRole(value: unknown): UserRole {
@@ -873,6 +1029,52 @@ function calculateRentalDays(startDate: string, endDate: string) {
 
 function asRecord(value: unknown): RawRecord {
   return value && typeof value === "object" ? value as RawRecord : {};
+}
+
+function mergeBase44Records(...groups: RawRecord[][]): RawRecord[] {
+  const seen = new Set<string>();
+  const merged: RawRecord[] = [];
+  groups.flat().forEach((record) => {
+    const id = stringValue(record.id);
+    const key = id || JSON.stringify(record);
+    if (seen.has(key)) return;
+    seen.add(key);
+    merged.push(record);
+  });
+  return merged;
+}
+
+async function safeEntityFilter(entity: EntityClient, filter: RawRecord, order?: string): Promise<RawRecord[]> {
+  try {
+    return await entity.filter(filter, order);
+  } catch {
+    return [];
+  }
+}
+
+async function safeEntityGet(entity: EntityClient, id: string): Promise<RawRecord | null> {
+  if (!entity.get) return null;
+  try {
+    return await entity.get(id);
+  } catch {
+    return null;
+  }
+}
+
+async function safeEntityList(entity: EntityClient, order?: string): Promise<RawRecord[]> {
+  try {
+    return await entity.list(order);
+  } catch {
+    return [];
+  }
+}
+
+function sameEmail(left: unknown, right: unknown) {
+  return normalizeEmail(left) === normalizeEmail(right);
+}
+
+function normalizeEmail(value: unknown) {
+  return stringValue(value).trim().toLowerCase();
 }
 
 function arrayValue(value: unknown): unknown[] {

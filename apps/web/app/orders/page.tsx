@@ -1,10 +1,10 @@
 import OrdersWorkspace from "@/components/OrdersWorkspace";
-import PublicShell from "@/components/PublicShell";
+import AppShell from "@/components/AppShell";
 
 export default function OrdersPage() {
   return (
-    <PublicShell>
+    <AppShell>
       <OrdersWorkspace />
-    </PublicShell>
+    </AppShell>
   );
 }

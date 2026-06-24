@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 export const V2_STORAGE_KEY = "harvest_v2_pages";
 export const V2_EVENT_NAME = "harvest_v2_changed";
@@ -29,7 +29,7 @@ export const v2PageConfigs: V2PageConfig[] = [
     ],
     functionalNotes: [
       "Discover Products, Learn More, View Rentals ve Contact CTA'ları mevcut legacy route'lara gider.",
-      "Mock login ve mock API adapter davranışı aynen kalır.",
+      "Auth gerekiyorsa Base44 session/proxy kullanılır; webde mock fallback kullanılmaz.",
       "Email veya sipariş yan etkisi eklenmez.",
     ],
     mobileNotes: [
@@ -89,7 +89,7 @@ export const v2PageConfigs: V2PageConfig[] = [
     functionalNotes: [
       "Sipariş oluşturma mevcut api.createOrder davranışıyla aynı kalır.",
       "Delivery address zorunluluğu ve orderdetails redirect davranışı korunur.",
-      "Mock/API adapter sınırları değişmez.",
+      "Web tarafı live proxy üzerinden çalışır; mock fallback yalnızca explicit local test flag'iyle açılır.",
     ],
     mobileNotes: [
       "Ürün kartları tek kolon akışa düşer.",
@@ -100,15 +100,15 @@ export const v2PageConfigs: V2PageConfig[] = [
     path: "/login",
     label: "Login",
     supported: true,
-    summary: "Mock login sayfası aynı dealer/admin auth davranışı korunarak modern V2 giriş ekranına taşınır.",
+    summary: "Login sayfası Base44 Google auth davranışı korunarak modern V2 giriş ekranına taşınır.",
     changes: [
-      "Mevcut mock dealer ve admin giriş butonları korunur.",
-      "LocalStorage mock auth ve redirect davranışı değiştirilmez.",
+      "Google ile giriş ana auth akışı olarak korunur.",
+      "Web mock login butonları varsayılan olarak kapalıdır; sadece explicit local test flag'iyle görünür.",
       "Login ekranı premium editorial public shell diline taşınır.",
     ],
     functionalNotes: [
-      "Gerçek Base44 auth eklenmez; mock login mevcut parity test davranışıyla kalır.",
-      "Dealer login next parametresine, admin login /admin route'una gider.",
+      "Base44 access token local session olarak tutulur ve proxy çağrılarına aktarılır.",
+      "Dealer login next parametresine, admin erişimi kullanıcının canlı role bilgisine göre admin route'larına gider.",
     ],
     mobileNotes: [
       "Login seçenekleri tek kolon, touch-friendly butonlarla çalışır.",
@@ -326,7 +326,7 @@ export const v2PageConfigs: V2PageConfig[] = [
     ],
     functionalNotes: [
       "Müşteri datası hâlâ api.getUsers üzerinden yüklenir.",
-      "Sipariş hesapları hâlâ api.getOrders ve customerEmail eşleşmesiyle yapılır.",
+      "Sipariş hesapları api.getOrders üzerinden yüklenir; canlı Base44 için created_by_id, eski mock veri için customerEmail eşleşmesi kullanılır.",
       "Yeni filtre, arama, export, CRM aksiyonu veya backend yan etkisi eklenmez.",
     ],
     mobileNotes: [
@@ -475,73 +475,20 @@ export function getV2Config(pathname: string | null | undefined) {
   };
 }
 
-function readV2State() {
-  if (typeof window === "undefined") return {};
-
-  try {
-    return JSON.parse(window.localStorage.getItem(V2_STORAGE_KEY) || "{}") as Record<string, boolean>;
-  } catch {
-    return {};
-  }
-}
-
 export function setV2Enabled(pathname: string, enabled: boolean) {
-  const path = normalizeV2Path(pathname);
-  const nextState = { ...readV2State(), [path]: enabled };
-  nextState[V2_GLOBAL_KEY] = areAllSupportedPathsEnabled(nextState);
-  window.localStorage.setItem(V2_STORAGE_KEY, JSON.stringify(nextState));
-  window.dispatchEvent(new CustomEvent(V2_EVENT_NAME, { detail: { path, enabled } }));
+  void pathname;
+  void enabled;
 }
 
 export function setAllV2Enabled(enabled: boolean) {
-  const nextState: Record<string, boolean> = { ...readV2State(), [V2_GLOBAL_KEY]: enabled };
-  v2PageConfigs
-    .filter((config) => config.supported)
-    .forEach((config) => {
-      nextState[config.path] = enabled;
-    });
-  window.localStorage.setItem(V2_STORAGE_KEY, JSON.stringify(nextState));
-  window.dispatchEvent(new CustomEvent(V2_EVENT_NAME, { detail: { path: V2_GLOBAL_KEY, enabled } }));
+  void enabled;
 }
 
 export function useAllV2Enabled() {
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    const sync = () => setEnabled(areAllSupportedPathsEnabled(readV2State()));
-    sync();
-    window.addEventListener(V2_EVENT_NAME, sync);
-    window.addEventListener("storage", sync);
-    return () => {
-      window.removeEventListener(V2_EVENT_NAME, sync);
-      window.removeEventListener("storage", sync);
-    };
-  }, []);
-
-  return enabled;
+  return true;
 }
 
 export function useV2Enabled(pathname: string) {
   const path = useMemo(() => normalizeV2Path(pathname), [pathname]);
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    const sync = () => {
-      const state = readV2State();
-      setEnabled(Boolean(state[path] ?? state[V2_GLOBAL_KEY]));
-    };
-    sync();
-    window.addEventListener(V2_EVENT_NAME, sync);
-    window.addEventListener("storage", sync);
-    return () => {
-      window.removeEventListener(V2_EVENT_NAME, sync);
-      window.removeEventListener("storage", sync);
-    };
-  }, [path]);
-
-  return enabled;
-}
-
-function areAllSupportedPathsEnabled(state: Record<string, boolean>) {
-  return v2PageConfigs.filter((config) => config.supported).every((config) => Boolean(state[config.path]));
+  return Boolean(getV2Config(path).supported);
 }

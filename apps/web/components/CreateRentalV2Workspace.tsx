@@ -3,29 +3,29 @@
 import MotionReveal from "@/components/MotionReveal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getHarvestApi } from "@/lib/harvest-api";
+import { Combobox } from "@/components/ui/combobox";
+import { DatePicker } from "@/components/ui/date-picker";
+import { useCreateRentalMutation, useCurrentUserQuery, useProductsQuery } from "@/lib/harvest-query";
 import type { Product } from "@/lib/domain";
 import { AlertCircle, ArrowLeft, CalendarDays, CheckCircle, FileText } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 
 const fallbackEmail = "dealer@example.com";
 
 export default function CreateRentalV2Workspace() {
-  const api = useMemo(() => getHarvestApi(), []);
+  const productsQuery = useProductsQuery();
+  const currentUserQuery = useCurrentUserQuery();
+  const createRentalMutation = useCreateRentalMutation();
   const router = useRouter();
-  const [products, setProducts] = useState<Product[]>([]);
   const [productId, setProductId] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [notes, setNotes] = useState("");
   const [message, setMessage] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    void api.getProducts().then(setProducts);
-  }, [api]);
+  const products = productsQuery.data ?? [];
+  const isSaving = createRentalMutation.isPending;
 
   const selectedProduct = products.find((product) => product.id === productId);
   const dateError = startDate && endDate && new Date(startDate) >= new Date(endDate) ? "End date must be after start date." : "";
@@ -35,11 +35,10 @@ export default function CreateRentalV2Workspace() {
   const submitRental = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedProduct || !startDate || !endDate || dateError) return;
-    setIsSaving(true);
     setMessage("");
     try {
-      const user = await api.getCurrentUser();
-      await api.createRental({
+      const user = currentUserQuery.data ?? await currentUserQuery.refetch().then((result) => result.data);
+      await createRentalMutation.mutateAsync({
         productId: selectedProduct.id,
         productName: selectedProduct.name,
         customerEmail: user?.email ?? fallbackEmail,
@@ -51,8 +50,6 @@ export default function CreateRentalV2Workspace() {
       router.push("/rentals");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Rental could not be created.");
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -100,24 +97,41 @@ export default function CreateRentalV2Workspace() {
               <form className="space-y-5" onSubmit={submitRental}>
                 <label className="block">
                   <span className="mb-2 block text-sm font-bold text-foreground/70">Product</span>
-                  <select className={fieldClassName} value={productId} onChange={(event) => setProductId(event.target.value)} required>
-                    <option value="">Choose a product to rent</option>
-                    {products.map((product) => (
-                      <option value={product.id} key={product.id}>
-                        {product.name} - GBP {product.price.toFixed(2)}/month
-                      </option>
-                    ))}
-                  </select>
+                  <Combobox
+                    id="rental-product"
+                    onChange={setProductId}
+                    options={products.map((product) => ({
+                      label: `${product.name} - GBP ${product.price.toFixed(2)}/month`,
+                      value: product.id,
+                    }))}
+                    placeholder="Choose a product to rent"
+                    searchPlaceholder="Search products..."
+                    value={productId}
+                  />
                 </label>
 
                 <div className="grid gap-5 sm:grid-cols-2">
                   <label className="block">
                     <span className="mb-2 block text-sm font-bold text-foreground/70">Start date</span>
-                    <input className={fieldClassName} type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} required />
+                    <DatePicker
+                      id="rental-start-date"
+                      onChange={(value) => {
+                        setStartDate(value);
+                        if (endDate && new Date(value) >= new Date(endDate)) setEndDate("");
+                      }}
+                      placeholder="Select start date"
+                      value={startDate}
+                    />
                   </label>
                   <label className="block">
                     <span className="mb-2 block text-sm font-bold text-foreground/70">End date</span>
-                    <input className={fieldClassName} type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} required />
+                    <DatePicker
+                      fromDate={startDate ? addDays(parseDateValue(startDate), 1) : undefined}
+                      id="rental-end-date"
+                      onChange={setEndDate}
+                      placeholder="Select end date"
+                      value={endDate}
+                    />
                   </label>
                 </div>
 
@@ -196,6 +210,17 @@ function SummaryLine({ label, value }: { label: string; value: string }) {
       <strong className="text-right text-foreground">{value}</strong>
     </div>
   );
+}
+
+function parseDateValue(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function addDays(date: Date, days: number) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
 }
 
 function CoffeeBranchAsset({ className }: { className?: string }) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { getHarvestApi } from "@/lib/harvest-api";
+import { getHarvestApi, hasHarvestSession } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
 import { Order, Product } from "@/lib/domain";
 import { ArrowRight, Award, Coffee, Leaf, Plus, ShoppingCart, Star, Zap } from "lucide-react";
@@ -20,7 +20,7 @@ export default function PublicHomeWorkspace() {
 
   useEffect(() => {
     const syncAuth = () => {
-      setIsAuthenticated(window.localStorage.getItem("harvest_mock_auth") === "logged-in");
+      setIsAuthenticated(hasHarvestSession());
     };
 
     syncAuth();
@@ -42,7 +42,13 @@ export default function PublicHomeWorkspace() {
       return;
     }
 
-    void api.getOrders().then(setOrders);
+    void api.getCurrentUser().then((user) => {
+      if (!user?.email) {
+        setOrders([]);
+        return;
+      }
+      void api.getMyOrders(user.email).then(setOrders);
+    });
   }, [api, isAuthenticated]);
 
   const getMostOrderedProducts = () => {

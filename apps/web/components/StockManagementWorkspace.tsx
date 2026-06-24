@@ -4,6 +4,7 @@ import StockManagementV2Workspace from "@/components/StockManagementV2Workspace"
 import { getHarvestApi } from "@/lib/harvest-api";
 import { getHarvestIntegrations } from "@/lib/integrations";
 import { useV2Enabled } from "@/lib/v2-pages";
+import { requestToast } from "@/components/ui/sonner";
 import type { Product } from "@/lib/domain";
 import { AlertTriangle, Edit2, Package, Save, TrendingDown, TrendingUp, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -73,11 +74,18 @@ function LegacyStockManagementWorkspace() {
       setEditingId(null);
       setEditValues({ stockQuantity: "0", lowStockThreshold: "10" });
       if (updated.stockQuantity <= updated.lowStockThreshold && updated.stockQuantity > 0) {
-        const notification = await integrations.sendLowStockEmail({
-          lowStockThreshold: updated.lowStockThreshold,
-          productName: updated.name,
-          stockQuantity: updated.stockQuantity,
-        });
+        const notification = await requestToast.promise(
+          integrations.sendLowStockEmail({
+            lowStockThreshold: updated.lowStockThreshold,
+            productName: updated.name,
+            stockQuantity: updated.stockQuantity,
+          }),
+          {
+            loading: "Sending low stock alert...",
+            success: "Low stock alert handled.",
+            error: (error) => error instanceof Error ? error.message : "Low stock alert failed.",
+          },
+        );
         setMessage(notification.message);
       }
     } catch (error) {
@@ -184,6 +192,7 @@ function LegacyStockManagementWorkspace() {
                             className="w-20 rounded-md border border-gray-200 px-2 py-2 text-center"
                             type="number"
                             min="0"
+                            disabled={savingId === product.id}
                             value={editValues.stockQuantity}
                             onChange={(event) => setEditValues({ ...editValues, stockQuantity: event.target.value })}
                           />
@@ -197,6 +206,7 @@ function LegacyStockManagementWorkspace() {
                             className="w-20 rounded-md border border-gray-200 px-2 py-2 text-center"
                             type="number"
                             min="0"
+                            disabled={savingId === product.id}
                             value={editValues.lowStockThreshold}
                             onChange={(event) => setEditValues({ ...editValues, lowStockThreshold: event.target.value })}
                           />
@@ -214,12 +224,12 @@ function LegacyStockManagementWorkspace() {
                               <button className="rounded-md bg-green-600 p-2 text-white hover:bg-green-700" disabled={savingId === product.id} onClick={() => void handleSave(product)} type="button" aria-label={`Save ${product.name}`}>
                                 <Save className="w-4 h-4" />
                               </button>
-                              <button className="rounded-md border border-gray-200 p-2 text-gray-700 hover:bg-gray-50" onClick={handleCancel} type="button" aria-label="Cancel">
+                              <button className="rounded-md border border-gray-200 p-2 text-gray-700 hover:bg-gray-50 disabled:opacity-60" disabled={savingId === product.id} onClick={handleCancel} type="button" aria-label="Cancel">
                                 <X className="w-4 h-4" />
                               </button>
                             </>
                           ) : (
-                            <button className="rounded-md border border-amber-300 p-2 text-amber-900 hover:bg-amber-50" onClick={() => handleEdit(product)} type="button" aria-label={`Edit ${product.name}`}>
+                            <button className="rounded-md border border-amber-300 p-2 text-amber-900 hover:bg-amber-50 disabled:opacity-60" disabled={savingId === product.id} onClick={() => handleEdit(product)} type="button" aria-label={`Edit ${product.name}`}>
                               <Edit2 className="w-4 h-4" />
                             </button>
                           )}

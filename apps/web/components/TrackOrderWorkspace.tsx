@@ -10,7 +10,7 @@ import TrackOrderV2Workspace from "./TrackOrderV2Workspace";
 
 const statusSteps: OrderStatus[] = ["preparing", "in_transit", "delivered"];
 
-export default function TrackOrderWorkspace() {
+export default function TrackOrderWorkspace({ variant = "public" }: { variant?: "public" | "app" }) {
   const v2Enabled = useV2Enabled("/trackorder");
   const api = useMemo(() => getHarvestApi(), []);
   const [orderNumber, setOrderNumber] = useState("");
@@ -32,9 +32,12 @@ export default function TrackOrderWorkspace() {
 
   const loadOrder = async (nextOrderNumber: string) => {
     setIsLoading(true);
-    const nextOrder = nextOrderNumber ? await api.getOrderByNumber(nextOrderNumber) : null;
-    setOrder(nextOrder);
-    setIsLoading(false);
+    try {
+      const nextOrder = nextOrderNumber ? await api.getOrderByNumber(nextOrderNumber) : null;
+      setOrder(nextOrder);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSearch = async (event: FormEvent<HTMLFormElement>) => {
@@ -44,7 +47,7 @@ export default function TrackOrderWorkspace() {
   };
 
   if (v2Enabled) {
-    return <TrackOrderV2Workspace />;
+    return <TrackOrderV2Workspace variant={variant} />;
   }
 
   return (

@@ -1,6 +1,7 @@
 "use client";
 
 import AdminCustomersV2Workspace from "@/components/AdminCustomersV2Workspace";
+import { Combobox } from "@/components/ui/combobox";
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
 import type { CustomerSegment, Order, User } from "@/lib/domain";
@@ -16,6 +17,11 @@ const segmentConfig: Record<CustomerSegment, { label: string; className: string 
   lapsed: { label: "Pasif", className: "bg-gray-100 text-gray-800" },
   at_risk: { label: "Risk Altında", className: "bg-red-100 text-red-800" },
 };
+
+const segmentComboboxOptions = segmentOptions.map((segment) => ({
+  label: segmentConfig[segment].label,
+  value: segment,
+}));
 
 type CustomerRow = User & {
   orderCount: number;
@@ -142,16 +148,15 @@ function LegacyAdminCustomersWorkspace() {
                         <span className="font-bold text-green-700">£{customer.totalSpent.toFixed(2)}</span>
                       </td>
                       <td className="p-4">
-                        <select
-                          className="mx-auto block w-40 rounded-md border border-amber-200 bg-white px-3 py-2 text-sm text-amber-900"
+                        <Combobox
+                          className="mx-auto h-10 w-40 rounded-md"
                           value={customer.customerSegment || "new"}
-                          onChange={(event) => void handleSegmentChange(customer.id, event.target.value as CustomerSegment)}
+                          onChange={(value) => void handleSegmentChange(customer.id, value as CustomerSegment)}
+                          options={segmentComboboxOptions}
+                          placeholder="Segment"
                           disabled={savingUserId === customer.id}
-                        >
-                          {segmentOptions.map((segment) => (
-                            <option value={segment} key={segment}>{segmentConfig[segment].label}</option>
-                          ))}
-                        </select>
+                          loading={savingUserId === customer.id}
+                        />
                       </td>
                     </tr>
                   ))}

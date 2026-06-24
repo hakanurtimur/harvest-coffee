@@ -1,7 +1,8 @@
 "use client";
 
-import { getHarvestApi } from "@/lib/harvest-api";
+import { getHarvestApi, hasHarvestSession, isHarvestMockAuthEnabled } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
+import LoadingState from "@/components/LoadingState";
 import { Rental } from "@/lib/domain";
 import { AlertTriangle, Calendar, CheckCircle, Clock, FileText } from "lucide-react";
 import Link from "next/link";
@@ -19,9 +20,8 @@ export default function RentalsWorkspace() {
     if (v2Enabled) return;
 
     const loadRentals = async () => {
-      const authenticated =
-        new URL(window.location.href).searchParams.get("mockAuth") === "1" ||
-        window.localStorage.getItem("harvest_mock_auth") === "logged-in";
+      const requestedMockAuth = new URL(window.location.href).searchParams.get("mockAuth") === "1";
+      const authenticated = hasHarvestSession() || (isHarvestMockAuthEnabled() && requestedMockAuth);
       if (!authenticated) {
         window.location.href = "/home";
         return;
@@ -43,7 +43,7 @@ export default function RentalsWorkspace() {
   }
 
   if (isCheckingAuth) {
-    return <div className="text-center py-12">Loading...</div>;
+    return <LoadingState description="Checking your rental workspace access." title="Loading rentals" />;
   }
 
   const activeRentals = rentals.filter((rental) => rental.status === "active").length;
@@ -90,7 +90,7 @@ export default function RentalsWorkspace() {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12">Loading rentals...</div>
+        <LoadingState description="Fetching active agreements and upcoming rental dates." minHeight="min-h-[260px]" title="Loading rentals" />
       ) : rentals.length === 0 ? (
         <section className="border-2 border-dashed border-amber-200 rounded-xl bg-white">
           <div className="p-12 text-center">

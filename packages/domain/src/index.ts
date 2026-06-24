@@ -70,8 +70,9 @@ export const OrderItemSchema = z.object({
 export const OrderSchema = z.object({
   id: z.string(),
   orderNumber: z.string(),
-  customerEmail: z.string().email(),
+  customerEmail: z.string().email().optional().or(z.literal("")),
   customerName: z.string().optional(),
+  createdById: z.string().optional().or(z.literal("")),
   items: z.array(OrderItemSchema),
   totalAmount: z.number().nonnegative(),
   status: OrderStatusSchema.default("preparing"),

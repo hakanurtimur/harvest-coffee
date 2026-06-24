@@ -1,12 +1,12 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
-import { getHarvestApi } from "@/lib/harvest-api";
-import type { Notification } from "@/lib/domain";
+import AdminPageHeader from "@/components/AdminPageHeader";
+import { AlertDialog } from "@/components/ui/alert-dialog";
+import { useCurrentUserQuery, useDeleteNotificationMutation, useMarkNotificationReadMutation, useNotificationsQuery } from "@/lib/harvest-query";
+import type { Notification, User } from "@/lib/domain";
 import { AlertTriangle, Bell, CheckCircle, Clock, Mail, Package, RefreshCw, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-
-const fallbackEmail = "dealer@example.com";
+import { useState } from "react";
 
 const notificationLabels: Record<Notification["type"], string> = {
   order_created: "Order created",
@@ -25,125 +25,138 @@ const notificationStyles: Record<Notification["type"], { border: string; icon: s
 };
 
 export default function NotificationsV2Workspace() {
-  const api = useMemo(() => getHarvestApi(), []);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const currentUserQuery = useCurrentUserQuery();
+  const notificationsQuery = useNotificationsQuery();
+  const markNotificationReadMutation = useMarkNotificationReadMutation();
+  const deleteNotificationMutation = useDeleteNotificationMutation();
   const [message, setMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-
-  const loadNotifications = async () => {
-    setIsLoading(true);
-    setMessage("");
-    const user = await api.getCurrentUser();
-    setNotifications(await api.getNotifications(user?.email ?? fallbackEmail));
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    void loadNotifications();
-  }, []);
+  const [notificationToDelete, setNotificationToDelete] = useState<Notification | null>(null);
+  const currentUser = currentUserQuery.data ?? null;
+  const notifications = [...(notificationsQuery.data ?? [])].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  const isLoading = notificationsQuery.isLoading;
 
   const markAsRead = async (id: string) => {
     setMessage("");
     try {
-      const updated = await api.markNotificationRead(id);
-      setNotifications((current) => current.map((notification) => (notification.id === id ? updated : notification)));
+      await markNotificationReadMutation.mutateAsync(id);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Notification could not be updated.");
     }
   };
 
-  const deleteNotification = async (id: string) => {
+  const deleteNotification = async () => {
+    if (!notificationToDelete) return;
     setMessage("");
     try {
-      await api.deleteNotification(id);
-      setNotifications((current) => current.filter((notification) => notification.id !== id));
+      await deleteNotificationMutation.mutateAsync(notificationToDelete.id);
+      setNotificationToDelete(null);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Notification could not be deleted.");
     }
   };
 
   const unreadCount = notifications.filter((notification) => !notification.read).length;
+  const isAdmin = currentUser?.role === "admin";
+  const urgentCount = notifications.filter((notification) => !notification.read && (notification.isAdmin || notification.type === "low_stock" || notification.type === "rental_expiring" || notification.type === "new_order_admin")).length;
 
   return (
-    <div className="space-y-5 text-[#3a2619]">
-      <section className="rounded-lg border border-[#e8daca] bg-[#fffdf8] p-5 shadow-sm shadow-[#8a461c]/5 md:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#b3692c]">Dealer account</p>
-            <h1 className="mt-2 text-3xl font-black tracking-normal text-[#3a2619] md:text-4xl">Notifications</h1>
-            <p className="mt-2 text-sm font-semibold text-[#8f7461]">{unreadCount} unread</p>
-          </div>
+    <div className="harvest-theme space-y-5 text-foreground">
+      <AdminPageHeader
+        eyebrow={isAdmin ? "Admin operations" : "Dealer account"}
+        title="Notifications"
+        description={`${unreadCount} unread${isAdmin ? ` · ${urgentCount} operational alerts` : ""}`}
+        actions={
           <button
-            className="inline-flex h-10 items-center gap-2 rounded-md border border-[#e3d1bd] bg-white px-4 text-sm font-black text-[#7c3514] transition-colors hover:bg-[#fff8ed] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-background px-4 text-sm font-black text-primary transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
             disabled={isLoading}
-            onClick={loadNotifications}
+            onClick={() => void notificationsQuery.refetch()}
             type="button"
           >
             <RefreshCw className="h-4 w-4" />
             Refresh
           </button>
-        </div>
-      </section>
+        }
+      />
 
       {message && (
-        <section className={`rounded-lg border px-4 py-3 text-sm font-bold ${message.includes("could not") || message.includes("disabled") ? "border-red-200 bg-red-50 text-red-800" : "border-green-200 bg-green-50 text-green-800"}`}>
+        <section className={`rounded-xl border px-4 py-3 text-sm font-bold ${message.includes("could not") || message.includes("disabled") ? "border-[hsl(var(--status-danger)/0.24)] bg-[hsl(var(--status-danger)/0.08)] text-[hsl(var(--status-danger))]" : "border-[hsl(var(--status-success)/0.24)] bg-[hsl(var(--status-success)/0.08)] text-[hsl(var(--status-success))]"}`}>
           {message}
         </section>
       )}
 
-      <section className="rounded-lg border border-[#e8daca] bg-[#fffdf8] p-5 shadow-sm shadow-[#8a461c]/5">
+      <section className="rounded-2xl border border-border bg-card p-5 shadow-sm shadow-primary/5">
         {isLoading ? (
-          <div className="h-48 animate-pulse rounded-lg bg-[#f3e8da]" />
+          <div className="h-48 animate-pulse rounded-lg bg-muted" />
         ) : notifications.length === 0 ? (
-          <div className="grid min-h-56 place-items-center rounded-lg bg-[#fff8ed] p-8 text-center">
+          <div className="grid min-h-56 place-items-center rounded-2xl bg-muted p-8 text-center">
             <div>
-              <Bell className="mx-auto mb-4 h-12 w-12 text-[#c8aa8f]" />
-              <p className="font-bold text-[#8f7461]">No notifications yet.</p>
+              <Bell className="mx-auto mb-4 h-12 w-12 text-primary/35" />
+              <p className="font-bold text-muted-foreground">No notifications yet.</p>
             </div>
           </div>
         ) : (
           <div className="grid gap-3">
             {notifications.map((notification) => (
               <NotificationCard
-                deleteNotification={deleteNotification}
+                isDeleting={deleteNotificationMutation.isPending && notificationToDelete?.id === notification.id}
                 key={notification.id}
                 markAsRead={markAsRead}
                 notification={notification}
+                requestDeleteNotification={setNotificationToDelete}
               />
             ))}
           </div>
         )}
       </section>
+
+      <AlertDialog
+        confirmLabel="Delete notification"
+        description={
+          notificationToDelete
+            ? `"${notificationToDelete.title}" will be permanently removed from this notification list.`
+            : "This notification will be permanently removed."
+        }
+        loading={deleteNotificationMutation.isPending}
+        onConfirm={() => void deleteNotification()}
+        onOpenChange={(open) => {
+          if (!open && !deleteNotificationMutation.isPending) setNotificationToDelete(null);
+        }}
+        open={Boolean(notificationToDelete)}
+        title="Delete notification?"
+        tone="destructive"
+      />
     </div>
   );
 }
 
 function NotificationCard({
-  deleteNotification,
+  isDeleting,
   markAsRead,
   notification,
+  requestDeleteNotification,
 }: {
-  deleteNotification: (id: string) => Promise<void>;
+  isDeleting: boolean;
   markAsRead: (id: string) => Promise<void>;
   notification: Notification;
+  requestDeleteNotification: (notification: Notification) => void;
 }) {
   const style = notificationStyles[notification.type] || notificationStyles.new_order_admin;
 
   return (
-    <Card className={`rounded-lg border p-4 shadow-none ${style.border} ${notification.read ? "bg-white" : style.surface}`}>
+    <Card className={`rounded-2xl border p-4 shadow-none ${style.border} ${notification.read ? "bg-card" : style.surface}`}>
       <div className="flex items-start gap-4">
-        <div className={`grid h-11 w-11 flex-shrink-0 place-items-center rounded-lg bg-white ${style.icon}`}>
+        <div className={`grid h-11 w-11 flex-shrink-0 place-items-center rounded-xl bg-card ${style.icon}`}>
           {getNotificationIcon(notification.type)}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className={`truncate text-base font-black ${notification.read ? "text-[#5c3a25]" : "text-[#3a2619]"}`}>{notification.title}</h2>
+                <h2 className={`truncate text-base font-black ${notification.read ? "text-foreground/80" : "text-foreground"}`}>{notification.title}</h2>
                 {!notification.read && <span className="h-2 w-2 flex-shrink-0 rounded-full bg-blue-600" />}
               </div>
-              <p className="mt-1 text-sm font-semibold leading-6 text-[#6d5444]">{notification.message}</p>
-              <p className="mt-2 text-xs font-bold text-[#9a8373]">
+              <p className="mt-1 text-sm font-semibold leading-6 text-muted-foreground">{notification.message}</p>
+              <p className="mt-2 text-xs font-bold text-muted-foreground/80">
                 {notificationLabels[notification.type]} · {formatDateTime(notification.createdAt)}
               </p>
             </div>
@@ -163,7 +176,8 @@ function NotificationCard({
           <button
             aria-label={`Delete ${notification.title}`}
             className="grid h-9 w-9 place-items-center rounded-md border border-red-200 bg-white text-red-700 transition-colors hover:bg-red-50"
-            onClick={() => void deleteNotification(notification.id)}
+            disabled={isDeleting}
+            onClick={() => requestDeleteNotification(notification)}
             type="button"
           >
             <Trash2 className="h-4 w-4" />

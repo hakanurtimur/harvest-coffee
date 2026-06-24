@@ -1,10 +1,10 @@
 import ProfileWorkspace from "@/components/ProfileWorkspace";
-import PublicShell from "@/components/PublicShell";
+import AppShell from "@/components/AppShell";
 
 export default function ProfilePage() {
   return (
-    <PublicShell>
+    <AppShell>
       <ProfileWorkspace />
-    </PublicShell>
+    </AppShell>
   );
 }

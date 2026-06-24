@@ -271,8 +271,9 @@ function getMonthlyOrderData(orders: Order[]): MonthlyReport[] {
 function getCustomerData(orders: Order[]): CustomerReport[] {
   const customers = new Map<string, CustomerReport>();
   orders.forEach((order) => {
-    const current = customers.get(order.customerEmail) ?? {
-      email: order.customerEmail,
+    const key = order.customerEmail || order.createdById || order.id;
+    const current = customers.get(key) ?? {
+      email: order.customerEmail || key,
       orders: 0,
       spent: 0,
       lastOrder: order.createdAt,
@@ -280,7 +281,7 @@ function getCustomerData(orders: Order[]): CustomerReport[] {
     current.orders += 1;
     current.spent += order.totalAmount;
     if (new Date(order.createdAt) > new Date(current.lastOrder)) current.lastOrder = order.createdAt;
-    customers.set(order.customerEmail, current);
+    customers.set(key, current);
   });
   return [...customers.values()].sort((a, b) => b.spent - a.spent).slice(0, 10);
 }

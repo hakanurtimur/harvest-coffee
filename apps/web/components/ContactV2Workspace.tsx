@@ -1,8 +1,10 @@
 "use client";
 
 import MotionReveal from "@/components/MotionReveal";
+import PublicSectionHeader from "@/components/PublicSectionHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { requestToast } from "@/components/ui/sonner";
 import { Clock, Mail, MapPin } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { FormEvent, useState } from "react";
@@ -15,7 +17,11 @@ export default function ContactV2Workspace() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSending(true);
-    await Promise.resolve();
+    await requestToast.promise(Promise.resolve(), {
+      loading: "Sending message...",
+      success: "Message sent.",
+      error: "Message could not be sent.",
+    });
     setSent(true);
     setSending(false);
     setForm({ name: "", email: "", subject: "", message: "" });
@@ -27,13 +33,14 @@ export default function ContactV2Workspace() {
         <CoffeeBranchAsset className="absolute -left-20 top-10 h-72 w-72 bg-primary/[0.09]" />
         <CoffeeBranchAsset className="absolute -right-16 top-8 h-72 w-72 -scale-x-100 bg-primary/[0.09]" />
         <MotionReveal className="relative mx-auto max-w-4xl">
-          <h1 className="font-display text-5xl font-black leading-tight text-foreground sm:text-6xl lg:text-7xl">Contact Us</h1>
-          <div className="mx-auto mt-6 flex w-44 items-center justify-center gap-3 text-primary/70">
-            <span className="h-px flex-1 bg-primary/35" />
-            <span className="grid h-5 w-5 place-items-center rounded-full border border-primary/40 text-[10px] font-black">H</span>
-            <span className="h-px flex-1 bg-primary/35" />
-          </div>
-          <p className="mx-auto mt-6 max-w-2xl text-lg font-medium leading-8 text-muted-foreground">Get in touch with our team</p>
+          <PublicSectionHeader
+            align="center"
+            className="max-w-4xl"
+            description="Get in touch with our team"
+            eyebrow="Premium B2B Coffee Supply"
+            size="page"
+            title="Contact Us"
+          />
         </MotionReveal>
       </section>
 
@@ -41,11 +48,13 @@ export default function ContactV2Workspace() {
         <CoffeeBranchAsset className="absolute -left-24 bottom-0 h-60 w-60 bg-primary/[0.07]" />
         <div className="relative mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.78fr_1.22fr]">
           <MotionReveal className="lg:pl-8" variant="left">
-            <h2 className="font-display text-4xl font-black leading-tight text-foreground">Get In Touch</h2>
-            <p className="mt-5 max-w-xl text-base font-medium leading-8 text-muted-foreground">
-              Whether you're interested in wholesale coffee supply, machine maintenance, or just want to learn more about what we
-              offer — we'd love to hear from you.
-            </p>
+            <PublicSectionHeader
+              className="max-w-xl"
+              description="Whether you're interested in wholesale coffee supply, machine maintenance, or just want to learn more about what we offer — we'd love to hear from you."
+              eyebrow="Contact"
+              size="section"
+              title="Get In Touch"
+            />
 
             <div className="mt-9 max-w-md divide-y divide-border/80">
               <ContactInfo icon={MapPin} title="Address">

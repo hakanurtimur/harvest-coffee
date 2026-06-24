@@ -1,9 +1,11 @@
 "use client";
 
 import NotificationsV2Workspace from "@/components/NotificationsV2Workspace";
+import LoadingState from "@/components/LoadingState";
+import { AlertDialog } from "@/components/ui/alert-dialog";
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
-import { Notification } from "@/lib/domain";
+import type { Notification, User } from "@/lib/domain";
 import { AlertTriangle, Bell, CheckCircle, Clock, Mail, Package, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -30,8 +32,11 @@ export default function NotificationsWorkspace() {
 function LegacyNotificationsWorkspace() {
   const api = useMemo(() => getHarvestApi(), []);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [notificationToDelete, setNotificationToDelete] = useState<Notification | null>(null);
+  const [deletingNotificationId, setDeletingNotificationId] = useState<string | null>(null);
 
   useEffect(() => {
     void loadNotifications();
@@ -40,9 +45,18 @@ function LegacyNotificationsWorkspace() {
   const loadNotifications = async () => {
     setIsLoading(true);
     setMessage("");
-    const user = await api.getCurrentUser();
-    setNotifications(await api.getNotifications(user?.email ?? fallbackEmail));
-    setIsLoading(false);
+    try {
+      const user = await api.getCurrentUser();
+      setCurrentUser(user);
+      const recipientEmail = user?.email ?? fallbackEmail;
+      const nextNotifications = await api.getNotifications(recipientEmail, { includeAdmin: user?.role === "admin" });
+      setNotifications([...nextNotifications].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Notifications could not be loaded.");
+      setNotifications([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const markAsRead = async (id: string) => {
@@ -55,23 +69,29 @@ function LegacyNotificationsWorkspace() {
     }
   };
 
-  const deleteNotification = async (id: string) => {
+  const deleteNotification = async () => {
+    if (!notificationToDelete) return;
     setMessage("");
+    setDeletingNotificationId(notificationToDelete.id);
     try {
-      await api.deleteNotification(id);
-      setNotifications((current) => current.filter((notification) => notification.id !== id));
+      await api.deleteNotification(notificationToDelete.id);
+      setNotifications((current) => current.filter((notification) => notification.id !== notificationToDelete.id));
+      setNotificationToDelete(null);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Notification could not be deleted.");
+    } finally {
+      setDeletingNotificationId(null);
     }
   };
 
   const unreadCount = notifications.filter((notification) => !notification.read).length;
+  const isAdmin = currentUser?.role === "admin";
 
   return (
     <>
       <header className="topbar">
         <div>
-          <p>Dealer account</p>
+          <p>{isAdmin ? "Admin operations" : "Dealer account"}</p>
           <h1>Notifications</h1>
         </div>
         <div className="topbar-actions">
@@ -87,7 +107,11 @@ function LegacyNotificationsWorkspace() {
 
       <section className="orders-section notifications-shell">
         {isLoading ? (
-          <div className="loading-panel">Loading notifications...</div>
+          <LoadingState
+            description="Fetching unread alerts and account notifications."
+            minHeight="min-h-[260px]"
+            title="Loading notifications"
+          />
         ) : notifications.length === 0 ? (
           <div className="empty-state">
             <Bell size={42} />
@@ -114,7 +138,12 @@ function LegacyNotificationsWorkspace() {
                       <CheckCircle size={16} />
                     </button>
                   )}
-                  <button className="icon-button danger" onClick={() => deleteNotification(notification.id)} aria-label={`Delete ${notification.title}`}>
+                  <button
+                    className="icon-button danger"
+                    disabled={deletingNotificationId === notification.id}
+                    onClick={() => setNotificationToDelete(notification)}
+                    aria-label={`Delete ${notification.title}`}
+                  >
                     <Trash2 size={16} />
                   </button>
                 </div>
@@ -123,6 +152,23 @@ function LegacyNotificationsWorkspace() {
           </div>
         )}
       </section>
+
+      <AlertDialog
+        confirmLabel="Delete notification"
+        description={
+          notificationToDelete
+            ? `"${notificationToDelete.title}" will be permanently removed from this notification list.`
+            : "This notification will be permanently removed."
+        }
+        loading={deletingNotificationId === notificationToDelete?.id}
+        onConfirm={() => void deleteNotification()}
+        onOpenChange={(open) => {
+          if (!open && !deletingNotificationId) setNotificationToDelete(null);
+        }}
+        open={Boolean(notificationToDelete)}
+        title="Delete notification?"
+        tone="destructive"
+      />
     </>
   );
 }

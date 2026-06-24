@@ -1,4 +1,4 @@
-import { createMockHarvestApi, HarvestApi } from "@harvest/api";
+import { createMockHarvestApi, createProxyHarvestApi, HarvestApi } from "@harvest/api";
 import {
   AdminSettings,
   CreateProductInput,
@@ -15,7 +15,9 @@ import {
 } from "@harvest/domain";
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-const api = createMockHarvestApi();
+let mobileAccessToken: string | null = null;
+
+const api = createMobileHarvestApi();
 const BOOT_DELAY_MS = 950;
 
 interface MobileState {
@@ -47,6 +49,7 @@ interface MobileState {
   deleteRental(id: string): Promise<void>;
   loginAdmin(): Promise<void>;
   loginDealer(): Promise<void>;
+  completeLiveLogin(accessToken: string): Promise<void>;
   logout(): void;
   markNotificationRead(id: string): Promise<void>;
   openCart(): void;
@@ -149,6 +152,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
   }, [currentUser]);
 
   const loginDealer = useCallback(async () => {
+    if (isProxyMode()) throw new Error("Use Google login when live proxy mode is enabled.");
     setLoadingData(true);
     try {
       const users = await api.getUsers();
@@ -173,7 +177,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
         api.getProducts(),
         api.getOrders(),
         api.getRentals(),
-        api.getNotifications(user.email),
+        api.getNotifications(user.email, { includeAdmin: true }),
         api.getUsers(),
       ]);
 
@@ -192,6 +196,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
   }, [currentUser]);
 
   const loginAdmin = useCallback(async () => {
+    if (isProxyMode()) throw new Error("Use Google login when live proxy mode is enabled.");
     setLoadingData(true);
     try {
       const nextUsers = await api.getUsers();
@@ -205,7 +210,23 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     }
   }, [refreshAdminData]);
 
+  const completeLiveLogin = useCallback(async (accessToken: string) => {
+    setLoadingData(true);
+    try {
+      mobileAccessToken = accessToken;
+      const user = await api.getCurrentUser();
+      if (!user) throw new Error("Base44 session could not be resolved.");
+      setCurrentUser(user);
+      setDeliveryAddress(user.addresses[0]?.address ?? "");
+      if (user.role === "admin") await refreshAdminData(user);
+      else await refreshDealerData(user);
+    } finally {
+      setLoadingData(false);
+    }
+  }, [refreshAdminData, refreshDealerData]);
+
   const logout = useCallback(() => {
+    mobileAccessToken = null;
     setCurrentUser(null);
     setCartOpen(false);
     setCartQuantities({});
@@ -354,6 +375,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     loadingData,
     loginAdmin,
     loginDealer,
+    completeLiveLogin,
     logout,
     markNotificationRead,
     notifications,
@@ -395,6 +417,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     loadingData,
     loginAdmin,
     loginDealer,
+    completeLiveLogin,
     logout,
     markNotificationRead,
     notifications,
@@ -416,6 +439,22 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
   ]);
 
   return <MobileStateContext.Provider value={value}>{children}</MobileStateContext.Provider>;
+}
+
+function createMobileHarvestApi() {
+  const endpoint = process.env.EXPO_PUBLIC_HARVEST_API_URL;
+  if (!endpoint) return createMockHarvestApi();
+  return createProxyHarvestApi({
+    endpoint,
+    getAccessToken: () => mobileAccessToken,
+    setAccessToken: (token) => {
+      mobileAccessToken = token;
+    },
+  });
+}
+
+function isProxyMode() {
+  return Boolean(process.env.EXPO_PUBLIC_HARVEST_API_URL);
 }
 
 export function useMobileState() {

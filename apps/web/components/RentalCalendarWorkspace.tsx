@@ -1,6 +1,7 @@
 "use client";
 
 import RentalCalendarV2Workspace from "@/components/RentalCalendarV2Workspace";
+import LoadingState from "@/components/LoadingState";
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
 import { Rental } from "@/lib/domain";
@@ -38,11 +39,12 @@ function LegacyRentalCalendarWorkspace() {
   const calendarDays = getCalendarDays(currentMonth);
   const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
   const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
-  const totalActiveRentals = rentals.filter((rental) => rental.status === "active").length;
-  const totalUpcomingRentals = rentals.filter((rental) => rental.status === "upcoming").length;
+  const todayKey = toDateKey(new Date());
+  const totalActiveRentals = rentals.filter((rental) => getRentalPhase(rental, todayKey) === "active").length;
+  const totalUpcomingRentals = rentals.filter((rental) => getRentalPhase(rental, todayKey) === "upcoming").length;
   const expiringThisMonth = rentals.filter((rental) => {
-    const endDate = new Date(rental.endDate);
-    return rental.status === "active" && endDate >= monthStart && endDate <= monthEnd;
+    const endDate = parseDateOnly(rental.endDate);
+    return rental.status !== "cancelled" && endDate >= monthStart && endDate <= monthEnd;
   }).length;
 
   const navigateMonth = (direction: number) => {
@@ -69,7 +71,11 @@ function LegacyRentalCalendarWorkspace() {
 
       {isLoading ? (
         <section className="orders-section">
-          <div className="loading-panel">Loading rental calendar...</div>
+          <LoadingState
+            description="Fetching rental agreements and calendar availability."
+            minHeight="min-h-[260px]"
+            title="Loading rental calendar"
+          />
         </section>
       ) : (
         <>
@@ -92,9 +98,9 @@ function LegacyRentalCalendarWorkspace() {
                 const dateKey = toDateKey(day);
                 const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
                 const isToday = toDateKey(day) === toDateKey(new Date());
-                const activeRentals = getActiveRentalsForDay(rentals, dateKey);
-                const upcomingRentals = rentals.filter((rental) => rental.startDate === dateKey && rental.status === "upcoming");
-                const expiringRentals = rentals.filter((rental) => rental.endDate === dateKey && rental.status === "active");
+                const activeRentals = getActiveRentalsForDay(rentals, dateKey, todayKey);
+                const upcomingRentals = rentals.filter((rental) => dateKeyOf(rental.startDate) === dateKey && getRentalPhase(rental, todayKey) === "upcoming");
+                const expiringRentals = rentals.filter((rental) => dateKeyOf(rental.endDate) === dateKey && rental.status !== "cancelled");
 
                 return (
                   <article className={`calendar-day ${isCurrentMonth ? "" : "muted"} ${isToday ? "today" : ""}`} key={dateKey}>
@@ -156,8 +162,28 @@ function getCalendarDays(month: Date) {
   return days;
 }
 
-function getActiveRentalsForDay(rentals: Rental[], dateKey: string) {
-  return rentals.filter((rental) => dateKey >= rental.startDate && dateKey <= rental.endDate && rental.status === "active");
+function getActiveRentalsForDay(rentals: Rental[], dateKey: string, todayKey: string) {
+  return rentals.filter((rental) => dateKey >= dateKeyOf(rental.startDate) && dateKey <= dateKeyOf(rental.endDate) && getRentalPhase(rental, todayKey) === "active");
+}
+
+function getRentalPhase(rental: Rental, todayKey: string): "active" | "upcoming" | "expired" | "cancelled" {
+  if (rental.status === "cancelled") return "cancelled";
+  const startDate = dateKeyOf(rental.startDate);
+  const endDate = dateKeyOf(rental.endDate);
+  if (todayKey < startDate) return "upcoming";
+  if (todayKey > endDate || rental.status === "expired") return "expired";
+  return "active";
+}
+
+function dateKeyOf(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+  return toDateKey(parseDateOnly(value));
+}
+
+function parseDateOnly(value: string) {
+  const key = /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : value;
+  const date = new Date(`${key}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? new Date() : date;
 }
 
 function toDateKey(date: Date) {

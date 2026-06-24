@@ -4,7 +4,8 @@ import MotionReveal from "@/components/MotionReveal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getHarvestApi } from "@/lib/harvest-api";
+import { Combobox } from "@/components/ui/combobox";
+import { useCurrentUserQuery, useOrderQuery, useUpdateOrderMutation } from "@/lib/harvest-query";
 import type { Order, OrderStatus, PaymentMethod, PaymentStatus } from "@/lib/domain";
 import { orderStatusLabels, paymentMethodLabels, paymentStatusLabels } from "@/lib/domain";
 import {
@@ -23,65 +24,56 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
+
+const paymentMethodOptions = Object.entries(paymentMethodLabels).map(([value, label]) => ({ label, value }));
 
 export default function OrderDetailV2Workspace({ orderId }: { orderId: string }) {
-  const api = useMemo(() => getHarvestApi(), []);
-  const [order, setOrder] = useState<Order | null>(null);
+  const currentUserQuery = useCurrentUserQuery();
+  const orderQuery = useOrderQuery(orderId);
+  const updateOrderMutation = useUpdateOrderMutation();
   const [message, setMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const loadOrder = async () => {
-    setIsLoading(true);
-    setMessage("");
-    setOrder(await api.getOrder(orderId));
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    void loadOrder();
-  }, [orderId]);
+  const order = orderQuery.data ?? null;
+  const isLoading = orderQuery.isLoading;
+  const loadError = orderQuery.error instanceof Error ? orderQuery.error.message : "";
+  const isSaving = updateOrderMutation.isPending;
+  const isAdmin = currentUserQuery.data?.role === "admin";
+  const backHref = isAdmin ? "/adminorders" : "/orders";
+  const backLabel = isAdmin ? "Back to admin orders" : "Back to orders";
 
   const updatePayment = async (patch: Pick<Order, "paymentMethod"> | Pick<Order, "paymentStatus">) => {
     if (!order) return;
-    setIsSaving(true);
     setMessage("");
     try {
-      const updated = await api.updateOrder(order.id, patch);
-      setOrder(updated);
+      const updated = await updateOrderMutation.mutateAsync({ id: order.id, input: patch });
       setMessage(`Order #${updated.orderNumber} updated.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Order could not be updated.");
-    } finally {
-      setIsSaving(false);
     }
   };
 
   return (
-    <div className="harvest-theme overflow-hidden bg-background text-foreground">
-      <section className="relative px-5 pb-12 pt-32 sm:px-8 lg:px-10">
-        <CoffeeBranchAsset className="absolute -left-20 top-10 h-72 w-72 bg-primary/[0.09]" />
-        <CoffeeBranchAsset className="absolute -right-16 top-8 h-72 w-72 -scale-x-100 bg-primary/[0.09]" />
-        <MotionReveal className="relative mx-auto max-w-7xl">
+    <div className="harvest-theme space-y-5 text-foreground">
+      <section className="rounded-2xl border border-border bg-card p-5 shadow-sm shadow-primary/5">
+        <MotionReveal>
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="mb-5 text-xs font-black uppercase tracking-[0.34em] text-primary">Dealer Order</p>
-              <h1 className="font-display max-w-3xl text-5xl font-black leading-tight text-foreground sm:text-6xl">
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-primary">{isAdmin ? "Admin" : "Dealer"}</p>
+              <h1 className="mt-3 text-4xl font-black leading-tight text-foreground">
                 {order ? `Order #${order.orderNumber}` : "Order Details"}
               </h1>
-              <p className="mt-5 max-w-2xl text-lg font-medium leading-8 text-muted-foreground">
-                Review order items, delivery notes and payment information.
+              <p className="mt-2 max-w-2xl text-base font-semibold leading-7 text-muted-foreground">
+                {isAdmin ? "Review customer order details, delivery updates and payment information." : "Review order items, delivery notes and payment information."}
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
               <Button asChildShim className="h-11 rounded-md bg-transparent px-5 text-primary hover:bg-secondary" variant="outline">
-                <Link href="/orders">
+                <Link href={backHref}>
                   <ArrowLeft className="h-4 w-4" />
-                  Back to orders
+                  {backLabel}
                 </Link>
               </Button>
-              <Button className="h-11 rounded-md px-5" disabled={isLoading} onClick={loadOrder} variant="default">
+              <Button className="h-11 rounded-md px-5" disabled={isLoading} onClick={() => void orderQuery.refetch()} variant="default">
                 <RefreshCw className="h-4 w-4" />
                 Refresh
               </Button>
@@ -90,9 +82,8 @@ export default function OrderDetailV2Workspace({ orderId }: { orderId: string })
         </MotionReveal>
       </section>
 
-      <section className="relative bg-card px-5 py-10 sm:px-8 lg:px-10 lg:py-14">
-        <CoffeeBranchAsset className="absolute -left-24 bottom-0 h-60 w-60 bg-primary/[0.07]" />
-        <div className="relative mx-auto max-w-7xl">
+      <section>
+        <div>
           {message && (
             <MotionReveal>
               <div
@@ -116,10 +107,10 @@ export default function OrderDetailV2Workspace({ orderId }: { orderId: string })
             <MotionReveal className="mx-auto max-w-2xl" variant="scale">
               <Card className="rounded-lg border-2 border-dashed border-primary/20 bg-background/72 p-10 text-center shadow-none sm:p-12">
                 <Package className="mx-auto mb-5 h-16 w-16 text-primary/35" />
-                <h2 className="font-display text-2xl font-black text-foreground">Order not found</h2>
-                <p className="mt-3 text-base font-medium text-muted-foreground">We could not find this order in the current mock data.</p>
+                <h2 className="font-display text-2xl font-black text-foreground">Order unavailable</h2>
+                <p className="mt-3 text-base font-medium text-muted-foreground">{loadError || "We could not find this order."}</p>
                 <Button asChildShim className="mt-6 h-11 rounded-md px-5">
-                  <Link href="/orders">Back to orders</Link>
+                  <Link href={backHref}>{backLabel}</Link>
                 </Button>
               </Card>
             </MotionReveal>
@@ -193,18 +184,15 @@ export default function OrderDetailV2Workspace({ orderId }: { orderId: string })
 
                   <label className="block">
                     <span className="text-sm font-bold text-foreground">Payment Method</span>
-                    <select
-                      className="mt-2 h-12 w-full rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground outline-none transition-colors focus:border-primary"
+                    <Combobox
+                      className="mt-2 h-12 rounded-md"
                       disabled={isSaving}
-                      onChange={(event) => updatePayment({ paymentMethod: event.target.value as PaymentMethod })}
+                      loading={isSaving}
+                      onChange={(value) => updatePayment({ paymentMethod: value as PaymentMethod })}
+                      options={paymentMethodOptions}
+                      placeholder="Payment method"
                       value={order.paymentMethod}
-                    >
-                      {Object.entries(paymentMethodLabels).map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </label>
 
                   <div className="mt-6 rounded-lg border border-border bg-secondary/55 p-4">
@@ -283,25 +271,5 @@ function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
       <Icon className="h-4 w-4" />
       {paymentStatusLabels[status]}
     </Badge>
-  );
-}
-
-function CoffeeBranchAsset({ className }: { className?: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={className}
-      style={{
-        display: "block",
-        maskImage: "url('/assets/coffee-branch-clean.svg')",
-        maskPosition: "center",
-        maskRepeat: "no-repeat",
-        maskSize: "contain",
-        WebkitMaskImage: "url('/assets/coffee-branch-clean.svg')",
-        WebkitMaskPosition: "center",
-        WebkitMaskRepeat: "no-repeat",
-        WebkitMaskSize: "contain",
-      }}
-    />
   );
 }

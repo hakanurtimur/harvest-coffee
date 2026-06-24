@@ -1,14 +1,16 @@
 "use client";
 
 import MotionReveal from "@/components/MotionReveal";
+import LoadingState from "@/components/LoadingState";
+import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getHarvestApi } from "@/lib/harvest-api";
+import { clearHarvestSession } from "@/lib/harvest-api";
+import { useCurrentUserQuery, useDeleteCurrentUserMutation, useMyOrdersQuery, useUpdateCurrentUserMutation } from "@/lib/harvest-query";
 import type { Address, CustomerSegment, Order, OrderStatus, PaymentStatus, User } from "@/lib/domain";
 import {
   Activity,
-  AlertTriangle,
   Calendar,
   CheckCircle,
   Clock,
@@ -23,11 +25,10 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { FormEvent, useState } from "react";
 
 type ProfileTab = "info" | "addresses" | "orders" | "activity";
-
-const fallbackEmail = "dealer@example.com";
 
 const tabs: Array<{ id: ProfileTab; label: string }> = [
   { id: "info", label: "Account Info" },
@@ -45,30 +46,22 @@ const segmentConfig: Record<CustomerSegment, { label: string; className: string 
 };
 
 export default function ProfileV2Workspace() {
-  const api = useMemo(() => getHarvestApi(), []);
-  const [user, setUser] = useState<User | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const currentUserQuery = useCurrentUserQuery();
+  const ordersQuery = useMyOrdersQuery();
+  const updateCurrentUserMutation = useUpdateCurrentUserMutation();
+  const deleteCurrentUserMutation = useDeleteCurrentUserMutation();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<ProfileTab>("info");
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [addressForm, setAddressForm] = useState<Address>({ title: "", address: "" });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [addressIndexToDelete, setAddressIndexToDelete] = useState<number | null>(null);
   const [message, setMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    const loadProfile = async () => {
-      setIsLoading(true);
-      const currentUser = await api.getCurrentUser();
-      setUser(currentUser);
-      const nextOrders = await api.getMyOrders(currentUser?.email ?? fallbackEmail);
-      setOrders([...nextOrders].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)));
-      setIsLoading(false);
-    };
-
-    void loadProfile();
-  }, [api]);
+  const user = currentUserQuery.data ?? null;
+  const orders = ordersQuery.data ?? [];
+  const isLoading = currentUserQuery.isLoading || ordersQuery.isLoading;
+  const isSaving = updateCurrentUserMutation.isPending || deleteCurrentUserMutation.isPending;
 
   const totalOrders = orders.length;
   const totalSpent = orders.reduce((sum, order) => sum + order.totalAmount, 0);
@@ -90,18 +83,16 @@ export default function ProfileV2Workspace() {
     if (editingIndex !== null) addresses[editingIndex] = addressForm;
     else addresses.push(addressForm);
 
-    setIsSaving(true);
     setMessage("");
     try {
-      const updatedUser = await api.updateCurrentUser({ addresses });
-      setUser(updatedUser);
+      const actionLabel = editingIndex !== null ? "updated" : "saved";
+      await updateCurrentUserMutation.mutateAsync({ addresses });
       setShowAddressForm(false);
       setEditingIndex(null);
       setAddressForm({ title: "", address: "" });
+      setMessage(`Address ${actionLabel}.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Profile could not be updated.");
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -112,20 +103,18 @@ export default function ProfileV2Workspace() {
     setShowAddressForm(true);
   };
 
-  const handleDeleteAddress = async (index: number) => {
-    if (!user || !window.confirm("Bu adresi silmek istediğinizden emin misiniz?")) return;
+  const handleDeleteAddress = async () => {
+    if (!user || addressIndexToDelete === null) return;
 
-    setIsSaving(true);
     setMessage("");
     try {
       const addresses = [...(user.addresses || [])];
-      addresses.splice(index, 1);
-      const updatedUser = await api.updateCurrentUser({ addresses });
-      setUser(updatedUser);
+      addresses.splice(addressIndexToDelete, 1);
+      await updateCurrentUserMutation.mutateAsync({ addresses });
+      setMessage("Address deleted.");
+      setAddressIndexToDelete(null);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Profile could not be updated.");
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -135,41 +124,61 @@ export default function ProfileV2Workspace() {
     setAddressForm({ title: "", address: "" });
   };
 
-  const handleDeleteAccount = () => {
-    setDeleteDialogOpen(false);
-    setMessage("Account deletion is mocked in this migration step because the legacy action deletes the Base44 user and logs out.");
+  const handleDeleteAccount = async () => {
+    setMessage("");
+    try {
+      await deleteCurrentUserMutation.mutateAsync();
+      clearHarvestSession();
+      setDeleteDialogOpen(false);
+      router.push("/login");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Account could not be deleted.");
+      setDeleteDialogOpen(false);
+    }
   };
 
   if (isLoading || !user) {
     return (
-      <div className="harvest-theme bg-background px-5 py-32 text-center text-foreground">
-        <p className="font-medium text-muted-foreground">Yükleniyor...</p>
+      <div className="harvest-theme bg-background px-5 py-24 text-foreground sm:px-8 lg:px-10">
+        <LoadingState
+          description="Fetching your account details, saved addresses, and recent orders."
+          title="Loading profile"
+        />
       </div>
     );
   }
 
   return (
     <div className="harvest-theme overflow-hidden bg-background text-foreground">
-      <section className="relative px-5 pb-12 pt-32 sm:px-8 lg:px-10">
-        <CoffeeBranchAsset className="absolute -left-20 top-10 h-72 w-72 bg-primary/[0.09]" />
-        <CoffeeBranchAsset className="absolute -right-16 top-8 h-72 w-72 -scale-x-100 bg-primary/[0.09]" />
-        <div className="relative mx-auto flex max-w-7xl flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <MotionReveal>
-            <p className="mb-5 text-xs font-black uppercase tracking-[0.34em] text-primary">Dealer Account</p>
-            <h1 className="font-display max-w-3xl text-5xl font-black leading-tight text-foreground sm:text-6xl">Profile</h1>
-            <p className="mt-5 max-w-2xl text-lg font-medium leading-8 text-muted-foreground">
-              Manage your account information and history
-            </p>
-          </MotionReveal>
-          {user.customerSegment && (
-            <MotionReveal delay={100} variant="right">
-              <SegmentBadge segment={user.customerSegment} />
-            </MotionReveal>
-          )}
-        </div>
+      <section className="relative px-5 pb-6 pt-0 sm:px-8 lg:px-10">
+        <MotionReveal className="relative mx-auto max-w-7xl">
+          <Card className="overflow-hidden rounded-2xl border-border bg-card p-5 shadow-sm shadow-primary/5 sm:p-6">
+            <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <CoffeeBranchAsset className="pointer-events-none absolute -right-16 -top-24 h-56 w-56 -scale-x-100 bg-primary/[0.045]" />
+              <div className="relative">
+                <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary">Dealer account</p>
+                <h1 className="mt-2 text-3xl font-black tracking-normal text-foreground sm:text-4xl">Profile</h1>
+                <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-muted-foreground">
+                  Manage account details, delivery addresses, order history, and activity from your dealer workspace.
+                </p>
+              </div>
+              <div className="relative grid gap-3 sm:grid-cols-3 lg:min-w-[520px]">
+                <ProfileMetric label="Orders" value={String(totalOrders)} />
+                <ProfileMetric label="Addresses" value={String(user.addresses?.length ?? 0)} />
+                <ProfileMetric label="Spending" value={`£${totalSpent.toFixed(2)}`} />
+              </div>
+            </div>
+            {user.customerSegment && (
+              <div className="relative mt-5 flex items-center gap-2 border-t border-border pt-4">
+                <span className="text-xs font-black uppercase tracking-[0.16em] text-muted-foreground">Segment</span>
+                <SegmentBadge segment={user.customerSegment} />
+              </div>
+            )}
+          </Card>
+        </MotionReveal>
       </section>
 
-      <section className="relative bg-card px-5 py-10 sm:px-8 lg:px-10 lg:py-14">
+      <section className="relative bg-background px-5 py-6 sm:px-8 lg:px-10 lg:py-8">
         <CoffeeBranchAsset className="absolute -left-24 bottom-0 h-60 w-60 bg-primary/[0.07]" />
         <div className="relative mx-auto max-w-7xl">
           {message && (
@@ -288,7 +297,7 @@ export default function ProfileV2Workspace() {
                               <button className="rounded-md p-2 text-blue-600 hover:bg-blue-50" onClick={() => handleEditAddress(index)} type="button" aria-label={`Edit ${address.title}`}>
                                 <Edit2 className="h-4 w-4" />
                               </button>
-                              <button className="rounded-md p-2 text-destructive hover:bg-destructive/10" onClick={() => void handleDeleteAddress(index)} type="button" aria-label={`Delete ${address.title}`}>
+                              <button className="rounded-md p-2 text-destructive hover:bg-destructive/10" onClick={() => setAddressIndexToDelete(index)} type="button" aria-label={`Delete ${address.title}`}>
                                 <Trash2 className="h-4 w-4" />
                               </button>
                             </div>
@@ -357,33 +366,40 @@ export default function ProfileV2Workspace() {
         </div>
       </section>
 
-      {deleteDialogOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-sidebar/70 px-4 backdrop-blur-sm">
-          <Card className="w-full max-w-lg rounded-lg border-border bg-card p-6 shadow-2xl shadow-sidebar/30">
-            <div className="mb-3 flex items-center gap-3">
-              <AlertTriangle className="h-6 w-6 text-destructive" />
-              <h2 className="font-display text-2xl font-black text-foreground">Delete Account</h2>
-            </div>
-            <div className="text-sm font-medium leading-7 text-muted-foreground">
-              This action is permanent. Your account will be deleted and the following data will be removed:
-              <ul className="mt-3 list-inside list-disc space-y-1">
-                <li>All personal information</li>
-                <li>Order history</li>
-                <li>Saved addresses</li>
-                <li>Account settings</li>
-              </ul>
-            </div>
-            <div className="mt-6 flex justify-end gap-3">
-              <Button className="rounded-md" onClick={() => setDeleteDialogOpen(false)} type="button" variant="outline">
-                Cancel
-              </Button>
-              <Button className="rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteAccount} type="button">
-                Delete Account
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
+      <AlertDialog
+        confirmLabel="Delete address"
+        description={
+          addressIndexToDelete !== null && user.addresses?.[addressIndexToDelete]
+            ? `This will remove "${user.addresses[addressIndexToDelete].title}" from your saved delivery addresses.`
+            : "This delivery address will be removed."
+        }
+        loading={isSaving}
+        onConfirm={() => void handleDeleteAddress()}
+        onOpenChange={(open) => {
+          if (!open) setAddressIndexToDelete(null);
+        }}
+        open={addressIndexToDelete !== null}
+        title="Delete address?"
+        tone="destructive"
+      />
+
+      <AlertDialog
+        confirmLabel="Delete account"
+        description="This action is permanent. Your account and related profile information will be deleted."
+        loading={isSaving}
+        onConfirm={() => void handleDeleteAccount()}
+        onOpenChange={setDeleteDialogOpen}
+        open={deleteDialogOpen}
+        title="Delete account?"
+        tone="destructive"
+      >
+        <ul className="list-inside list-disc space-y-1 text-sm font-semibold leading-6 text-muted-foreground">
+          <li>All personal information</li>
+          <li>Order history</li>
+          <li>Saved addresses</li>
+          <li>Account settings</li>
+        </ul>
+      </AlertDialog>
     </div>
   );
 }
@@ -410,6 +426,15 @@ function ProfileField({ label, value, valueClassName = "", wide }: { label: stri
     <div className={wide ? "md:col-span-2" : ""}>
       <p className="text-sm font-bold text-muted-foreground">{label}</p>
       <p className={`mt-1 text-lg font-black text-foreground ${valueClassName}`}>{value}</p>
+    </div>
+  );
+}
+
+function ProfileMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-background/80 p-4">
+      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+      <p className="mt-2 text-2xl font-black tracking-normal text-foreground">{value}</p>
     </div>
   );
 }

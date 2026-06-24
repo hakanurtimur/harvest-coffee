@@ -4,6 +4,9 @@ import AdminProductsV2Workspace from "@/components/AdminProductsV2Workspace";
 import { getHarvestApi } from "@/lib/harvest-api";
 import { getHarvestIntegrations } from "@/lib/integrations";
 import { useV2Enabled } from "@/lib/v2-pages";
+import { requestToast } from "@/components/ui/sonner";
+import { AlertDialog } from "@/components/ui/alert-dialog";
+import { Combobox } from "@/components/ui/combobox";
 import type { Product } from "@/lib/domain";
 import { Edit2, Loader2, Package, Plus, Save, Sparkles, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -33,12 +36,14 @@ const emptyForm: ProductForm = {
 };
 
 const categories: Product["category"][] = ["Single Origin", "Blend", "Decaf", "Specialty", "Cups & Lids", "Cleaning & Maintenance", "Accessories"];
+const categoryOptions = categories.map((category) => ({ label: category, value: category }));
 
 const stockStatusConfig = {
   in_stock: { label: "In Stock", className: "bg-green-100 text-green-800" },
   low_stock: { label: "Low Stock", className: "bg-yellow-100 text-yellow-800" },
   out_of_stock: { label: "Out of Stock", className: "bg-red-100 text-red-800" },
 } satisfies Record<Product["stockStatus"], { label: string; className: string }>;
+const stockStatusOptions = Object.entries(stockStatusConfig).map(([value, config]) => ({ label: config.label, value }));
 
 export default function AdminProductsWorkspace() {
   const v2Enabled = useV2Enabled("/adminproducts");
@@ -61,6 +66,7 @@ function LegacyAdminProductsWorkspace() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   useEffect(() => {
     void loadProducts();
@@ -131,13 +137,14 @@ function LegacyAdminProductsWorkspace() {
     setAiLoading(false);
   };
 
-  const handleDelete = async (product: Product) => {
-    if (!window.confirm("Are you sure you want to delete this product?")) return;
+  const handleDelete = async () => {
+    if (!productToDelete) return;
     setMessage("");
     try {
-      await api.deleteProduct(product.id);
-      setProducts((current) => current.filter((item) => item.id !== product.id));
+      await api.deleteProduct(productToDelete.id);
+      setProducts((current) => current.filter((item) => item.id !== productToDelete.id));
       setMessage("Product deleted.");
+      setProductToDelete(null);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Product could not be deleted.");
     }
@@ -145,17 +152,24 @@ function LegacyAdminProductsWorkspace() {
 
   const handleGenerateAI = async () => {
     if (!form.name) {
-      window.alert("Please enter a product name first.");
+      requestToast.error({ title: "Please enter a product name first." });
       return;
     }
 
     setAiLoading(true);
     try {
-      const generated = await integrations.generateProductDescription({
-        category: form.category,
-        productName: form.name,
-        weight: form.weight,
-      });
+      const generated = await requestToast.promise(
+        integrations.generateProductDescription({
+          category: form.category,
+          productName: form.name,
+          weight: form.weight,
+        }),
+        {
+          loading: "Generating description...",
+          success: "Description generated.",
+          error: (error) => error instanceof Error ? error.message : "Description could not be generated.",
+        },
+      );
       setForm((current) => ({
         ...current,
         description: generated.description,
@@ -198,18 +212,12 @@ function LegacyAdminProductsWorkspace() {
               <TextInput label="Price (£) *" type="number" value={form.price} onChange={(value) => setForm({ ...form, price: value })} placeholder="10.00" required />
               <label className="block">
                 <span className="text-sm font-medium text-gray-700 mb-1 block">Kategori</span>
-                <select className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-gray-900" value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value as Product["category"] })}>
-                  {categories.map((category) => <option key={category} value={category}>{category}</option>)}
-                </select>
+                <Combobox disabled={isSaving} loading={isSaving} value={form.category} onChange={(value) => setForm({ ...form, category: value as Product["category"] })} options={categoryOptions} placeholder="Kategori" />
               </label>
               <TextInput label="Size / Weight" value={form.weight} onChange={(value) => setForm({ ...form, weight: value })} placeholder="e.g., 12oz, 900g, 1000pcs" />
               <label className="block">
                 <span className="text-sm font-medium text-gray-700 mb-1 block">Stock Status</span>
-                <select className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-gray-900" value={form.stockStatus} onChange={(event) => setForm({ ...form, stockStatus: event.target.value as Product["stockStatus"] })}>
-                  <option value="in_stock">In Stock</option>
-                  <option value="low_stock">Low Stock</option>
-                  <option value="out_of_stock">Out of Stock</option>
-                </select>
+                <Combobox disabled={isSaving} loading={isSaving} value={form.stockStatus} onChange={(value) => setForm({ ...form, stockStatus: value as Product["stockStatus"] })} options={stockStatusOptions} placeholder="Stock Status" />
               </label>
               <TextInput label="Stock Quantity" type="number" value={form.stockQuantity} onChange={(value) => setForm({ ...form, stockQuantity: value })} />
             </div>
@@ -284,7 +292,7 @@ function LegacyAdminProductsWorkspace() {
                     <button className="rounded-md p-2 text-blue-600 hover:bg-blue-50" onClick={() => handleEdit(product)} type="button" aria-label={`Edit ${product.name}`}>
                       <Edit2 className="w-4 h-4" />
                     </button>
-                    <button className="rounded-md p-2 text-red-600 hover:bg-red-50" onClick={() => void handleDelete(product)} type="button" aria-label={`Delete ${product.name}`}>
+                    <button className="rounded-md p-2 text-red-600 hover:bg-red-50" onClick={() => setProductToDelete(product)} type="button" aria-label={`Delete ${product.name}`}>
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -294,6 +302,17 @@ function LegacyAdminProductsWorkspace() {
           ))}
         </div>
       )}
+      <AlertDialog
+        confirmLabel="Delete product"
+        description={productToDelete ? `This will permanently delete "${productToDelete.name}" from the product catalog.` : "This product will be deleted."}
+        onConfirm={() => void handleDelete()}
+        onOpenChange={(open) => {
+          if (!open) setProductToDelete(null);
+        }}
+        open={Boolean(productToDelete)}
+        title="Delete product?"
+        tone="destructive"
+      />
     </div>
   );
 }

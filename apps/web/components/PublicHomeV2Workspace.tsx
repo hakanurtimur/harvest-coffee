@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import PublicSectionHeader from "@/components/PublicSectionHeader";
 import type { Product } from "@/lib/domain";
 import { ArrowRight, Coffee, Flame, Handshake, Plus, ShoppingBag, ShoppingCart, Sprout, Trophy } from "lucide-react";
 import Link from "next/link";
@@ -73,14 +74,13 @@ export default function PublicHomeV2Workspace({
         <CoffeeBranchAsset className="absolute -left-28 top-16 h-80 w-80 bg-primary/[0.055]" />
         <div className="relative mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.86fr_1.14fr] lg:items-center">
           <MotionReveal className="lg:pl-10" variant="left">
-            <p className="mb-5 text-xs font-black uppercase tracking-[0.34em] text-primary">Because We Love Coffee</p>
-            <h2 className="font-display text-4xl font-black leading-tight text-foreground sm:text-5xl">
-              Our <span className="text-primary">Mission</span>
-            </h2>
-            <p className="mt-6 max-w-md text-base leading-8 text-muted-foreground">
-              Everything we do is a matter of heart, body and soul. Our mission is to provide sustainably sourced, hand-picked,
-              micro-roasted quality coffee. Great coffee is our passion and we want to share it with you.
-            </p>
+            <PublicSectionHeader
+              className="max-w-md"
+              description="Everything we do is a matter of heart, body and soul. Our mission is to provide sustainably sourced, hand-picked, micro-roasted quality coffee. Great coffee is our passion and we want to share it with you."
+              eyebrow="Because We Love Coffee"
+              size="section"
+              title={<>Our <span className="text-primary">Mission</span></>}
+            />
             <Button asChildShim className="mt-8 h-11 rounded-md border-primary/25 bg-transparent px-6 text-primary hover:bg-background" variant="outline">
               <Link href="/about">
                 Learn More
@@ -135,13 +135,13 @@ export default function PublicHomeV2Workspace({
           <Card className="motion-card relative -ml-0 w-full rounded-lg border-border bg-card p-8 shadow-2xl shadow-primary/10 hover:shadow-primary/15">
             <CoffeeBranchAsset className="absolute bottom-5 right-5 h-36 w-36 bg-primary/[0.055]" />
             <div className="relative">
-              <p className="mb-5 text-xs font-black uppercase tracking-[0.34em] text-primary">Become a Partner</p>
-              <h2 className="font-display text-4xl font-black leading-tight text-foreground sm:text-5xl">
-                Explore <span className="text-primary">Wholesale</span>
-              </h2>
-              <p className="mt-6 max-w-md text-base leading-8 text-muted-foreground">
-                Personalised to your specific needs. We help build coffee programs to grow your business.
-              </p>
+              <PublicSectionHeader
+                className="max-w-md"
+                description="Personalised to your specific needs. We help build coffee programs to grow your business."
+                eyebrow="Become a Partner"
+                size="section"
+                title={<>Explore <span className="text-primary">Wholesale</span></>}
+              />
               <Button asChildShim className="mt-8 h-12 rounded-md px-7" variant="default">
                 <Link href={isAuthenticated ? "/products" : "/login?next=%2Fproducts"}>
                   {isAuthenticated ? "Order Now" : "Get in Touch"}
@@ -177,10 +177,12 @@ export default function PublicHomeV2Workspace({
             </MotionReveal>
 
             <MotionReveal delay={120} variant="right">
-              <p className="mb-5 text-xs font-black uppercase tracking-[0.34em] text-primary">Staff Favourite · Featured Coffee</p>
-              <h2 className="font-display text-4xl font-black leading-tight text-foreground sm:text-5xl">
-                {featuredProduct.name}
-              </h2>
+              <PublicSectionHeader
+                className="max-w-xl"
+                eyebrow="Staff Favourite · Featured Coffee"
+                size="section"
+                title={featuredProduct.name}
+              />
               <Badge className="mt-4 border-primary/10 bg-secondary text-secondary-foreground">{featuredProduct.category}</Badge>
               <p className="mt-6 max-w-xl text-base leading-8 text-muted-foreground">{featuredProduct.description}</p>
               {isAuthenticated && <p className="font-display mt-6 text-3xl font-black text-primary">£{featuredProduct.price.toFixed(2)}</p>}
@@ -199,11 +201,13 @@ export default function PublicHomeV2Workspace({
         <section className="bg-background px-5 py-14 sm:px-8 lg:px-10">
           <div className="mx-auto max-w-7xl">
             <MotionReveal className="mb-8 text-center">
-              <div className="flex items-center justify-center gap-2">
-                <ShoppingBag className="h-6 w-6 text-primary" />
-                <h2 className="font-display text-3xl font-black text-foreground">Quick Order</h2>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">Your most frequently ordered products — one click to reorder</p>
+              <PublicSectionHeader
+                align="center"
+                description="Your most frequently ordered products — one click to reorder"
+                eyebrow="Dealer Favourites"
+                size="compact"
+                title={<span className="inline-flex items-center justify-center gap-2"><ShoppingBag className="h-6 w-6 text-primary" />Quick Order</span>}
+              />
             </MotionReveal>
 
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">

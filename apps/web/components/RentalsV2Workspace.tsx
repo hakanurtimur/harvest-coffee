@@ -1,99 +1,70 @@
 "use client";
 
 import MotionReveal from "@/components/MotionReveal";
+import LoadingState from "@/components/LoadingState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getHarvestApi } from "@/lib/harvest-api";
+import { useMyRentalsQuery } from "@/lib/harvest-query";
 import type { Rental } from "@/lib/domain";
 import { AlertTriangle, Calendar, CheckCircle, Clock, FileText, Plus } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
 
 export default function RentalsV2Workspace() {
-  const api = useMemo(() => getHarvestApi(), []);
-  const [rentals, setRentals] = useState<Rental[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-
-  useEffect(() => {
-    const loadRentals = async () => {
-      const authenticated =
-        new URL(window.location.href).searchParams.get("mockAuth") === "1" ||
-        window.localStorage.getItem("harvest_mock_auth") === "logged-in";
-      if (!authenticated) {
-        window.location.href = "/home";
-        return;
-      }
-
-      setIsCheckingAuth(false);
-      setIsLoading(true);
-      const user = await api.getCurrentUser();
-      const nextRentals = user?.email ? await api.getRentals(user.email) : [];
-      setRentals(nextRentals);
-      setIsLoading(false);
-    };
-
-    void loadRentals();
-  }, [api]);
+  const rentalsQuery = useMyRentalsQuery();
+  const rentals = rentalsQuery.data ?? [];
+  const isLoading = rentalsQuery.isLoading;
 
   const activeRentals = rentals.filter((rental) => rental.status === "active").length;
   const upcomingRentals = rentals.filter((rental) => rental.status === "upcoming").length;
 
-  if (isCheckingAuth) {
-    return (
-      <div className="harvest-theme bg-background px-5 py-32 text-center text-foreground">
-        <p className="font-medium text-muted-foreground">Loading...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="harvest-theme overflow-hidden bg-background text-foreground">
-      <section className="relative px-5 pb-12 pt-32 sm:px-8 lg:px-10">
-        <CoffeeBranchAsset className="absolute -left-20 top-10 h-72 w-72 bg-primary/[0.09]" />
-        <CoffeeBranchAsset className="absolute -right-16 top-8 h-72 w-72 -scale-x-100 bg-primary/[0.09]" />
-        <div className="relative mx-auto flex max-w-7xl flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
-          <MotionReveal>
-            <p className="mb-5 text-xs font-black uppercase tracking-[0.34em] text-primary">Rental Agreements</p>
-            <h1 className="font-display max-w-3xl text-5xl font-black leading-tight text-foreground sm:text-6xl">My Rentals</h1>
-            <p className="mt-5 max-w-2xl text-lg font-medium leading-8 text-muted-foreground">
-              Track your active and upcoming rental agreements
-            </p>
-          </MotionReveal>
-
-          <MotionReveal delay={100} variant="right">
-            <Button asChildShim className="h-12 rounded-md px-6">
-              <Link href="/CreateRental">
-                <Plus className="h-4 w-4" />
-                Start New Rental
-              </Link>
-            </Button>
-          </MotionReveal>
-        </div>
+      <section className="relative px-5 pb-6 pt-0 sm:px-8 lg:px-10">
+        <MotionReveal className="relative mx-auto max-w-7xl">
+          <Card className="overflow-hidden rounded-2xl border-border bg-card p-5 shadow-sm shadow-primary/5 sm:p-6">
+            <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div className="relative">
+                <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary">Dealer rentals</p>
+                <h1 className="mt-2 text-3xl font-black tracking-normal text-foreground sm:text-4xl">My Rentals</h1>
+                <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-muted-foreground">
+                  Track active agreements, upcoming dates, notes, and rental paperwork from your dealer workspace.
+                </p>
+              </div>
+              <div className="relative flex flex-col gap-3 lg:min-w-[520px]">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <MetricCard label="Total" value={String(rentals.length)} tone="default" />
+                  <MetricCard label="Active" value={String(activeRentals)} tone="success" />
+                  <MetricCard label="Upcoming" value={String(upcomingRentals)} tone="info" />
+                </div>
+                <Button asChildShim className="h-10 self-start rounded-xl px-4 text-sm lg:self-end">
+                  <Link href="/CreateRental">
+                    <Plus className="h-4 w-4" />
+                    Start New Rental
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </MotionReveal>
       </section>
 
-      <section className="relative bg-card px-5 py-10 sm:px-8 lg:px-10 lg:py-14">
-        <CoffeeBranchAsset className="absolute -left-24 bottom-0 h-60 w-60 bg-primary/[0.07]" />
+      <section className="relative bg-background px-5 py-6 sm:px-8 lg:px-10 lg:py-8">
         <div className="relative mx-auto max-w-7xl">
-          <div className="grid gap-4 md:grid-cols-3">
-            <MetricCard label="Total Rentals" value={String(rentals.length)} tone="default" />
-            <MetricCard label="Active" value={String(activeRentals)} tone="green" />
-            <MetricCard label="Upcoming" value={String(upcomingRentals)} tone="blue" />
-          </div>
-
-          <div className="mt-8">
+          <div>
             {isLoading ? (
-              <div className="rounded-lg bg-background/72 p-12 text-center">
-                <p className="font-medium text-muted-foreground">Loading rentals...</p>
-              </div>
+              <LoadingState
+                description="Fetching active agreements and upcoming rental dates."
+                minHeight="min-h-[260px]"
+                title="Loading rentals"
+              />
             ) : rentals.length === 0 ? (
               <MotionReveal className="mx-auto max-w-2xl" variant="scale">
-                <Card className="rounded-lg border-2 border-dashed border-primary/20 bg-background/72 p-10 text-center shadow-none sm:p-12">
-                  <Calendar className="mx-auto mb-5 h-16 w-16 text-primary/35" />
-                  <h2 className="font-display text-2xl font-black text-foreground">No active rentals</h2>
+                <Card className="rounded-2xl border-2 border-dashed border-border bg-card p-10 text-center shadow-none sm:p-12">
+                  <Calendar className="mx-auto mb-5 h-14 w-14 text-primary/35" />
+                  <h2 className="text-2xl font-black tracking-normal text-foreground">No active rentals</h2>
                   <p className="mt-3 text-base font-medium text-muted-foreground">Start renting our products today</p>
-                  <Button asChildShim className="mt-6 h-11 rounded-md px-5">
+                  <Button asChildShim className="mt-6 h-10 rounded-xl px-4 text-sm">
                     <Link href="/CreateRental">
                       Create First Rental
                       <Plus className="h-4 w-4" />
@@ -117,17 +88,17 @@ export default function RentalsV2Workspace() {
   );
 }
 
-function MetricCard({ label, tone, value }: { label: string; tone: "default" | "green" | "blue"; value: string }) {
+function MetricCard({ label, tone, value }: { label: string; tone: "default" | "success" | "info"; value: string }) {
   const styles = {
-    default: "border-primary/15 bg-background/75 text-primary",
-    green: "border-green-200 bg-green-50 text-green-800",
-    blue: "border-blue-200 bg-blue-50 text-blue-800",
+    default: "border-border bg-card text-foreground",
+    success: "border-[hsl(var(--status-success)/0.24)] bg-[hsl(var(--status-success)/0.08)] text-[hsl(var(--status-success))]",
+    info: "border-[hsl(var(--status-info)/0.24)] bg-[hsl(var(--status-info)/0.08)] text-[hsl(var(--status-info))]",
   }[tone];
 
   return (
-    <Card className={`rounded-lg p-5 shadow-none ${styles}`}>
-      <p className="text-sm font-black">{label}</p>
-      <p className="font-display mt-2 text-4xl font-black">{value}</p>
+    <Card className={`rounded-2xl p-5 shadow-none ${styles}`}>
+      <p className="text-xs font-black uppercase tracking-[0.12em] opacity-75">{label}</p>
+      <p className="mt-3 text-3xl font-black tracking-normal">{value}</p>
     </Card>
   );
 }
@@ -136,15 +107,15 @@ function RentalCard({ rental }: { rental: Rental }) {
   const StatusIcon = getStatusIcon(rental.status);
 
   return (
-    <Card className="motion-card rounded-lg border-border bg-background/82 p-6 shadow-sm shadow-primary/5 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/10">
+    <Card className="motion-card rounded-2xl border-border bg-card p-5 shadow-sm shadow-primary/5 transition-colors hover:border-primary/20 sm:p-6">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex flex-1 gap-4">
-          <div className={`grid h-12 w-12 flex-shrink-0 place-items-center rounded-lg ${getStatusIconColor(rental.status)}`}>
+          <div className={`grid h-11 w-11 flex-shrink-0 place-items-center rounded-xl ${getStatusIconColor(rental.status)}`}>
             <StatusIcon className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <h2 className="font-display text-2xl font-black text-foreground">{rental.productName}</h2>
-            <div className="mt-4 grid gap-2 text-sm font-medium text-muted-foreground sm:grid-cols-2">
+            <h2 className="text-xl font-black tracking-normal text-foreground sm:text-2xl">{rental.productName}</h2>
+            <div className="mt-4 grid gap-2 text-sm font-semibold text-muted-foreground sm:grid-cols-2">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-primary" />
                 Start: {formatRentalDate(rental.startDate)}
@@ -155,7 +126,7 @@ function RentalCard({ rental }: { rental: Rental }) {
               </div>
             </div>
             {rental.notes && (
-              <div className="mt-4 rounded-md bg-secondary p-3">
+              <div className="mt-4 rounded-xl border border-border bg-secondary/70 p-3">
                 <p className="text-xs font-semibold leading-5 text-foreground/78">{rental.notes}</p>
               </div>
             )}
@@ -166,7 +137,7 @@ function RentalCard({ rental }: { rental: Rental }) {
           <StatusBadge status={rental.status} />
           <button
             type="button"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-background/70 px-3 text-sm font-bold text-foreground/75 transition-colors hover:bg-secondary hover:text-foreground"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background/70 px-3 text-sm font-bold text-foreground/75 transition-colors hover:bg-secondary hover:text-foreground"
           >
             <FileText className="h-4 w-4" />
             Invoice
@@ -194,9 +165,9 @@ function getStatusIcon(status: Rental["status"]) {
 
 function getStatusIconColor(status: Rental["status"]) {
   const colors = {
-    active: "bg-green-50 text-green-700",
-    upcoming: "bg-blue-50 text-blue-700",
-    expired: "bg-red-50 text-red-700",
+    active: "bg-[hsl(var(--status-success)/0.1)] text-[hsl(var(--status-success))]",
+    upcoming: "bg-[hsl(var(--status-info)/0.1)] text-[hsl(var(--status-info))]",
+    expired: "bg-[hsl(var(--status-danger)/0.1)] text-[hsl(var(--status-danger))]",
     cancelled: "bg-secondary text-muted-foreground",
   };
 
@@ -204,9 +175,9 @@ function getStatusIconColor(status: Rental["status"]) {
 }
 
 function getStatusPillColor(status: Rental["status"]) {
-  if (status === "active") return "border-green-200 bg-green-50 text-green-800";
-  if (status === "upcoming") return "border-blue-200 bg-blue-50 text-blue-800";
-  if (status === "expired") return "border-red-200 bg-red-50 text-red-800";
+  if (status === "active") return "border-[hsl(var(--status-success)/0.24)] bg-[hsl(var(--status-success)/0.08)] text-[hsl(var(--status-success))]";
+  if (status === "upcoming") return "border-[hsl(var(--status-info)/0.24)] bg-[hsl(var(--status-info)/0.08)] text-[hsl(var(--status-info))]";
+  if (status === "expired") return "border-[hsl(var(--status-danger)/0.2)] bg-[hsl(var(--status-danger)/0.08)] text-[hsl(var(--status-danger))]";
   return "border-border bg-secondary text-secondary-foreground";
 }
 
@@ -223,24 +194,4 @@ function formatRentalDate(value: string) {
 
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-function CoffeeBranchAsset({ className }: { className?: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={className}
-      style={{
-        display: "block",
-        maskImage: "url('/assets/coffee-branch-clean.svg')",
-        maskPosition: "center",
-        maskRepeat: "no-repeat",
-        maskSize: "contain",
-        WebkitMaskImage: "url('/assets/coffee-branch-clean.svg')",
-        WebkitMaskPosition: "center",
-        WebkitMaskRepeat: "no-repeat",
-        WebkitMaskSize: "contain",
-      }}
-    />
-  );
 }

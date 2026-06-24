@@ -1,6 +1,7 @@
 "use client";
 
 import AdminDashboardV2Workspace from "@/components/AdminDashboardV2Workspace";
+import LoadingState from "@/components/LoadingState";
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
 import { Order, PaymentMethod, Product, User, orderStatusLabels, paymentMethodLabels } from "@/lib/domain";
@@ -112,7 +113,12 @@ function LegacyAdminDashboardWorkspace() {
   const maxCustomerSpent = Math.max(...topCustomers.map((customer) => customer.totalSpent), 1);
 
   if (isLoading) {
-    return <div className="text-center py-12 text-white">Yükleniyor...</div>;
+    return (
+      <LoadingState
+        description="Fetching orders, products, customers, and dashboard metrics."
+        title="Loading dashboard"
+      />
+    );
   }
 
   return (
@@ -394,8 +400,9 @@ function getTopProducts(orders: Order[]): ProductSales[] {
 function getTopCustomers(orders: Order[]): CustomerStat[] {
   const customers = new Map<string, CustomerStat>();
   orders.forEach((order) => {
-    const current = customers.get(order.customerEmail) ?? {
-      email: order.customerEmail,
+    const key = order.customerEmail || order.createdById || order.id;
+    const current = customers.get(key) ?? {
+      email: order.customerEmail || key,
       orderCount: 0,
       totalSpent: 0,
       pendingPayment: 0,
@@ -403,7 +410,7 @@ function getTopCustomers(orders: Order[]): CustomerStat[] {
     current.orderCount += 1;
     current.totalSpent += order.totalAmount;
     if (order.paymentStatus === "pending") current.pendingPayment += order.totalAmount;
-    customers.set(order.customerEmail, current);
+    customers.set(key, current);
   });
   return [...customers.values()].sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 5);
 }

@@ -1,10 +1,13 @@
 "use client";
 
-import { getHarvestApi } from "@/lib/harvest-api";
+import { clearHarvestSession, getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
+import LoadingState from "@/components/LoadingState";
+import { AlertDialog } from "@/components/ui/alert-dialog";
 import type { Address, CustomerSegment, Order, OrderStatus, PaymentStatus, User } from "@/lib/domain";
-import { Activity, AlertTriangle, Calendar, CheckCircle, Clock, Edit2, MapPin, Package, Plus, Save, Trash2, Truck, X, XCircle } from "lucide-react";
+import { Activity, Calendar, CheckCircle, Clock, Edit2, MapPin, Package, Plus, Save, Trash2, Truck, X, XCircle } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import ProfileV2Workspace from "./ProfileV2Workspace";
 
@@ -30,6 +33,7 @@ const segmentConfig: Record<CustomerSegment, { label: string; className: string 
 export default function ProfileWorkspace() {
   const v2Enabled = useV2Enabled("/profile");
   const api = useMemo(() => getHarvestApi(), []);
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [activeTab, setActiveTab] = useState<ProfileTab>("info");
@@ -37,6 +41,7 @@ export default function ProfileWorkspace() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [addressForm, setAddressForm] = useState<Address>({ title: "", address: "" });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [addressIndexToDelete, setAddressIndexToDelete] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -105,16 +110,17 @@ export default function ProfileWorkspace() {
     setShowAddressForm(true);
   };
 
-  const handleDeleteAddress = async (index: number) => {
-    if (!user || !window.confirm("Bu adresi silmek istediğinizden emin misiniz?")) return;
+  const handleDeleteAddress = async () => {
+    if (!user || addressIndexToDelete === null) return;
 
     setIsSaving(true);
     setMessage("");
     try {
       const addresses = [...(user.addresses || [])];
-      addresses.splice(index, 1);
+      addresses.splice(addressIndexToDelete, 1);
       const updatedUser = await api.updateCurrentUser({ addresses });
       setUser(updatedUser);
+      setAddressIndexToDelete(null);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Profile could not be updated.");
     } finally {
@@ -128,17 +134,28 @@ export default function ProfileWorkspace() {
     setAddressForm({ title: "", address: "" });
   };
 
-  const handleDeleteAccount = () => {
-    setDeleteDialogOpen(false);
-    setMessage("Account deletion is mocked in this migration step because the legacy action deletes the Base44 user and logs out.");
+  const handleDeleteAccount = async () => {
+    setIsSaving(true);
+    setMessage("");
+    try {
+      await api.deleteCurrentUser();
+      clearHarvestSession();
+      setDeleteDialogOpen(false);
+      router.push("/login");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Account could not be deleted.");
+      setDeleteDialogOpen(false);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (isLoading) {
-    return <div className="text-center py-12">Yükleniyor...</div>;
+    return <LoadingState description="Fetching your account details and recent orders." title="Loading profile" />;
   }
 
   if (!user) {
-    return <div className="text-center py-12">Yükleniyor...</div>;
+    return <LoadingState description="Checking your account session." title="Loading profile" />;
   }
 
   return (
@@ -290,7 +307,7 @@ export default function ProfileWorkspace() {
                           </button>
                           <button
                             className="rounded-md p-2 text-red-600 hover:bg-red-50 hover:text-red-700"
-                            onClick={() => void handleDeleteAddress(index)}
+                            onClick={() => setAddressIndexToDelete(index)}
                             type="button"
                             aria-label={`Delete ${address.title}`}
                           >
@@ -406,33 +423,40 @@ export default function ProfileWorkspace() {
         )}
       </div>
 
-      {deleteDialogOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-lg rounded-xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-700 dark:bg-gray-800">
-            <div className="flex items-center gap-3 mb-2">
-              <AlertTriangle className="w-6 h-6 text-red-600" />
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Delete Account</h2>
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              This action is permanent. Your account will be deleted and the following data will be removed:
-              <ul className="list-disc list-inside mt-3 space-y-1">
-                <li>All personal information</li>
-                <li>Order history</li>
-                <li>Saved addresses</li>
-                <li>Account settings</li>
-              </ul>
-            </div>
-            <div className="flex justify-end gap-3 mt-6">
-              <button className="rounded-md border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50" onClick={() => setDeleteDialogOpen(false)} type="button">
-                Cancel
-              </button>
-              <button className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700" onClick={handleDeleteAccount} type="button">
-                Delete Account
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AlertDialog
+        confirmLabel="Delete address"
+        description={
+          addressIndexToDelete !== null && user.addresses?.[addressIndexToDelete]
+            ? `This will remove "${user.addresses[addressIndexToDelete].title}" from your saved delivery addresses.`
+            : "This delivery address will be removed."
+        }
+        loading={isSaving}
+        onConfirm={() => void handleDeleteAddress()}
+        onOpenChange={(open) => {
+          if (!open) setAddressIndexToDelete(null);
+        }}
+        open={addressIndexToDelete !== null}
+        title="Delete address?"
+        tone="destructive"
+      />
+
+      <AlertDialog
+        confirmLabel="Delete account"
+        description="This action is permanent. Your account and related profile information will be deleted."
+        loading={isSaving}
+        onConfirm={() => void handleDeleteAccount()}
+        onOpenChange={setDeleteDialogOpen}
+        open={deleteDialogOpen}
+        title="Delete account?"
+        tone="destructive"
+      >
+        <ul className="list-inside list-disc space-y-1 text-sm font-semibold leading-6 text-muted-foreground">
+          <li>All personal information</li>
+          <li>Order history</li>
+          <li>Saved addresses</li>
+          <li>Account settings</li>
+        </ul>
+      </AlertDialog>
     </div>
   );
 }

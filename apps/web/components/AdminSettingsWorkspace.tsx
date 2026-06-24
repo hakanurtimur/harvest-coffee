@@ -1,6 +1,7 @@
 "use client";
 
 import AdminSettingsV2Workspace from "@/components/AdminSettingsV2Workspace";
+import LoadingState from "@/components/LoadingState";
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
 import { AdminSettings } from "@/lib/domain";
@@ -70,7 +71,11 @@ function LegacyAdminSettingsWorkspace() {
 
       {isLoading ? (
         <section className="orders-section">
-          <div className="loading-panel">Loading settings...</div>
+          <LoadingState
+            description="Fetching notification preferences and rental reminder settings."
+            minHeight="min-h-[260px]"
+            title="Loading settings"
+          />
         </section>
       ) : (
         <section className="settings-shell">

@@ -13,15 +13,30 @@ export default function OrdersWorkspace() {
   const api = useMemo(() => getHarvestApi(), []);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (v2Enabled) return;
 
     const loadOrders = async () => {
       setIsLoading(true);
-      const nextOrders = await api.getOrders();
-      setOrders([...nextOrders].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)));
-      setIsLoading(false);
+      setError("");
+      try {
+        const currentUser = await api.getCurrentUser();
+        if (!currentUser?.email) {
+          setOrders([]);
+          setError("Please sign in to view your orders.");
+          return;
+        }
+
+        const nextOrders = await api.getMyOrders(currentUser.email);
+        setOrders([...nextOrders].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)));
+      } catch (loadError) {
+        setOrders([]);
+        setError(loadError instanceof Error ? loadError.message : "Orders could not be loaded.");
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     void loadOrders();
@@ -46,6 +61,20 @@ export default function OrdersWorkspace() {
             <div key={item} className="h-48 bg-gray-100 animate-pulse rounded-lg" />
           ))}
         </div>
+      ) : error ? (
+        <section className="border-2 border-dashed border-amber-200 rounded-xl bg-white">
+          <div className="p-12 text-center">
+            <Package className="w-16 h-16 text-amber-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-amber-900 mb-2">Orders unavailable</h3>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <Link
+              href="/login"
+              className="inline-flex items-center justify-center rounded-md bg-amber-900 hover:bg-amber-800 text-white px-4 py-2 font-semibold transition-colors"
+            >
+              Sign in
+            </Link>
+          </div>
+        </section>
       ) : orders.length === 0 ? (
         <section className="border-2 border-dashed border-amber-200 rounded-xl bg-white">
           <div className="p-12 text-center">

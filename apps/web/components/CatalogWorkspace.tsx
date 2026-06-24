@@ -1,8 +1,10 @@
 "use client";
 
-import { getHarvestApi } from "@/lib/harvest-api";
+import { getHarvestApi, hasHarvestSession } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
-import { calculateOrderItems, calculateOrderTotal, Product, User } from "@/lib/domain";
+import { calculateOrderItems, calculateOrderTotal, Product, User, type PaymentMethod } from "@/lib/domain";
+import { Combobox } from "@/components/ui/combobox";
+import { requestToast } from "@/components/ui/sonner";
 import {
   ArrowRight,
   Building2,
@@ -22,6 +24,12 @@ import { useEffect, useMemo, useState } from "react";
 import CatalogV2Workspace from "./CatalogV2Workspace";
 
 type Cart = Record<string, number>;
+const paymentMethodOptions: Array<{ label: string; value: PaymentMethod }> = [
+  { label: "Bank Transfer", value: "bank_transfer" },
+  { label: "Credit Card", value: "credit_card" },
+  { label: "PayPal", value: "paypal" },
+  { label: "Cash on Delivery", value: "cash_on_delivery" },
+];
 
 export default function CatalogWorkspace() {
   const v2Enabled = useV2Enabled("/products");
@@ -40,7 +48,7 @@ export default function CatalogWorkspace() {
 
   useEffect(() => {
     const syncAuth = () => {
-      const authenticated = window.localStorage.getItem("harvest_mock_auth") === "logged-in";
+      const authenticated = hasHarvestSession();
       setIsAuthenticated(authenticated);
       if (!authenticated) {
         setCurrentUser(null);
@@ -92,7 +100,7 @@ export default function CatalogWorkspace() {
 
   const handleCheckout = async () => {
     if (!deliveryAddress.trim()) {
-      window.alert("Lütfen teslimat adresi seçin veya girin");
+      requestToast.error({ title: "Delivery address is required." });
       return;
     }
 
@@ -281,16 +289,12 @@ export default function CatalogWorkspace() {
 
               <label className="block space-y-2">
                 <span className="text-sm font-medium text-gray-700">Payment Method</span>
-                <select
+                <Combobox
                   value={paymentMethod}
-                  onChange={(event) => setPaymentMethod(event.target.value)}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-700/20"
-                >
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="credit_card">Credit Card</option>
-                  <option value="paypal">PayPal</option>
-                  <option value="cash_on_delivery">Cash on Delivery</option>
-                </select>
+                  onChange={setPaymentMethod}
+                  options={paymentMethodOptions}
+                  placeholder="Payment method"
+                />
               </label>
 
               <label className="block space-y-2">

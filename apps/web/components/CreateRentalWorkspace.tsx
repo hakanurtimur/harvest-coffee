@@ -1,5 +1,7 @@
 "use client";
 
+import { DatePicker } from "@/components/ui/date-picker";
+import { Combobox } from "@/components/ui/combobox";
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
 import { Product } from "@/lib/domain";
@@ -84,24 +86,41 @@ export default function CreateRentalWorkspace() {
         <form className="rental-form" onSubmit={submitRental}>
           <label>
             <span>Product</span>
-            <select value={productId} onChange={(event) => setProductId(event.target.value)} required>
-              <option value="">Choose a product to rent</option>
-              {products.map((product) => (
-                <option value={product.id} key={product.id}>
-                  {product.name} - GBP {product.price.toFixed(2)}/month
-                </option>
-              ))}
-            </select>
+            <Combobox
+              id="legacy-rental-product"
+              onChange={setProductId}
+              options={products.map((product) => ({
+                label: `${product.name} - GBP ${product.price.toFixed(2)}/month`,
+                value: product.id,
+              }))}
+              placeholder="Choose a product to rent"
+              searchPlaceholder="Search products..."
+              value={productId}
+            />
           </label>
 
           <div className="form-row">
             <label>
               <span>Start date</span>
-              <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} required />
+              <DatePicker
+                id="legacy-rental-start-date"
+                onChange={(value) => {
+                  setStartDate(value);
+                  if (endDate && new Date(value) >= new Date(endDate)) setEndDate("");
+                }}
+                placeholder="Select start date"
+                value={startDate}
+              />
             </label>
             <label>
               <span>End date</span>
-              <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} required />
+              <DatePicker
+                fromDate={startDate ? addDays(parseDateValue(startDate), 1) : undefined}
+                id="legacy-rental-end-date"
+                onChange={setEndDate}
+                placeholder="Select end date"
+                value={endDate}
+              />
             </label>
           </div>
 
@@ -131,4 +150,15 @@ export default function CreateRentalWorkspace() {
       </section>
     </>
   );
+}
+
+function parseDateValue(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function addDays(date: Date, days: number) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
 }

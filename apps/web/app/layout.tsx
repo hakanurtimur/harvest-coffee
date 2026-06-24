@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Manrope } from "next/font/google";
-import V2Switcher from "@/components/V2Switcher";
+import HarvestQueryProvider from "@/components/HarvestQueryProvider";
+import { Sonner } from "@/components/ui/sonner";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -23,9 +24,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${manrope.variable} ${fraunces.variable}`}>
-      <body>
-        {children}
-        <V2Switcher />
+      <body suppressHydrationWarning>
+        <HarvestQueryProvider>
+          {children}
+          <Sonner />
+        </HarvestQueryProvider>
       </body>
     </html>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useV2Enabled } from "@/lib/v2-pages";
+import { requestToast } from "@/components/ui/sonner";
 import { Clock, Mail, MapPin } from "lucide-react";
 import { FormEvent, useState } from "react";
 import ContactV2Workspace from "./ContactV2Workspace";
@@ -18,7 +19,11 @@ export default function ContactWorkspace() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSending(true);
-    await Promise.resolve();
+    await requestToast.promise(Promise.resolve(), {
+      loading: "Sending message...",
+      success: "Message sent.",
+      error: "Message could not be sent.",
+    });
     setSent(true);
     setSending(false);
     setForm({ name: "", email: "", subject: "", message: "" });

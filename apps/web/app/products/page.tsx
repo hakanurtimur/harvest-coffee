@@ -1,10 +1,10 @@
 import CatalogWorkspace from "@/components/CatalogWorkspace";
-import PublicShell from "@/components/PublicShell";
+import ProductsRouteShell from "@/components/ProductsRouteShell";
 
 export default function ProductsPage() {
   return (
-    <PublicShell>
+    <ProductsRouteShell>
       <CatalogWorkspace />
-    </PublicShell>
+    </ProductsRouteShell>
   );
 }

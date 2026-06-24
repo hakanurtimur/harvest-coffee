@@ -1,10 +1,10 @@
 import CreateRentalWorkspace from "@/components/CreateRentalWorkspace";
-import PublicShell from "@/components/PublicShell";
+import AppShell from "@/components/AppShell";
 
 export default function LegacyCreateRentalPage() {
   return (
-    <PublicShell>
+    <AppShell>
       <CreateRentalWorkspace />
-    </PublicShell>
+    </AppShell>
   );
 }

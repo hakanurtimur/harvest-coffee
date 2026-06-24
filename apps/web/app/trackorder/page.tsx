@@ -1,10 +1,12 @@
-import PublicShell from "@/components/PublicShell";
+"use client";
+
+import ProductsRouteShell from "@/components/ProductsRouteShell";
 import TrackOrderWorkspace from "@/components/TrackOrderWorkspace";
 
-export default function LegacyTrackOrderPage() {
+export default function TrackOrderPage() {
   return (
-    <PublicShell>
-      <TrackOrderWorkspace />
-    </PublicShell>
+    <ProductsRouteShell>
+      {({ authenticated }) => <TrackOrderWorkspace variant={authenticated ? "app" : "public"} />}
+    </ProductsRouteShell>
   );
 }

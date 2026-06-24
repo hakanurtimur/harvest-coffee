@@ -1,6 +1,7 @@
 "use client";
 
 import MotionReveal from "@/components/MotionReveal";
+import PublicSectionHeader from "@/components/PublicSectionHeader";
 import { Card } from "@/components/ui/card";
 import { Award, Coffee, Handshake, Sprout } from "lucide-react";
 
@@ -20,13 +21,14 @@ export default function AboutV2Workspace() {
         <CoffeeBranchAsset className="absolute -left-20 top-12 h-72 w-72 bg-primary/[0.09]" />
         <CoffeeBranchAsset className="absolute -right-16 top-10 h-72 w-72 -scale-x-100 bg-primary/[0.09]" />
         <MotionReveal className="relative mx-auto max-w-4xl">
-          <p className="text-xs font-black uppercase tracking-[0.34em] text-primary">Premium B2B Coffee Supply</p>
-          <div className="mx-auto mt-4 h-px w-32 bg-primary/30" />
-          <h1 className="font-display mt-7 text-5xl font-black leading-tight text-foreground sm:text-6xl">About Harvest Coffee</h1>
-          <p className="mx-auto mt-6 max-w-3xl text-base font-medium leading-8 text-muted-foreground sm:text-lg">
-            We are a premium B2B coffee supplier based in Waltham Abbey, Essex, dedicated to bringing the finest coffees from around
-            the world to businesses across the UK.
-          </p>
+          <PublicSectionHeader
+            align="center"
+            className="max-w-4xl"
+            description="We are a premium B2B coffee supplier based in Waltham Abbey, Essex, dedicated to bringing the finest coffees from around the world to businesses across the UK."
+            eyebrow="Premium B2B Coffee Supply"
+            size="page"
+            title="About Harvest Coffee"
+          />
         </MotionReveal>
       </section>
 
@@ -34,8 +36,7 @@ export default function AboutV2Workspace() {
         <CoffeeBranchAsset className="absolute -left-24 bottom-0 h-56 w-56 bg-primary/[0.07]" />
         <div className="relative mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
           <MotionReveal className="lg:pl-10" variant="left">
-            <p className="mb-4 text-xs font-black uppercase tracking-[0.34em] text-primary">Our Story</p>
-            <h2 className="font-display text-4xl font-black leading-tight text-foreground">Our Story</h2>
+            <PublicSectionHeader eyebrow="Our Story" size="section" title="Our Story" />
             <div className="mt-7 space-y-5 text-sm font-medium leading-8 text-muted-foreground sm:text-base">
               <p>
                 Harvest Coffee was founded with a simple mission: to connect businesses with exceptional coffee. We source our beans
@@ -60,8 +61,7 @@ export default function AboutV2Workspace() {
       <section className="bg-background px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
         <div className="mx-auto max-w-7xl">
           <MotionReveal className="mb-10 text-center">
-            <p className="text-xs font-black uppercase tracking-[0.34em] text-primary">Our Values</p>
-            <h2 className="font-display mt-3 text-4xl font-black text-foreground">What Drives Us</h2>
+            <PublicSectionHeader align="center" eyebrow="Our Values" size="section" title="What Drives Us" />
           </MotionReveal>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">

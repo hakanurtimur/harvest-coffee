@@ -1,17 +1,20 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
+import AdminPageHeader from "@/components/AdminPageHeader";
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
-import { getHarvestApi } from "@/lib/harvest-api";
+import { useOrdersQuery, useRentalsQuery, useUsersQuery } from "@/lib/harvest-query";
 import type { Order, Rental, User } from "@/lib/domain";
 import { AlertTriangle, BarChart3, CheckCircle, Clock, Package, PieChart as PieChartIcon, TrendingUp, Users } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from "recharts";
 
 type ReportTab = "rentals" | "sales" | "customers";
 
 type CustomerReport = {
+  id: string;
   email: string;
+  name: string;
   orders: number;
   spent: number;
   lastOrder: string;
@@ -24,10 +27,10 @@ type MonthlyReport = {
 };
 
 const rentalColors = {
-  active: "#15803d",
-  upcoming: "#2563eb",
-  expiringSoon: "#b45309",
-  expired: "#be123c",
+  active: "hsl(var(--status-success))",
+  upcoming: "hsl(var(--status-info))",
+  expiringSoon: "hsl(var(--status-warning))",
+  expired: "hsl(var(--status-danger))",
 };
 
 const rentalStatusChartConfig = {
@@ -38,34 +41,19 @@ const rentalStatusChartConfig = {
 } satisfies ChartConfig;
 
 const monthlyOrdersChartConfig = {
-  count: { label: "Orders", color: "#7c3514" },
-  revenue: { label: "Revenue", color: "#15803d" },
+  count: { label: "Orders", color: "hsl(var(--chart-1))" },
+  revenue: { label: "Revenue", color: "hsl(var(--status-success))" },
 } satisfies ChartConfig;
 
 export default function AdminReportsV2Workspace() {
-  const api = useMemo(() => getHarvestApi(), []);
-  const [rentals, setRentals] = useState<Rental[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  const rentalsQuery = useRentalsQuery();
+  const ordersQuery = useOrdersQuery();
+  const usersQuery = useUsersQuery();
   const [activeTab, setActiveTab] = useState<ReportTab>("rentals");
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const loadReports = async () => {
-      setIsLoading(true);
-      const [nextRentals, nextOrders, nextUsers] = await Promise.all([
-        api.getRentals(),
-        api.getOrders(),
-        api.getUsers(),
-      ]);
-      setRentals(nextRentals);
-      setOrders(nextOrders);
-      setUsers(nextUsers);
-      setIsLoading(false);
-    };
-
-    void loadReports();
-  }, [api]);
+  const rentals = rentalsQuery.data ?? [];
+  const orders = ordersQuery.data ?? [];
+  const users = usersQuery.data ?? [];
+  const isLoading = rentalsQuery.isLoading || ordersQuery.isLoading || usersQuery.isLoading;
 
   const activeRentals = rentals.filter((rental) => rental.status === "active");
   const upcomingRentals = rentals.filter((rental) => rental.status === "upcoming");
@@ -78,20 +66,16 @@ export default function AdminReportsV2Workspace() {
     { key: "expired", name: "Expired", value: expiredRentals.length, fill: "var(--color-expired)" },
   ];
   const monthlyData = getMonthlyOrderData(orders);
-  const customerData = getCustomerData(orders);
+  const customerData = getCustomerData(orders, users);
   const totalRevenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
   const nonAdminUsers = users.filter((user) => user.role !== "admin");
   const maxCustomerSpent = Math.max(...customerData.map((customer) => customer.spent), 1);
 
   return (
-    <div className="space-y-5 text-[#3a2619]">
-      <section className="rounded-lg border border-[#e8daca] bg-[#fffdf8] p-5 shadow-sm shadow-[#8a461c]/5 md:p-6">
-        <p className="text-xs font-black uppercase tracking-[0.22em] text-[#b3692c]">Admin</p>
-        <h1 className="mt-2 text-3xl font-black tracking-normal text-[#3a2619] md:text-4xl">Reports</h1>
-        <p className="mt-2 text-sm font-semibold text-[#8f7461]">Analytics, rentals, and customer insights</p>
-      </section>
+    <div className="harvest-theme space-y-5 text-foreground">
+      <AdminPageHeader title="Reports" description="Analytics, rentals, and customer insights" />
 
-      <section className="rounded-lg border border-[#e8daca] bg-[#fffdf8] p-2 shadow-sm shadow-[#8a461c]/5">
+      <section className="rounded-2xl border border-border bg-card p-2 shadow-sm shadow-primary/5">
         <div className="flex gap-2 overflow-x-auto">
           <ReportTabButton active={activeTab === "rentals"} onClick={() => setActiveTab("rentals")}>Rental Reports</ReportTabButton>
           <ReportTabButton active={activeTab === "sales"} onClick={() => setActiveTab("sales")}>Sales Reports</ReportTabButton>
@@ -100,7 +84,7 @@ export default function AdminReportsV2Workspace() {
       </section>
 
       {isLoading ? (
-        <div className="h-48 animate-pulse rounded-lg bg-[#f3e8da]" />
+        <div className="h-48 animate-pulse rounded-lg bg-muted" />
       ) : (
         <>
           {activeTab === "rentals" && (
@@ -132,17 +116,17 @@ export default function AdminReportsV2Workspace() {
                 {expiringRentals.length > 0 ? (
                   <div className="space-y-3">
                     {expiringRentals.map((rental) => (
-                      <article className="flex items-center justify-between rounded-lg border border-yellow-200 bg-yellow-50 p-4" key={rental.id}>
+                      <article className="flex items-center justify-between rounded-xl border border-[hsl(var(--status-warning)/0.24)] bg-[hsl(var(--status-warning)/0.08)] p-4" key={rental.id}>
                         <div>
-                          <p className="font-black text-[#3a2619]">{rental.productName}</p>
-                          <p className="text-sm font-semibold text-[#7f6554]">{rental.customerName || rental.customerEmail}</p>
-                          <p className="mt-1 text-xs font-bold text-yellow-800">Expires: {rental.endDate}</p>
+                          <p className="font-black text-foreground">{rental.productName}</p>
+                          <p className="text-sm font-semibold text-muted-foreground">{rental.customerName || rental.customerEmail}</p>
+                          <p className="mt-1 text-xs font-bold text-[hsl(var(--status-warning))]">Expires: {rental.endDate}</p>
                         </div>
                       </article>
                     ))}
                   </div>
                 ) : (
-                  <p className="py-4 text-center text-sm font-semibold text-[#8f7461]">No rentals expiring soon</p>
+                  <p className="py-4 text-center text-sm font-semibold text-muted-foreground">No rentals expiring soon</p>
                 )}
               </ReportCard>
             </div>
@@ -162,8 +146,8 @@ export default function AdminReportsV2Workspace() {
                         <ChartTooltipContent
                           formatter={(value, name) => (
                             <div className="flex w-full items-center justify-between gap-4">
-                              <span className="font-semibold text-[#8f7461]">{name === "revenue" ? "Revenue" : "Orders"}</span>
-                              <span className="font-mono font-black text-[#3a2619]">{name === "revenue" ? `£${Number(value).toFixed(2)}` : Number(value).toLocaleString()}</span>
+                              <span className="font-semibold text-muted-foreground">{name === "revenue" ? "Revenue" : "Orders"}</span>
+                              <span className="font-mono font-black text-foreground">{name === "revenue" ? `£${Number(value).toFixed(2)}` : Number(value).toLocaleString()}</span>
                             </div>
                           )}
                         />
@@ -190,25 +174,26 @@ export default function AdminReportsV2Workspace() {
                 {customerData.length > 0 ? (
                   <div className="space-y-3">
                     {customerData.map((customer, index) => (
-                      <article className="flex items-center justify-between gap-4 rounded-lg border border-[#f0e2d4] bg-[#fff8ed] p-4" key={customer.email}>
+                      <article className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted p-4" key={customer.id}>
                         <div className="flex min-w-0 items-center gap-3">
-                          <div className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-full bg-[#f0dfca] text-sm font-black text-[#8a461c]">
+                          <div className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-full bg-[hsl(var(--chart-2)/0.14)] text-sm font-black text-[hsl(var(--chart-2))]">
                             {index + 1}
                           </div>
                           <div className="min-w-0">
-                            <p className="truncate font-black text-[#3a2619]">{customer.email}</p>
-                            <p className="text-xs font-semibold text-[#7f6554]">{customer.orders} orders</p>
-                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#eadccf]">
-                              <div className="h-full rounded-full bg-[#8a461c]" style={{ width: `${Math.max(8, (customer.spent / maxCustomerSpent) * 100)}%` }} />
+                            <p className="truncate font-black text-foreground">{customer.name}</p>
+                            {customer.email && <p className="text-xs font-semibold text-muted-foreground">{customer.email}</p>}
+                            <p className="text-xs font-semibold text-muted-foreground">{customer.orders} orders</p>
+                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-border">
+                              <div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(8, (customer.spent / maxCustomerSpent) * 100)}%` }} />
                             </div>
                           </div>
                         </div>
-                        <span className="flex-shrink-0 font-black text-green-700">£{customer.spent.toFixed(2)}</span>
+                        <span className="flex-shrink-0 font-black text-[hsl(var(--status-success))]">£{customer.spent.toFixed(2)}</span>
                       </article>
                     ))}
                   </div>
                 ) : (
-                  <p className="py-4 text-center text-sm font-semibold text-[#8f7461]">No customers yet.</p>
+                  <p className="py-4 text-center text-sm font-semibold text-muted-foreground">No customers yet.</p>
                 )}
               </ReportCard>
             </div>
@@ -223,7 +208,7 @@ function ReportTabButton({ active, children, onClick }: { active: boolean; child
   return (
     <button
       className={`h-11 min-w-[170px] rounded-md px-4 text-sm font-black transition-colors ${
-        active ? "bg-[#7c3514] text-white shadow-sm" : "text-[#6d5444] hover:bg-[#fff8ed] hover:text-[#7c3514]"
+        active ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"
       }`}
       onClick={onClick}
       type="button"
@@ -235,11 +220,11 @@ function ReportTabButton({ active, children, onClick }: { active: boolean; child
 
 function ReportMetric({ icon: Icon, label, tone, value }: { icon: React.ComponentType<{ className?: string }>; label: string; tone: "green" | "blue" | "yellow" | "red" | "purple"; value: string }) {
   const tones = {
-    green: "border-green-100 bg-green-50 text-green-950",
-    blue: "border-blue-100 bg-blue-50 text-blue-950",
-    yellow: "border-yellow-100 bg-yellow-50 text-yellow-950",
-    red: "border-red-100 bg-red-50 text-red-950",
-    purple: "border-purple-100 bg-purple-50 text-purple-950",
+    green: "border-[hsl(var(--status-success)/0.24)] bg-[hsl(var(--status-success)/0.08)] text-[hsl(var(--status-success))]",
+    blue: "border-[hsl(var(--status-info)/0.24)] bg-[hsl(var(--status-info)/0.08)] text-[hsl(var(--status-info))]",
+    yellow: "border-[hsl(var(--status-warning)/0.24)] bg-[hsl(var(--status-warning)/0.08)] text-[hsl(var(--status-warning))]",
+    red: "border-[hsl(var(--status-danger)/0.24)] bg-[hsl(var(--status-danger)/0.08)] text-[hsl(var(--status-danger))]",
+    purple: "border-[hsl(var(--chart-4)/0.24)] bg-[hsl(var(--chart-4)/0.08)] text-[hsl(var(--chart-4))]",
   };
 
   return (
@@ -257,10 +242,10 @@ function ReportMetric({ icon: Icon, label, tone, value }: { icon: React.Componen
 
 function ReportCard({ children, icon: Icon, title }: { children: React.ReactNode; icon: React.ComponentType<{ className?: string }>; title: string }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-[#e8daca] bg-[#fffdf8] shadow-sm shadow-[#8a461c]/5">
-      <header className="flex items-center gap-2 border-b border-[#eadccf] px-5 py-4">
-        <Icon className="h-5 w-5 text-[#8a461c]" />
-        <h2 className="text-lg font-black text-[#3a2619]">{title}</h2>
+    <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm shadow-primary/5">
+      <header className="flex items-center gap-2 border-b border-border px-5 py-4">
+        <Icon className="h-5 w-5 text-primary" />
+        <h2 className="text-lg font-black text-foreground">{title}</h2>
       </header>
       <div className="p-5">{children}</div>
     </section>
@@ -269,7 +254,7 @@ function ReportCard({ children, icon: Icon, title }: { children: React.ReactNode
 
 function ChartFrame({ children, empty, emptyText }: { children: React.ReactNode; empty: boolean; emptyText: string }) {
   if (empty) {
-    return <div className="rounded-lg bg-[#fff8ed] p-4 text-sm font-semibold text-[#7f6554]">{emptyText}</div>;
+    return <div className="rounded-lg bg-muted p-4 text-sm font-semibold text-muted-foreground">{emptyText}</div>;
   }
 
   return <div className="h-80">{children}</div>;
@@ -295,11 +280,15 @@ function getMonthlyOrderData(orders: Order[]): MonthlyReport[] {
   return [...data.values()].slice(-6);
 }
 
-function getCustomerData(orders: Order[]): CustomerReport[] {
+function getCustomerData(orders: Order[], users: User[]): CustomerReport[] {
   const customers = new Map<string, CustomerReport>();
   orders.forEach((order) => {
-    const current = customers.get(order.customerEmail) ?? {
-      email: order.customerEmail,
+    const customer = getOrderCustomer(order, users);
+    const key = customer?.id || order.createdById || order.customerEmail || order.id;
+    const current = customers.get(key) ?? {
+      id: key,
+      email: customer?.email || order.customerEmail || "",
+      name: customer?.fullName || customer?.companyName || customer?.email || order.customerEmail || "Unknown customer",
       orders: 0,
       spent: 0,
       lastOrder: order.createdAt,
@@ -307,7 +296,18 @@ function getCustomerData(orders: Order[]): CustomerReport[] {
     current.orders += 1;
     current.spent += order.totalAmount;
     if (new Date(order.createdAt) > new Date(current.lastOrder)) current.lastOrder = order.createdAt;
-    customers.set(order.customerEmail, current);
+    customers.set(key, current);
   });
   return [...customers.values()].sort((a, b) => b.spent - a.spent).slice(0, 10);
+}
+
+function getOrderCustomer(order: Order, users: User[]) {
+  if (order.createdById) {
+    const byId = users.find((user) => user.id === order.createdById);
+    if (byId) return byId;
+  }
+  if (order.customerEmail) {
+    return users.find((user) => user.email === order.customerEmail);
+  }
+  return undefined;
 }

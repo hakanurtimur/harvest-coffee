@@ -4,125 +4,146 @@ import MotionReveal from "@/components/MotionReveal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getHarvestApi } from "@/lib/harvest-api";
+import { useOrderByNumberQuery } from "@/lib/harvest-query";
 import type { Order, OrderStatus, PaymentStatus } from "@/lib/domain";
 import { ArrowLeft, Calendar, CheckCircle, Clock, MapPin, Package, Search, Truck, XCircle } from "lucide-react";
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 
 const statusSteps: OrderStatus[] = ["preparing", "in_transit", "delivered"];
 
-export default function TrackOrderV2Workspace() {
-  const api = useMemo(() => getHarvestApi(), []);
-  const [orderNumber, setOrderNumber] = useState("");
-  const [searchOrderNumber, setSearchOrderNumber] = useState("");
-  const [order, setOrder] = useState<Order | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const initialOrderNumber = params.get("order_number") || "";
-    setOrderNumber(initialOrderNumber);
-    setSearchOrderNumber(initialOrderNumber);
-    if (initialOrderNumber) {
-      void loadOrder(initialOrderNumber);
-    }
-  }, []);
-
-  const loadOrder = async (nextOrderNumber: string) => {
-    setIsLoading(true);
-    const nextOrder = nextOrderNumber ? await api.getOrderByNumber(nextOrderNumber) : null;
-    setOrder(nextOrder);
-    setIsLoading(false);
-  };
+export default function TrackOrderV2Workspace({ variant = "public" }: { variant?: "public" | "app" }) {
+  const initialOrderNumber = typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("order_number") || "";
+  const [orderNumber, setOrderNumber] = useState(initialOrderNumber);
+  const [searchOrderNumber, setSearchOrderNumber] = useState(initialOrderNumber);
+  const orderQuery = useOrderByNumberQuery(searchOrderNumber);
+  const order = orderQuery.data ?? null;
+  const isLoading = orderQuery.isFetching;
 
   const handleSearch = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSearchOrderNumber(orderNumber);
-    await loadOrder(orderNumber);
   };
 
-  return (
-    <div className="harvest-theme overflow-hidden bg-background text-foreground">
-      <section className="relative px-5 pb-12 pt-32 text-center sm:px-8 lg:px-10">
-        <CoffeeBranchAsset className="absolute -left-20 top-10 h-72 w-72 bg-primary/[0.09]" />
-        <CoffeeBranchAsset className="absolute -right-16 top-8 h-72 w-72 -scale-x-100 bg-primary/[0.09]" />
-        <MotionReveal className="relative mx-auto max-w-4xl">
-          <p className="mb-5 text-xs font-black uppercase tracking-[0.34em] text-primary">Order Tracking</p>
-          <h1 className="font-display text-5xl font-black leading-tight text-foreground sm:text-6xl lg:text-7xl">Track Your Order</h1>
-          <div className="mx-auto mt-6 flex w-44 items-center justify-center gap-3 text-primary/70">
-            <span className="h-px flex-1 bg-primary/35" />
-            <span className="grid h-5 w-5 place-items-center rounded-full border border-primary/40 text-[10px] font-black">H</span>
-            <span className="h-px flex-1 bg-primary/35" />
-          </div>
-          <p className="mx-auto mt-6 max-w-2xl text-lg font-medium leading-8 text-muted-foreground">
-            Enter your order number to track its status
+  const results = (
+    <div className="space-y-5">
+      {isLoading && (
+        <div>
+          <div className="h-80 animate-pulse rounded-2xl border border-border bg-card" />
+        </div>
+      )}
+
+      {!isLoading && searchOrderNumber && !order && (
+        <Card className="rounded-2xl border-2 border-dashed border-primary/20 bg-card p-10 text-center shadow-none sm:p-12">
+          <Package className="mx-auto mb-5 h-16 w-16 text-primary/35" />
+          <h2 className="text-2xl font-black text-foreground">Order not found</h2>
+          <p className="mt-4 text-base font-medium leading-7 text-muted-foreground">
+            We couldn&apos;t find an order with number: <strong className="text-foreground">{searchOrderNumber}</strong>
           </p>
-        </MotionReveal>
-      </section>
+          <p className="mt-4 text-sm font-medium text-muted-foreground/80">Please check your order number and try again.</p>
+        </Card>
+      )}
 
-      <section className="relative bg-card px-5 py-10 sm:px-8 lg:px-10 lg:py-14">
-        <CoffeeBranchAsset className="absolute -left-24 bottom-0 h-60 w-60 bg-primary/[0.07]" />
-        <MotionReveal className="relative mx-auto max-w-2xl">
-          <Card className="rounded-lg border-border bg-background/72 p-6 shadow-2xl shadow-primary/10 backdrop-blur-sm">
-            <form className="space-y-4" onSubmit={handleSearch}>
-              <label className="block">
-                <span className="mb-2 block text-sm font-bold text-foreground/70">Order Number</span>
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <input
-                    className="h-12 flex-1 rounded-md border border-border bg-background/70 px-4 text-sm font-medium text-foreground outline-none transition placeholder:text-muted-foreground/65 focus:border-primary focus:ring-4 focus:ring-primary/10"
-                    value={orderNumber}
-                    onChange={(event) => setOrderNumber(event.target.value)}
-                    placeholder="e.g., HC12345678"
-                  />
-                  <Button className="h-12 rounded-md px-6" type="submit">
-                    <Search className="h-4 w-4" />
-                    Track
-                  </Button>
-                </div>
-              </label>
-            </form>
-          </Card>
-        </MotionReveal>
-      </section>
-
-      <section className="bg-background px-5 py-10 sm:px-8 lg:px-10 lg:py-14">
-        {isLoading && (
-          <div className="mx-auto max-w-4xl">
-            <div className="h-96 animate-pulse rounded-lg bg-secondary" />
+      {!isLoading && order && (
+        <div className="space-y-5">
+          <OrderHero order={order} />
+          <DeliveryStatus order={order} />
+          {order.deliveryAddress && <DeliveryAddress address={order.deliveryAddress} />}
+          <OrderItems order={order} />
+          <div className="text-center">
+            <Button asChildShim className="h-11 rounded-md bg-transparent px-5 text-primary hover:bg-secondary" variant="outline">
+              <Link href="/orders">
+                <ArrowLeft className="h-4 w-4" />
+                View All Orders
+              </Link>
+            </Button>
           </div>
-        )}
+        </div>
+      )}
+    </div>
+  );
 
-        {!isLoading && searchOrderNumber && !order && (
-          <MotionReveal className="mx-auto max-w-2xl" variant="scale">
-            <Card className="rounded-lg border-2 border-dashed border-primary/20 bg-card p-10 text-center shadow-none sm:p-12">
-              <Package className="mx-auto mb-5 h-16 w-16 text-primary/35" />
-              <h2 className="font-display text-2xl font-black text-foreground">Order Not Found</h2>
-              <p className="mt-4 text-base font-medium leading-7 text-muted-foreground">
-                We couldn&apos;t find an order with number: <strong className="text-foreground">{searchOrderNumber}</strong>
-              </p>
-              <p className="mt-4 text-sm font-medium text-muted-foreground/80">Please check your order number and try again.</p>
+  if (variant === "public") {
+    return (
+      <div className="harvest-theme overflow-hidden bg-background text-foreground">
+        <section className="relative px-5 pb-12 pt-32 text-center sm:px-8 lg:px-10">
+          <CoffeeBranchAsset className="absolute -left-20 top-10 h-72 w-72 bg-primary/[0.09]" />
+          <CoffeeBranchAsset className="absolute -right-16 top-8 h-72 w-72 -scale-x-100 bg-primary/[0.09]" />
+          <MotionReveal className="relative mx-auto max-w-4xl">
+            <p className="mb-5 text-xs font-black uppercase tracking-[0.34em] text-primary">Order Tracking</p>
+            <h1 className="font-display text-5xl font-black leading-tight text-foreground sm:text-6xl lg:text-7xl">Track Your Order</h1>
+            <div className="mx-auto mt-6 flex w-44 items-center justify-center gap-3 text-primary/70">
+              <span className="h-px flex-1 bg-primary/35" />
+              <span className="grid h-5 w-5 place-items-center rounded-full border border-primary/40 text-[10px] font-black">H</span>
+              <span className="h-px flex-1 bg-primary/35" />
+            </div>
+            <p className="mx-auto mt-6 max-w-2xl text-lg font-medium leading-8 text-muted-foreground">
+              Enter your order number to track its status
+            </p>
+          </MotionReveal>
+        </section>
+
+        <section className="relative bg-card px-5 py-10 sm:px-8 lg:px-10 lg:py-14">
+          <CoffeeBranchAsset className="absolute -left-24 bottom-0 h-60 w-60 bg-primary/[0.07]" />
+          <MotionReveal className="relative mx-auto max-w-2xl">
+            <Card className="rounded-lg border-border bg-background/72 p-6 shadow-2xl shadow-primary/10 backdrop-blur-sm">
+              <form className="space-y-4" onSubmit={handleSearch}>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-bold text-foreground/70">Order Number</span>
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <input
+                      className="h-12 flex-1 rounded-md border border-border bg-background/70 px-4 text-sm font-medium text-foreground outline-none transition placeholder:text-muted-foreground/65 focus:border-primary focus:ring-4 focus:ring-primary/10"
+                      value={orderNumber}
+                      onChange={(event) => setOrderNumber(event.target.value)}
+                      placeholder="e.g., HC12345678"
+                    />
+                    <Button className="h-12 rounded-md px-6" type="submit">
+                      <Search className="h-4 w-4" />
+                      Track
+                    </Button>
+                  </div>
+                </label>
+              </form>
             </Card>
           </MotionReveal>
-        )}
+        </section>
 
-        {!isLoading && order && (
-          <MotionReveal className="mx-auto max-w-5xl space-y-6">
-            <OrderHero order={order} />
-            <DeliveryStatus order={order} />
-            {order.deliveryAddress && <DeliveryAddress address={order.deliveryAddress} />}
-            <OrderItems order={order} />
-            <div className="text-center">
-              <Button asChildShim className="h-11 rounded-md bg-transparent px-5 text-primary hover:bg-secondary" variant="outline">
-                <Link href="/orders">
-                  <ArrowLeft className="h-4 w-4" />
-                  View All Orders
-                </Link>
-              </Button>
-            </div>
-          </MotionReveal>
-        )}
-      </section>
+        <section className="bg-background px-5 py-10 sm:px-8 lg:px-10 lg:py-14">
+          <div className="mx-auto max-w-5xl">{results}</div>
+        </section>
+      </div>
+    );
+  }
+
+  return (
+    <div className="harvest-theme space-y-5 text-foreground">
+      <Card className="rounded-2xl border-border bg-card p-5 shadow-sm sm:p-6">
+        <div className="grid gap-5 lg:grid-cols-[1fr_520px] lg:items-end">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-primary">Dealer</p>
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-foreground sm:text-4xl">Track order</h1>
+            <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-muted-foreground">
+              Enter an order number to check status, delivery details, payment state, and ordered items.
+            </p>
+          </div>
+          <form className="grid gap-3 sm:grid-cols-[1fr_auto]" onSubmit={handleSearch}>
+            <label className="sr-only" htmlFor="track-order-number">Order Number</label>
+            <input
+              id="track-order-number"
+              className="h-12 rounded-xl border border-border bg-background px-4 text-sm font-semibold text-foreground outline-none transition placeholder:text-muted-foreground/65 focus:border-primary focus:ring-4 focus:ring-primary/10"
+              value={orderNumber}
+              onChange={(event) => setOrderNumber(event.target.value)}
+              placeholder="e.g., HC12345678"
+            />
+            <Button className="h-12 rounded-xl px-6" type="submit">
+              <Search className="h-4 w-4" />
+              Track
+            </Button>
+          </form>
+        </div>
+      </Card>
+
+      {results}
     </div>
   );
 }

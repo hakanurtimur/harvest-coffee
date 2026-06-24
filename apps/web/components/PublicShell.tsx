@@ -1,8 +1,8 @@
 "use client";
 
-import { getHarvestApi } from "@/lib/harvest-api";
+import { clearHarvestSession, getHarvestAccessToken, getHarvestApi, getHarvestMockRole, hasHarvestSession, isHarvestMockAuthEnabled, syncHarvestSessionFromUrl } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
-import { CalendarDays, CircleUserRound, ClipboardList, LogIn, LogOut, MapPin, Menu, ShoppingBag, User, X } from "lucide-react";
+import { CalendarDays, CircleUserRound, ClipboardList, Home, Info, LogIn, LogOut, Mail, MapPin, Menu, Search, ShoppingBag, User, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -20,16 +20,19 @@ type NavigationItem = {
 };
 
 const navItems: NavigationItem[] = [
-  { label: "Home", href: "/home", pageNames: ["Home"] },
-  { label: "About", href: "/about", pageNames: ["About"] },
-  { label: "Contact", href: "/contact", pageNames: ["Contact"] },
+  { label: "Home", href: "/home", pageNames: ["Home"], icon: Home },
+  { label: "About", href: "/about", pageNames: ["About"], icon: Info },
+  { label: "Contact", href: "/contact", pageNames: ["Contact"], icon: Mail },
   { label: "Products", href: "/products", pageNames: ["Products"], icon: ShoppingBag },
+  { label: "Track Order", href: "/trackorder", pageNames: ["TrackOrder"], icon: Search },
   { label: "My Orders", href: "/orders", pageNames: ["Orders", "OrderDetails"], icon: ClipboardList, authenticatedOnly: true },
   { label: "Rentals", href: "/rentals", pageNames: ["Rentals", "CreateRental"], icon: CalendarDays, authenticatedOnly: true },
   { label: "Profile", href: "/profile", pageNames: ["Profile"], icon: CircleUserRound, authenticatedOnly: true },
 ];
 
 const footerCupImage = "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=520&q=85";
+const fallbackUserLabel = "Harvest User";
+const userLabelCacheKey = "harvest_user_label";
 
 export default function PublicShell({ children }: PublicShellProps) {
   const api = useMemo(() => getHarvestApi(), []);
@@ -38,36 +41,57 @@ export default function PublicShell({ children }: PublicShellProps) {
   const currentPageName = getCurrentPageName(pathname);
   const currentV2Enabled = useV2Enabled(pathname || "/home");
   const isModernPublicV2 =
-    ["Home", "About", "Contact", "Products", "Login", "TrackOrder", "Orders", "OrderDetails", "Rentals", "CreateRental", "Profile"].includes(currentPageName) &&
+    ["Home", "About", "Contact", "Products", "Login", "TrackOrder", "Orders", "OrderDetails", "Rentals", "CreateRental", "Profile", "Notifications"].includes(currentPageName) &&
     currentV2Enabled;
-  const [userLabel, setUserLabel] = useState("Harvest User");
+  const [userLabel, setUserLabel] = useState(() => {
+    if (typeof window === "undefined") return fallbackUserLabel;
+    return window.localStorage.getItem(userLabelCacheKey) || fallbackUserLabel;
+  });
+  const [authChecked, setAuthChecked] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
     const syncAuth = () => {
-      const url = new URL(window.location.href);
-      const hasMockAuthParam = url.searchParams.get("mockAuth") === "1";
-      const mockRole = url.searchParams.get("mockRole");
-      if (hasMockAuthParam) {
-        window.localStorage.setItem("harvest_mock_auth", "logged-in");
-        if (mockRole === "admin" || mockRole === "dealer") {
-          window.localStorage.setItem("harvest_mock_role", mockRole);
-        }
-        url.searchParams.delete("mockAuth");
-        url.searchParams.delete("mockRole");
-        window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-      }
+      syncHarvestSessionFromUrl();
 
-      const authenticated = hasMockAuthParam || window.localStorage.getItem("harvest_mock_auth") === "logged-in";
+      const authenticated = hasHarvestSession();
       setIsAuthenticated(authenticated);
       if (!authenticated) {
-        setUserLabel("Harvest User");
+        setUserLabel(fallbackUserLabel);
+        setAuthChecked(true);
         return;
       }
 
+      const cachedLabel = window.localStorage.getItem(userLabelCacheKey);
+      if (cachedLabel) setUserLabel(cachedLabel);
+
+      const mockLabel = isHarvestMockAuthEnabled() ? getMockUserLabel() : null;
+      if (mockLabel) {
+        setUserLabel(mockLabel);
+        window.localStorage.setItem(userLabelCacheKey, mockLabel);
+        if (!getHarvestAccessToken()) {
+          setAuthChecked(true);
+          if (shouldLeavePublicShell(pathname)) {
+            router.replace(getHarvestMockRole() === "admin" ? "/admin" : "/dashboard");
+          }
+          return;
+        }
+      }
+
       void api.getCurrentUser().then((user) => {
-        setUserLabel(user?.fullName || user?.email || "Harvest User");
+        if (!mounted) return;
+        const nextLabel = user?.fullName || user?.email || cachedLabel || mockLabel || fallbackUserLabel;
+        setUserLabel(nextLabel);
+        window.localStorage.setItem(userLabelCacheKey, nextLabel);
+        setAuthChecked(true);
+        if (shouldLeavePublicShell(pathname)) {
+          router.replace(user?.role === "admin" ? "/admin" : "/dashboard");
+        }
+      }).catch(() => {
+        if (!mounted) return;
+        setAuthChecked(true);
       });
     };
 
@@ -75,10 +99,11 @@ export default function PublicShell({ children }: PublicShellProps) {
     window.addEventListener("harvest_mock_auth_changed", syncAuth);
     window.addEventListener("storage", syncAuth);
     return () => {
+      mounted = false;
       window.removeEventListener("harvest_mock_auth_changed", syncAuth);
       window.removeEventListener("storage", syncAuth);
     };
-  }, [api]);
+  }, [api, pathname, router]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -92,15 +117,19 @@ export default function PublicShell({ children }: PublicShellProps) {
   }, []);
 
   const handleLogout = () => {
-    window.localStorage.setItem("harvest_mock_auth", "logged-out");
-    window.localStorage.removeItem("harvest_mock_role");
+    clearHarvestSession();
+    window.localStorage.removeItem(userLabelCacheKey);
     setIsAuthenticated(false);
-    setUserLabel("Harvest User");
-    window.dispatchEvent(new Event("harvest_mock_auth_changed"));
+    setUserLabel(fallbackUserLabel);
     router.push("/home");
   };
 
-  const loginHref = `/login?next=${encodeURIComponent(pathname || "/home")}`;
+  const loginHref = "/login?next=%2Fdashboard";
+  const shouldShowPublicAuthGate = !authChecked || (isAuthenticated && shouldLeavePublicShell(pathname));
+
+  if (shouldShowPublicAuthGate) {
+    return <PublicAuthLoading />;
+  }
 
   if (isModernPublicV2) {
     return (
@@ -457,5 +486,30 @@ function getCurrentPageName(pathname: string) {
   if (pathname.startsWith("/rentals/new")) return "CreateRental";
   if (pathname.startsWith("/rentals")) return "Rentals";
   if (pathname.startsWith("/profile")) return "Profile";
+  if (pathname.startsWith("/notifications")) return "Notifications";
   return "";
+}
+
+function shouldLeavePublicShell(pathname: string) {
+  return pathname === "/" || pathname.startsWith("/home") || pathname.startsWith("/about") || pathname.startsWith("/contact") || pathname.startsWith("/login");
+}
+
+function PublicAuthLoading() {
+  return (
+    <div className="harvest-theme grid min-h-screen place-items-center bg-background text-foreground">
+      <div
+        aria-label="Loading"
+        className="h-10 w-10 animate-spin rounded-full border-2 border-primary/20 border-t-primary"
+        role="status"
+      />
+    </div>
+  );
+}
+
+function getMockUserLabel() {
+  if (typeof window === "undefined") return null;
+  const role = window.localStorage.getItem("harvest_mock_role");
+  if (role === "dealer") return "Hakan Urtimur";
+  if (role === "admin") return "Ops Admin";
+  return null;
 }

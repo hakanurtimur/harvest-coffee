@@ -1,5 +1,6 @@
-import { cn } from "@/lib/utils";
 import * as React from "react";
+
+import { cn } from "@/lib/utils";
 
 type ButtonVariant = "default" | "secondary" | "outline" | "ghost" | "dark";
 type ButtonSize = "sm" | "md" | "lg" | "icon";
@@ -19,6 +20,15 @@ const sizes: Record<ButtonSize, string> = {
   icon: "h-10 w-10 p-0",
 };
 
+export function buttonVariants({ className, size = "md", variant = "default" }: { className?: string; size?: ButtonSize; variant?: ButtonVariant } = {}) {
+  return cn(
+    "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+    variants[variant],
+    sizes[size],
+    className,
+  );
+}
+
 export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -27,12 +37,7 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ asChildShim = false, children, className, variant = "default", size = "md", type = "button", ...props }, ref) => {
-    const buttonClassName = cn(
-      "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-      variants[variant],
-      sizes[size],
-      className,
-    );
+    const buttonClassName = buttonVariants({ className, size, variant });
 
     if (asChildShim && React.isValidElement(children)) {
       const child = children as React.ReactElement<{ className?: string }>;

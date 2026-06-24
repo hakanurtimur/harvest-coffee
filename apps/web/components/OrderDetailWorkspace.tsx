@@ -1,12 +1,16 @@
 "use client";
 
 import OrderDetailV2Workspace from "@/components/OrderDetailV2Workspace";
+import LoadingState from "@/components/LoadingState";
+import { Combobox } from "@/components/ui/combobox";
 import { getHarvestApi } from "@/lib/harvest-api";
 import { useV2Enabled } from "@/lib/v2-pages";
 import { Order, paymentMethodLabels, paymentStatusLabels } from "@/lib/domain";
 import { ArrowLeft, CreditCard, FileText, MapPin, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+
+const paymentMethodOptions = Object.entries(paymentMethodLabels).map(([value, label]) => ({ label, value }));
 
 export default function OrderDetailWorkspace({ orderId }: { orderId: string }) {
   const v2Enabled = useV2Enabled("/orderdetails");
@@ -22,6 +26,7 @@ function LegacyOrderDetailWorkspace({ orderId }: { orderId: string }) {
   const api = useMemo(() => getHarvestApi(), []);
   const [order, setOrder] = useState<Order | null>(null);
   const [message, setMessage] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -32,8 +37,15 @@ function LegacyOrderDetailWorkspace({ orderId }: { orderId: string }) {
   const loadOrder = async () => {
     setIsLoading(true);
     setMessage("");
-    setOrder(await api.getOrder(orderId));
-    setIsLoading(false);
+    setLoadError("");
+    try {
+      setOrder(orderId ? await api.getOrder(orderId) : null);
+    } catch (error) {
+      setOrder(null);
+      setLoadError(error instanceof Error ? error.message : "Order could not be loaded.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const updatePayment = async (patch: Pick<Order, "paymentMethod"> | Pick<Order, "paymentStatus">) => {
@@ -75,11 +87,15 @@ function LegacyOrderDetailWorkspace({ orderId }: { orderId: string }) {
 
       {isLoading ? (
         <section className="orders-section">
-          <div className="loading-panel">Loading order...</div>
+          <LoadingState
+            description="Fetching order status, payment details, delivery address, and items."
+            minHeight="min-h-[260px]"
+            title="Loading order"
+          />
         </section>
       ) : !order ? (
         <section className="orders-section">
-          <div className="loading-panel">Order not found.</div>
+          <div className="loading-panel">{loadError || "Order not found."}</div>
         </section>
       ) : (
         <section className="detail-grid">
@@ -139,15 +155,14 @@ function LegacyOrderDetailWorkspace({ orderId }: { orderId: string }) {
             </div>
             <label>
               <span>Method</span>
-              <select
+              <Combobox
                 value={order.paymentMethod}
-                onChange={(event) => updatePayment({ paymentMethod: event.target.value as Order["paymentMethod"] })}
+                onChange={(value) => updatePayment({ paymentMethod: value as Order["paymentMethod"] })}
                 disabled={isSaving}
-              >
-                {Object.entries(paymentMethodLabels).map(([value, label]) => (
-                  <option value={value} key={value}>{label}</option>
-                ))}
-              </select>
+                loading={isSaving}
+                options={paymentMethodOptions}
+                placeholder="Payment method"
+              />
             </label>
             <div className="payment-line">
               <span>Status</span>
