@@ -14,7 +14,7 @@ import { FormEvent, useState } from "react";
 
 const fallbackEmail = "dealer@example.com";
 
-export default function CreateRentalV2Workspace() {
+export default function CreateRentalModernWorkspace() {
   const productsQuery = useProductsQuery();
   const currentUserQuery = useCurrentUserQuery();
   const createRentalMutation = useCreateRentalMutation();

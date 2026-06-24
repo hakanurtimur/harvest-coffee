@@ -14,7 +14,7 @@ type EditValues = {
   lowStockThreshold: string;
 };
 
-export default function StockManagementV2Workspace() {
+export default function StockManagementModernWorkspace() {
   const integrations = useMemo(() => getHarvestIntegrations(), []);
   const productsQuery = useProductsQuery();
   const updateProductMutation = useUpdateProductMutation();

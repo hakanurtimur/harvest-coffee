@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 
 const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-export default function RentalCalendarV2Workspace() {
+export default function RentalCalendarModernWorkspace() {
   const rentalsQuery = useRentalsQuery();
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));

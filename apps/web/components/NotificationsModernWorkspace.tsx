@@ -24,7 +24,7 @@ const notificationStyles: Record<Notification["type"], { border: string; icon: s
   new_order_admin: { border: "border-purple-200", icon: "text-purple-700", surface: "bg-purple-50" },
 };
 
-export default function NotificationsV2Workspace() {
+export default function NotificationsModernWorkspace() {
   const currentUserQuery = useCurrentUserQuery();
   const notificationsQuery = useNotificationsQuery();
   const markNotificationReadMutation = useMarkNotificationReadMutation();

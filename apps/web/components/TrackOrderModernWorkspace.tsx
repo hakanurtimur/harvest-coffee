@@ -12,7 +12,7 @@ import { FormEvent, useState } from "react";
 
 const statusSteps: OrderStatus[] = ["preparing", "in_transit", "delivered"];
 
-export default function TrackOrderV2Workspace({ variant = "public" }: { variant?: "public" | "app" }) {
+export default function TrackOrderModernWorkspace({ variant = "public" }: { variant?: "public" | "app" }) {
   const initialOrderNumber = typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("order_number") || "";
   const [orderNumber, setOrderNumber] = useState(initialOrderNumber);
   const [searchOrderNumber, setSearchOrderNumber] = useState(initialOrderNumber);

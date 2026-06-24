@@ -7,7 +7,7 @@ import { Award, Coffee, Handshake, Sprout } from "lucide-react";
 
 const storyImage = "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=1200&q=85";
 
-export default function AboutV2Workspace() {
+export default function AboutModernWorkspace() {
   const values = [
     { icon: Coffee, title: "Quality First", desc: "Every bean is carefully selected and roasted to perfection." },
     { icon: Sprout, title: "Sustainability", desc: "We partner with farms committed to ethical and sustainable practices." },

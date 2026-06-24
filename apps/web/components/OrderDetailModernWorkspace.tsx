@@ -28,7 +28,7 @@ import { useState } from "react";
 
 const paymentMethodOptions = Object.entries(paymentMethodLabels).map(([value, label]) => ({ label, value }));
 
-export default function OrderDetailV2Workspace({ orderId }: { orderId: string }) {
+export default function OrderDetailModernWorkspace({ orderId }: { orderId: string }) {
   const currentUserQuery = useCurrentUserQuery();
   const orderQuery = useOrderQuery(orderId);
   const updateOrderMutation = useUpdateOrderMutation();

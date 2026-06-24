@@ -70,18 +70,18 @@ export default function Products() {
         // Email to customer
         await base44.integrations.Core.SendEmail({
           to: user.email,
-          subject: `Siparişiniz Alındı - #${newOrder.order_number}`,
-          body: `Merhaba ${user.full_name || user.email},\n\nSiparişiniz başarıyla alındı!\n\nSipariş No: ${newOrder.order_number}\nToplam Tutar: £${newOrder.total_amount.toFixed(2)}\nÖdeme Yöntemi: ${newOrder.payment_method === 'bank_transfer' ? 'Havale/EFT' : newOrder.payment_method === 'credit_card' ? 'Kredi Kartı' : 'PayPal'}\n\nSiparişinizin durumunu hesabınızdan takip edebilirsiniz.\n\nTeşekkürler,\nHarvest Coffee`
+          subject: `Order Received - #${newOrder.order_number}`,
+          body: `Hello ${user.full_name || user.email},\n\nYour order has been received successfully!\n\nOrder No: ${newOrder.order_number}\nTotal Amount: £${newOrder.total_amount.toFixed(2)}\nPayment Method: ${newOrder.payment_method === 'bank_transfer' ? 'Bank Transfer' : newOrder.payment_method === 'credit_card' ? 'Credit Card' : 'PayPal'}\n\nYou can track your order status from your account.\n\nThank you,\nHarvest Coffee`
         });
         
         // Email to admin
         await base44.integrations.Core.SendEmail({
           to: 'admin@harvestcoffee.com',
-          subject: `Yeni Sipariş - #${newOrder.order_number}`,
-          body: `Yeni bir sipariş alındı!\n\nSipariş No: ${newOrder.order_number}\nMüşteri: ${user.email}\nToplam Tutar: £${newOrder.total_amount.toFixed(2)}\nÖdeme Durumu: ${newOrder.payment_status}\nÖdeme Yöntemi: ${newOrder.payment_method}\n\nDetayları admin panelinden görüntüleyebilirsiniz.`
+          subject: `New Order - #${newOrder.order_number}`,
+          body: `A new order has been received!\n\nOrder No: ${newOrder.order_number}\nCustomer: ${user.email}\nTotal Amount: £${newOrder.total_amount.toFixed(2)}\nPayment Status: ${newOrder.payment_status}\nPayment Method: ${newOrder.payment_method}\n\nYou can view the details from the admin panel.`
         });
       } catch (emailError) {
-        console.error('Email gönderilirken hata:', emailError);
+        console.error('Error sending email:', emailError);
       }
       
       setCart({});
@@ -118,7 +118,7 @@ export default function Products() {
 
   const handleCheckout = async () => {
     if (!deliveryAddress.trim()) {
-      alert('Lütfen teslimat adresi seçin veya girin');
+      alert('Please select or enter a delivery address.');
       return;
     }
 
@@ -474,7 +474,7 @@ export default function Products() {
                           }}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Kayıtlı adres seçin" />
+                            <SelectValue placeholder="Select a saved address" />
                           </SelectTrigger>
                           <SelectContent>
                             {currentUser.addresses.map((addr, index) => (
@@ -482,7 +482,7 @@ export default function Products() {
                                 {addr.title}
                               </SelectItem>
                             ))}
-                            <SelectItem value="custom">Farklı bir adres gir</SelectItem>
+                            <SelectItem value="custom">Enter a different address</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -494,7 +494,7 @@ export default function Products() {
                         setDeliveryAddress(e.target.value);
                         setSelectedAddressIndex(null);
                       }}
-                      placeholder={currentUser?.addresses?.length > 0 ? "Veya farklı bir adres girin" : t.deliveryAddressPlaceholder}
+                      placeholder={currentUser?.addresses?.length > 0 ? "Or enter a different address" : t.deliveryAddressPlaceholder}
                       className="min-h-24"
                       disabled={selectedAddressIndex !== null && selectedAddressIndex >= 0}
                     />

@@ -45,7 +45,7 @@ export default function CustomerManagement() {
   });
 
   if (!user || user.role !== 'admin') {
-    return <div className="text-center py-12">Yükleniyor...</div>;
+    return <div className="text-center py-12">Loading...</div>;
   }
 
   // Calculate customer statistics
@@ -61,11 +61,11 @@ export default function CustomerManagement() {
 
   const getSegmentBadge = (segment) => {
     const segments = {
-      new: { label: 'Yeni', className: 'bg-blue-100 text-blue-800' },
-      regular: { label: 'Düzenli', className: 'bg-green-100 text-green-800' },
+      new: { label: 'New', className: 'bg-blue-100 text-blue-800' },
+      regular: { label: 'Regular', className: 'bg-green-100 text-green-800' },
       vip: { label: 'VIP', className: 'bg-purple-100 text-purple-800' },
-      lapsed: { label: 'Pasif', className: 'bg-gray-100 text-gray-800' },
-      at_risk: { label: 'Risk Altında', className: 'bg-red-100 text-red-800' },
+      lapsed: { label: 'Lapsed', className: 'bg-gray-100 text-gray-800' },
+      at_risk: { label: 'At Risk', className: 'bg-red-100 text-red-800' },
     };
     const config = segments[segment] || segments.new;
     return <Badge className={config.className}>{config.label}</Badge>;
@@ -80,9 +80,9 @@ export default function CustomerManagement() {
       {/* Header */}
       <div>
         <h1 className="text-4xl font-bold text-amber-900 mb-2" style={{ fontFamily: 'Georgia, serif' }}>
-          Müşteri Yönetimi
+          Customer Management
         </h1>
-        <p className="text-amber-700">Müşteri bilgileri ve segmentasyon</p>
+        <p className="text-amber-700">Customer information and segmentation</p>
       </div>
 
       {/* Summary Cards */}
@@ -92,7 +92,7 @@ export default function CustomerManagement() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-blue-700 mb-1">Toplam Müşteri</p>
+                  <p className="text-sm text-blue-700 mb-1">Total Customers</p>
                   <p className="text-3xl font-bold text-blue-900">{users.length}</p>
                 </div>
                 <Users className="w-12 h-12 text-blue-600 opacity-50" />
@@ -106,7 +106,7 @@ export default function CustomerManagement() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-purple-700 mb-1">VIP Müşteriler</p>
+                  <p className="text-sm text-purple-700 mb-1">VIP Customers</p>
                   <p className="text-3xl font-bold text-purple-900">
                     {users.filter(u => u.customer_segment === 'vip').length}
                   </p>
@@ -122,7 +122,7 @@ export default function CustomerManagement() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-green-700 mb-1">Ort. Sipariş Değeri</p>
+                  <p className="text-sm text-green-700 mb-1">Avg. Order Value</p>
                   <p className="text-3xl font-bold text-green-900">
                     £{orders.length > 0 ? (orders.reduce((sum, o) => sum + o.total_amount, 0) / orders.length).toFixed(2) : '0.00'}
                   </p>
@@ -138,7 +138,7 @@ export default function CustomerManagement() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-amber-700 mb-1">Toplam Sipariş</p>
+                  <p className="text-sm text-amber-700 mb-1">Total Orders</p>
                   <p className="text-3xl font-bold text-amber-900">{orders.length}</p>
                 </div>
                 <Package className="w-12 h-12 text-amber-600 opacity-50" />
@@ -151,18 +151,18 @@ export default function CustomerManagement() {
       {/* Customer List */}
       <Card className="border-amber-100">
         <CardHeader>
-          <CardTitle className="text-amber-900">Müşteriler</CardTitle>
+          <CardTitle className="text-amber-900">Customers</CardTitle>
         </CardHeader>
         <CardContent className="p-6">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-amber-50 border-b-2 border-amber-200">
                 <tr>
-                  <th className="text-left p-4 font-semibold text-amber-900">Müşteri</th>
+                  <th className="text-left p-4 font-semibold text-amber-900">Customer</th>
                   <th className="text-center p-4 font-semibold text-amber-900">Segment</th>
-                  <th className="text-center p-4 font-semibold text-amber-900">Sipariş Sayısı</th>
-                  <th className="text-right p-4 font-semibold text-amber-900">Toplam Harcama</th>
-                  <th className="text-center p-4 font-semibold text-amber-900">İşlemler</th>
+                  <th className="text-center p-4 font-semibold text-amber-900">Order Count</th>
+                  <th className="text-right p-4 font-semibold text-amber-900">Total Spent</th>
+                  <th className="text-center p-4 font-semibold text-amber-900">Actionler</th>
                 </tr>
               </thead>
               <tbody>
@@ -195,11 +195,11 @@ export default function CustomerManagement() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="new">Yeni</SelectItem>
-                          <SelectItem value="regular">Düzenli</SelectItem>
+                          <SelectItem value="new">New</SelectItem>
+                          <SelectItem value="regular">Regular</SelectItem>
                           <SelectItem value="vip">VIP</SelectItem>
-                          <SelectItem value="lapsed">Pasif</SelectItem>
-                          <SelectItem value="at_risk">Risk Altında</SelectItem>
+                          <SelectItem value="lapsed">Lapsed</SelectItem>
+                          <SelectItem value="at_risk">At Risk</SelectItem>
                         </SelectContent>
                       </Select>
                     </td>

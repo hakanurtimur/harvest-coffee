@@ -11,11 +11,11 @@ import { useState } from "react";
 const segmentOptions: CustomerSegment[] = ["new", "regular", "vip", "lapsed", "at_risk"];
 
 const segmentConfig: Record<CustomerSegment, { label: string; className: string }> = {
-  new: { label: "Yeni", className: "border-[hsl(var(--status-info)/0.24)] bg-[hsl(var(--status-info)/0.08)] text-[hsl(var(--status-info))]" },
-  regular: { label: "Düzenli", className: "border-[hsl(var(--status-success)/0.24)] bg-[hsl(var(--status-success)/0.08)] text-[hsl(var(--status-success))]" },
+  new: { label: "New", className: "border-[hsl(var(--status-info)/0.24)] bg-[hsl(var(--status-info)/0.08)] text-[hsl(var(--status-info))]" },
+  regular: { label: "Regular", className: "border-[hsl(var(--status-success)/0.24)] bg-[hsl(var(--status-success)/0.08)] text-[hsl(var(--status-success))]" },
   vip: { label: "VIP", className: "border-[hsl(var(--chart-4)/0.24)] bg-[hsl(var(--chart-4)/0.08)] text-[hsl(var(--chart-4))]" },
-  lapsed: { label: "Pasif", className: "border-border bg-muted text-muted-foreground" },
-  at_risk: { label: "Risk Altında", className: "border-[hsl(var(--status-danger)/0.24)] bg-[hsl(var(--status-danger)/0.08)] text-[hsl(var(--status-danger))]" },
+  lapsed: { label: "Lapsed", className: "border-border bg-muted text-muted-foreground" },
+  at_risk: { label: "At Risk", className: "border-[hsl(var(--status-danger)/0.24)] bg-[hsl(var(--status-danger)/0.08)] text-[hsl(var(--status-danger))]" },
 };
 
 const segmentComboboxOptions = segmentOptions.map((segment) => ({
@@ -29,7 +29,7 @@ type CustomerRow = User & {
   totalSpent: number;
 };
 
-export default function AdminCustomersV2Workspace() {
+export default function AdminCustomersModernWorkspace() {
   const usersQuery = useUsersQuery();
   const ordersQuery = useOrdersQuery();
   const updateUserMutation = useUpdateUserMutation();
@@ -65,7 +65,7 @@ export default function AdminCustomersV2Workspace() {
     try {
       await updateUserMutation.mutateAsync({ id: userId, input: { customerSegment } });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Müşteri segmenti güncellenemedi.");
+      setMessage(error instanceof Error ? error.message : "Customer segment could not be updated.");
     } finally {
       setSavingUserId(null);
     }
@@ -73,7 +73,7 @@ export default function AdminCustomersV2Workspace() {
 
   return (
     <div className="harvest-theme space-y-5 text-foreground">
-      <AdminPageHeader title="Müşteri Yönetimi" description="Müşteri bilgileri ve segmentasyon" />
+      <AdminPageHeader title="Customer Management" description="Customer information and segmentation" />
 
       {message && (
         <section className="rounded-xl border border-[hsl(var(--status-danger)/0.24)] bg-[hsl(var(--status-danger)/0.08)] px-4 py-3 text-sm font-bold text-[hsl(var(--status-danger))]">
@@ -82,15 +82,15 @@ export default function AdminCustomersV2Workspace() {
       )}
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard label="Toplam Müşteri" value={String(users.length)} icon={Users} tone="blue" />
-        <SummaryCard label="VIP Müşteriler" value={String(vipCount)} icon={TrendingUp} tone="purple" />
-        <SummaryCard label="Ort. Sipariş Değeri" value={`£${averageOrderValue.toFixed(2)}`} icon={DollarSign} tone="green" />
-        <SummaryCard label="Toplam Sipariş" value={String(orders.length)} icon={Package} tone="amber" />
+        <SummaryCard label="Total Customers" value={String(users.length)} icon={Users} tone="blue" />
+        <SummaryCard label="VIP Customers" value={String(vipCount)} icon={TrendingUp} tone="purple" />
+        <SummaryCard label="Avg. Order Value" value={`£${averageOrderValue.toFixed(2)}`} icon={DollarSign} tone="green" />
+        <SummaryCard label="Total Orders" value={String(orders.length)} icon={Package} tone="amber" />
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm shadow-primary/5">
         <header className="border-b border-border px-5 py-4">
-          <h2 className="text-lg font-black text-foreground">Müşteriler</h2>
+          <h2 className="text-lg font-black text-foreground">Customers</h2>
         </header>
         <div className="p-5">
           {isLoading ? (
@@ -100,12 +100,12 @@ export default function AdminCustomersV2Workspace() {
               <table className="w-full min-w-[900px]">
                 <thead className="border-b-2 border-border bg-muted">
                   <tr>
-                    <TableHead align="left">Müşteri</TableHead>
+                    <TableHead align="left">Customer</TableHead>
                     <TableHead>Segment</TableHead>
-                    <TableHead>Sipariş Sayısı</TableHead>
-                    <TableHead align="right">Toplam Harcama</TableHead>
-                    <TableHead>Son Sipariş</TableHead>
-                    <TableHead>İşlemler</TableHead>
+                    <TableHead>Order Count</TableHead>
+                    <TableHead align="right">Total Spent</TableHead>
+                    <TableHead>Last Order</TableHead>
+                    <TableHead>Actions</TableHead>
                   </tr>
                 </thead>
                 <tbody>

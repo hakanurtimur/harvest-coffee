@@ -25,7 +25,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Cart = Record<string, number>;
 
@@ -37,7 +37,7 @@ const paymentMethodOptions: Array<{ label: string; value: PaymentMethod }> = [
   { label: "Cash on Delivery", value: "cash_on_delivery" },
 ];
 
-export default function CatalogV2Workspace() {
+export default function CatalogModernWorkspace() {
   const currentUserQuery = useCurrentUserQuery();
   const productsQuery = useProductsQuery();
   const createOrderMutation = useCreateOrderMutation();
@@ -55,6 +55,22 @@ export default function CatalogV2Workspace() {
   const defaultDeliveryAddress = currentUser?.addresses?.[0]?.address ?? "";
   const cartItems = useMemo(() => calculateOrderItems(products, cart), [cart, products]);
   const totalAmount = calculateOrderTotal(cartItems);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const cartParam = params.get("cart");
+    if (!cartParam) return;
+
+    const preloadedCart = parsePreloadedCart(cartParam);
+    if (Object.keys(preloadedCart).length > 0) {
+      setCart((current) => ({ ...current, ...preloadedCart }));
+      setShowCheckout(true);
+    }
+
+    params.delete("cart");
+    const nextQuery = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`);
+  }, []);
 
   const handleQuantityChange = (productId: string, newQuantity: number) => {
     setCart((current) => {
@@ -287,6 +303,25 @@ function DealerMetric({ label, value }: { label: string; value: string }) {
       <p className="mt-2 text-2xl font-black tracking-normal text-foreground">{value}</p>
     </div>
   );
+}
+
+function parsePreloadedCart(value: string): Cart {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!Array.isArray(parsed)) return {};
+
+    return parsed.reduce<Cart>((cart, entry) => {
+      if (!Array.isArray(entry)) return cart;
+      const [productId, rawQuantity] = entry;
+      const quantity = Number(rawQuantity);
+      if (typeof productId === "string" && Number.isFinite(quantity) && quantity > 0) {
+        cart[productId] = Math.floor(quantity);
+      }
+      return cart;
+    }, {});
+  } catch {
+    return {};
+  }
 }
 
 function ProductList({

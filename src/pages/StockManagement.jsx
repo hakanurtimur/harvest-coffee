@@ -45,11 +45,11 @@ export default function StockManagement() {
         try {
           await base44.integrations.Core.SendEmail({
             to: 'admin@harvestcoffee.com',
-            subject: `⚠️ Düşük Stok Uyarısı - ${updatedProduct.name}`,
-            body: `UYARI: ${updatedProduct.name} ürününün stok seviyesi kritik seviyede!\n\nMevcut Stok: ${updatedProduct.stock_quantity} adet\nEşik Değeri: ${updatedProduct.low_stock_threshold} adet\n\nLütfen en kısa sürede stok yenilemesi yapınız.`
+            subject: `⚠️ Low Stock Alert - ${updatedProduct.name}`,
+            body: `WARNING: ${updatedProduct.name} stock level is critical!\n\nCurrent Stock: ${updatedProduct.stock_quantity} units\nThreshold: ${updatedProduct.low_stock_threshold} units\n\nPlease restock as soon as possible.`
           });
         } catch (error) {
-          console.error('Email gönderilirken hata:', error);
+          console.error('Error sending email:', error);
         }
       }
       
@@ -59,7 +59,7 @@ export default function StockManagement() {
   });
 
   if (!user || user.role !== 'admin') {
-    return <div className="text-center py-12">Yükleniyor...</div>;
+    return <div className="text-center py-12">Loading...</div>;
   }
 
   const handleEdit = (product) => {

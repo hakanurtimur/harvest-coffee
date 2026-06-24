@@ -259,10 +259,14 @@ export function createBase44HarvestApi(base44: Base44ClientLike): HarvestApi {
       await base44.entities.Product.delete(id);
     },
     async getMyOrders(customerEmail) {
-      const records = await safeEntityFilter(base44.entities.Order, { customer_email: customerEmail }, "-created_date");
+      const currentUser = base44.auth ? mapBase44User(await base44.auth.me()) : null;
+      const records = await safeEntityList(base44.entities.Order, "-created_date");
       return records
         .map(mapBase44Order)
-        .filter((order) => sameEmail(order.customerEmail, customerEmail))
+        .filter((order) => (
+          Boolean(currentUser?.id && sameRecordId(order.createdById, currentUser.id)) ||
+          Boolean(order.customerEmail && sameEmail(order.customerEmail, customerEmail))
+        ))
         .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
     },
     async getOrders() {
@@ -870,6 +874,10 @@ async function safeEntityList(entity: EntityClient, order?: string): Promise<Raw
 
 function sameEmail(left: unknown, right: unknown) {
   return normalizeEmail(left) === normalizeEmail(right);
+}
+
+function sameRecordId(left: unknown, right: unknown) {
+  return stringValue(left).trim() === stringValue(right).trim();
 }
 
 function normalizeEmail(value: unknown) {

@@ -83,7 +83,7 @@ export default function AdminDashboard() {
   });
 
   if (!user || user.role !== 'admin') {
-    return <div className="text-center py-12">Yükleniyor...</div>;
+    return <div className="text-center py-12">Loading...</div>;
   }
 
   const totalOrders = orders.length;
@@ -146,7 +146,7 @@ export default function AdminDashboard() {
   const paymentMethodData = Object.entries(paymentMethods)
     .filter(([_, data]) => data.count > 0)
     .map(([method, data]) => ({
-      name: method === 'bank_transfer' ? (language === 'tr' ? 'Havale/EFT' : 'Bank Transfer') : method === 'credit_card' ? (language === 'tr' ? 'Kredi Kartı' : 'Credit Card') : 'PayPal',
+      name: method === 'bank_transfer' ? (language === 'tr' ? 'Bank Transfer' : 'Bank Transfer') : method === 'credit_card' ? (language === 'tr' ? 'Credit Card' : 'Credit Card') : 'PayPal',
       value: data.amount,
       count: data.count,
     }));
@@ -173,7 +173,7 @@ export default function AdminDashboard() {
 
   const statusData = Object.entries(statusBreakdown).map(([status, data]) => ({
     name: language === 'tr' ? 
-      (status === 'preparing' ? 'Hazırlanıyor' : status === 'in_transit' ? 'Kargoda' : 'Teslim Edildi')
+      (status === 'preparing' ? 'Preparing' : status === 'in_transit' ? 'Kargoda' : 'Delivered')
       : (status === 'preparing' ? 'Preparing' : status === 'in_transit' ? 'In Transit' : 'Delivered'),
     orders: data.count,
     revenue: data.revenue,
@@ -409,7 +409,7 @@ export default function AdminDashboard() {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="orders" fill="#3b82f6" name={language === 'tr' ? 'Sipariş Sayısı' : 'Order Count'} />
+                <Bar dataKey="orders" fill="#3b82f6" name={language === 'tr' ? 'Order Count' : 'Order Count'} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -463,7 +463,7 @@ export default function AdminDashboard() {
                     </div>
                     <div>
                       <p className="font-medium text-amber-900 text-sm">{product.name}</p>
-                      <p className="text-xs text-gray-600">{product.quantity} {language === 'tr' ? 'adet' : 'units'}</p>
+                      <p className="text-xs text-gray-600">{product.quantity} {language === 'tr' ? 'units' : 'units'}</p>
                     </div>
                   </div>
                   <span className="font-bold text-green-700">£{product.revenue.toFixed(2)}</span>

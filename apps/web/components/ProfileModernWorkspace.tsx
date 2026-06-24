@@ -38,14 +38,14 @@ const tabs: Array<{ id: ProfileTab; label: string }> = [
 ];
 
 const segmentConfig: Record<CustomerSegment, { label: string; className: string }> = {
-  new: { label: "Yeni", className: "border-blue-200 bg-blue-50 text-blue-800" },
-  regular: { label: "Düzenli", className: "border-green-200 bg-green-50 text-green-800" },
+  new: { label: "New", className: "border-blue-200 bg-blue-50 text-blue-800" },
+  regular: { label: "Regular", className: "border-green-200 bg-green-50 text-green-800" },
   vip: { label: "VIP", className: "border-purple-200 bg-purple-50 text-purple-800" },
-  lapsed: { label: "Pasif", className: "border-border bg-secondary text-secondary-foreground" },
-  at_risk: { label: "Risk Altında", className: "border-red-200 bg-red-50 text-red-800" },
+  lapsed: { label: "Lapsed", className: "border-border bg-secondary text-secondary-foreground" },
+  at_risk: { label: "At Risk", className: "border-red-200 bg-red-50 text-red-800" },
 };
 
-export default function ProfileV2Workspace() {
+export default function ProfileModernWorkspace() {
   const currentUserQuery = useCurrentUserQuery();
   const ordersQuery = useMyOrdersQuery();
   const updateCurrentUserMutation = useUpdateCurrentUserMutation();
@@ -75,7 +75,7 @@ export default function ProfileV2Workspace() {
   const handleAddAddress = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!user || !addressForm.title.trim() || !addressForm.address.trim()) {
-      setMessage("Lütfen tüm alanları doldurun");
+      setMessage("Please fill in all fields.");
       return;
     }
 

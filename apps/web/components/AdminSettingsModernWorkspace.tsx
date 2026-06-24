@@ -13,7 +13,7 @@ const defaultSettings: AdminSettings = {
   appName: "Harvest Coffee",
 };
 
-export default function AdminSettingsV2Workspace() {
+export default function AdminSettingsModernWorkspace() {
   const currentUserQuery = useCurrentUserQuery();
   const updateCurrentUserMutation = useUpdateCurrentUserMutation();
   const [settings, setSettings] = useState<AdminSettings>(defaultSettings);

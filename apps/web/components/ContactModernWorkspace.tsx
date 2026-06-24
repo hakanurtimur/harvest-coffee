@@ -9,7 +9,7 @@ import { Clock, Mail, MapPin } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { FormEvent, useState } from "react";
 
-export default function ContactV2Workspace() {
+export default function ContactModernWorkspace() {
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);

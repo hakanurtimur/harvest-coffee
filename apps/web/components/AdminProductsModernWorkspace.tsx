@@ -46,7 +46,7 @@ const stockStatusConfig = {
 } satisfies Record<Product["stockStatus"], { label: string; className: string }>;
 const stockStatusOptions = Object.entries(stockStatusConfig).map(([value, config]) => ({ label: config.label, value }));
 
-export default function AdminProductsV2Workspace() {
+export default function AdminProductsModernWorkspace() {
   const integrations = useMemo(() => getHarvestIntegrations(), []);
   const productsQuery = useProductsQuery();
   const createProductMutation = useCreateProductMutation();

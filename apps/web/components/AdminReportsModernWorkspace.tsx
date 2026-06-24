@@ -45,7 +45,7 @@ const monthlyOrdersChartConfig = {
   revenue: { label: "Revenue", color: "hsl(var(--status-success))" },
 } satisfies ChartConfig;
 
-export default function AdminReportsV2Workspace() {
+export default function AdminReportsModernWorkspace() {
   const rentalsQuery = useRentalsQuery();
   const ordersQuery = useOrdersQuery();
   const usersQuery = useUsersQuery();

@@ -10,7 +10,7 @@ import type { Rental } from "@/lib/domain";
 import { AlertTriangle, Calendar, CheckCircle, Clock, FileText, Plus } from "lucide-react";
 import Link from "next/link";
 
-export default function RentalsV2Workspace() {
+export default function RentalsModernWorkspace() {
   const rentalsQuery = useMyRentalsQuery();
   const rentals = rentalsQuery.data ?? [];
   const isLoading = rentalsQuery.isLoading;

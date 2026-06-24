@@ -21,7 +21,7 @@ const paymentStatusComboboxOptions = paymentStatusOptions.map((status) => ({ lab
 type StatusFilter = "all" | OrderStatus;
 type PaymentFilter = "all" | PaymentStatus;
 
-export default function AdminOrdersV2Workspace() {
+export default function AdminOrdersModernWorkspace() {
   const ordersQuery = useOrdersQuery();
   const updateOrderMutation = useUpdateOrderMutation();
   const [message, setMessage] = useState("");

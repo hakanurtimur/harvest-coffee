@@ -4,9 +4,7 @@ import MotionReveal from "@/components/MotionReveal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { requestToast } from "@/components/ui/sonner";
 import {
-  useCreateOrderMutation,
   useCurrentUserQuery,
   useMyOrdersQuery,
   useMyRentalsQuery,
@@ -23,7 +21,7 @@ import {
   type Product,
   type Rental,
 } from "@/lib/domain";
-import { ArrowRight, Bell, CalendarDays, CheckCircle2, Clock3, Coffee, PackageCheck, Plus, ShoppingCart, Sparkles } from "lucide-react";
+import { ArrowRight, Bell, CalendarDays, CheckCircle2, Clock3, Coffee, Plus, ShoppingCart, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -43,7 +41,6 @@ export default function DealerDashboardWorkspace() {
   const ordersQuery = useMyOrdersQuery();
   const rentalsQuery = useMyRentalsQuery();
   const notificationsQuery = useNotificationsQuery();
-  const createOrderMutation = useCreateOrderMutation();
   const [quickCart, setQuickCart] = useState<Cart>({});
 
   const currentUser = currentUserQuery.data ?? null;
@@ -54,7 +51,7 @@ export default function DealerDashboardWorkspace() {
   const quickProducts = useMemo(() => getQuickOrderProducts(products, orders), [products, orders]);
   const quickItems = useMemo(() => calculateOrderItems(products, quickCart), [products, quickCart]);
   const quickTotal = calculateOrderTotal(quickItems);
-  const defaultAddress = currentUser?.addresses?.[0]?.address ?? "";
+  const quickCartHref = useMemo(() => buildQuickCartHref(quickCart), [quickCart]);
   const openOrders = orders.filter((order) => order.status !== "delivered");
   const activeRentals = rentals.filter((rental) => rental.status === "active" || rental.status === "upcoming");
   const unreadNotifications = notifications.filter((notification) => !notification.read).length;
@@ -68,30 +65,6 @@ export default function DealerDashboardWorkspace() {
       else next[productId] = quantity;
       return next;
     });
-  };
-
-  const placeQuickOrder = async () => {
-    if (!quickItems.length) {
-      requestToast.error({ title: "Choose at least one product." });
-      return;
-    }
-
-    if (!defaultAddress.trim()) {
-      requestToast.error({ title: "Add a delivery address in profile first." });
-      return;
-    }
-
-    const order = await createOrderMutation.mutateAsync({
-      customerEmail: currentUser?.email ?? "dealer@example.com",
-      customerName: currentUser?.fullName || currentUser?.companyName || currentUser?.email,
-      deliveryAddress: defaultAddress,
-      items: quickItems,
-      paymentMethod: "bank_transfer",
-      notes: "Created from dealer dashboard quick order.",
-    });
-
-    setQuickCart({});
-    window.location.href = `/orderdetails?id=${order.id}`;
   };
 
   return (
@@ -149,7 +122,7 @@ export default function DealerDashboardWorkspace() {
               {isLoading ? (
                 <QuickOrderSkeleton />
               ) : quickProducts.length ? (
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
                   {quickProducts.map((product) => (
                     <QuickOrderCard
                       key={product.id}
@@ -170,13 +143,13 @@ export default function DealerDashboardWorkspace() {
                     <p className="font-display mt-1 text-2xl font-black text-sidebar-primary">£{quickTotal.toFixed(2)}</p>
                   </div>
                   <Button
+                    asChildShim
                     className="h-11 rounded-md bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90"
-                    disabled={createOrderMutation.isPending}
-                    onClick={placeQuickOrder}
-                    type="button"
                   >
-                    <PackageCheck className="h-4 w-4" />
-                    Place quick order
+                    <Link href={quickCartHref}>
+                      <ShoppingCart className="h-4 w-4" />
+                      Review cart
+                    </Link>
                   </Button>
                 </div>
               )}
@@ -277,6 +250,12 @@ function getQuickOrderProducts(products: Product[], orders: Order[]) {
   return (ordered.length ? ordered : products).slice(0, 4);
 }
 
+function buildQuickCartHref(cart: Cart) {
+  const entries = Object.entries(cart).filter(([, quantity]) => quantity > 0);
+  if (!entries.length) return "/products";
+  return `/products?cart=${encodeURIComponent(JSON.stringify(entries))}`;
+}
+
 function getRecentActivities(orders: Order[], rentals: Rental[], notifications: Notification[]): ActivityItem[] {
   const orderActivities: ActivityItem[] = orders.slice(0, 4).map((order) => ({
     id: `order-${order.id}`,
@@ -353,7 +332,7 @@ function QuickOrderCard({
   quantity: number;
 }) {
   return (
-    <Card className="overflow-hidden rounded-xl border-border bg-background p-2 shadow-none">
+    <Card className="flex h-full flex-col overflow-hidden rounded-xl border-border bg-background p-2 shadow-none">
       <div className="overflow-hidden rounded-lg bg-secondary">
         {product.imageUrl ? (
           <img alt={product.name} className="aspect-[4/3] w-full object-cover" src={product.imageUrl} />
@@ -363,7 +342,7 @@ function QuickOrderCard({
           </div>
         )}
       </div>
-      <div className="p-3">
+      <div className="flex flex-1 flex-col p-3">
         <div className="min-h-[70px]">
           <h3 className="line-clamp-2 text-sm font-black leading-5 text-foreground">{product.name}</h3>
           <p className="mt-1 text-xs font-semibold text-muted-foreground">
@@ -371,9 +350,9 @@ function QuickOrderCard({
             {product.weight ? ` · ${product.weight}` : ""}
           </p>
         </div>
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <strong className="font-display text-xl font-black text-primary">£{product.price.toFixed(2)}</strong>
-          <div className="flex h-9 items-center rounded-md border border-border bg-card">
+        <div className="mt-auto space-y-3 pt-3">
+          <strong className="font-display block whitespace-nowrap text-xl font-black text-primary">£{product.price.toFixed(2)}</strong>
+          <div className="grid h-9 grid-cols-[2.25rem_1fr_2.25rem] overflow-hidden rounded-md border border-border bg-card">
             <button
               aria-label={`Decrease ${product.name}`}
               className="grid h-9 w-9 place-items-center text-muted-foreground transition-colors hover:text-primary"
@@ -382,7 +361,7 @@ function QuickOrderCard({
             >
               -
             </button>
-            <span className="grid h-9 min-w-8 place-items-center text-sm font-black text-foreground">{quantity}</span>
+            <span className="grid h-9 min-w-0 place-items-center text-sm font-black text-foreground">{quantity}</span>
             <button
               aria-label={`Increase ${product.name}`}
               className="grid h-9 w-9 place-items-center text-primary transition-colors hover:bg-secondary"

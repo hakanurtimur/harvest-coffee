@@ -11,7 +11,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
-export default function OrdersV2Workspace() {
+export default function OrdersModernWorkspace() {
   const router = useRouter();
   const ordersQuery = useMyOrdersQuery();
   const orders = ordersQuery.data ?? [];

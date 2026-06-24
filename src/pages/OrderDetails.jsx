@@ -62,10 +62,10 @@ export default function OrderDetails() {
   }
 
   const paymentMethodLabels = {
-    bank_transfer: 'Havale / EFT',
-    credit_card: 'Kredi Kartı',
+    bank_transfer: 'Bank Transfer',
+    credit_card: 'Credit Card',
     paypal: 'PayPal',
-    cash_on_delivery: 'Kapıda Ödeme'
+    cash_on_delivery: 'Cash on Delivery'
   };
 
   return (

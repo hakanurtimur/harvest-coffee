@@ -46,7 +46,7 @@ export default function AdminOrders() {
   });
 
   if (!user || user.role !== 'admin') {
-    return <div className="text-center py-12">Yükleniyor...</div>;
+    return <div className="text-center py-12">Loading...</div>;
   }
 
   const filteredOrders = orders.filter(order => {
@@ -64,18 +64,18 @@ export default function AdminOrders() {
     // Send email to customer
     try {
       const statusLabels = {
-        preparing: 'Hazırlanıyor',
-        in_transit: 'Kargo/Kuryede',
-        delivered: 'Teslim Edildi'
+        preparing: 'Preparing',
+        in_transit: 'In Transit',
+        delivered: 'Delivered'
       };
 
       await base44.integrations.Core.SendEmail({
         to: order.created_by,
-        subject: `Sipariş Durumu Güncellendi - #${order.order_number}`,
-        body: `Merhaba,\n\nSipariş numaranız #${order.order_number} durumu güncellendi.\n\nYeni Durum: ${statusLabels[newStatus]}\n\nSiparişinizin detaylarını hesabınızdan görüntüleyebilirsiniz.\n\nTeşekkürler,\nHarvest Coffee`
+        subject: `Order Status Updated - #${order.order_number}`,
+        body: `Hello,\n\nYour order number #${order.order_number} status has been updated.\n\nNew Status: ${statusLabels[newStatus]}\n\nYou can view your order details from your account.\n\nThank you,\nHarvest Coffee`
       });
     } catch (error) {
-      console.error('Email gönderilirken hata:', error);
+      console.error('Error sending email:', error);
     }
   };
 
@@ -88,9 +88,9 @@ export default function AdminOrders() {
       {/* Header */}
       <div>
         <h1 className="text-4xl font-bold text-amber-900 mb-2" style={{ fontFamily: 'Georgia, serif' }}>
-          Tüm Siparişler
+          All Orders
         </h1>
-        <p className="text-amber-700">Tüm müşteri siparişlerini yönetin</p>
+        <p className="text-amber-700">Manage all customer orders</p>
       </div>
 
       {/* Filters */}
@@ -99,33 +99,33 @@ export default function AdminOrders() {
           <div className="flex flex-wrap gap-4 items-center">
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Filtreler:</span>
+              <span className="text-sm font-medium text-gray-700">Filters:</span>
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-48">
-                <SelectValue placeholder="Sipariş Durumu" />
+                <SelectValue placeholder="Order Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tüm Durumlar</SelectItem>
-                <SelectItem value="preparing">Hazırlanıyor</SelectItem>
-                <SelectItem value="in_transit">Kargo/Kuryede</SelectItem>
-                <SelectItem value="delivered">Teslim Edildi</SelectItem>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="preparing">Preparing</SelectItem>
+                <SelectItem value="in_transit">In Transit</SelectItem>
+                <SelectItem value="delivered">Delivered</SelectItem>
               </SelectContent>
             </Select>
             <Select value={paymentFilter} onValueChange={setPaymentFilter}>
               <SelectTrigger className="w-48">
-                <SelectValue placeholder="Ödeme Durumu" />
+                <SelectValue placeholder="Payment Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tüm Ödemeler</SelectItem>
-                <SelectItem value="pending">Bekliyor</SelectItem>
-                <SelectItem value="paid">Ödendi</SelectItem>
-                <SelectItem value="failed">Başarısız</SelectItem>
+                <SelectItem value="all">All Payments</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
               </SelectContent>
             </Select>
             <div className="ml-auto">
               <span className="text-sm text-gray-600">
-                <span className="font-bold text-amber-900">{filteredOrders.length}</span> sipariş
+                <span className="font-bold text-amber-900">{filteredOrders.length}</span> orders
               </span>
             </div>
           </div>
@@ -144,9 +144,9 @@ export default function AdminOrders() {
           <CardContent className="p-12 text-center">
             <Package className="w-16 h-16 text-amber-300 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-amber-900 mb-2">
-              Sipariş bulunamadı
+              No orders found
             </h3>
-            <p className="text-gray-600">Seçili filtrelere uygun sipariş yok</p>
+            <p className="text-gray-600">No orders match the selected filters</p>
           </CardContent>
         </Card>
       ) : (
@@ -163,7 +163,7 @@ export default function AdminOrders() {
                   <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
                     <div className="flex-1">
                       <CardTitle className="text-xl text-amber-900 mb-2">
-                        Sipariş #{order.order_number}
+                        Order #{order.order_number}
                       </CardTitle>
                       <div className="space-y-1 text-sm text-gray-600">
                         <div className="flex items-center gap-2">
@@ -186,7 +186,7 @@ export default function AdminOrders() {
                   <div className="space-y-6">
                     {/* Items Summary */}
                     <div>
-                      <p className="text-sm text-gray-600 mb-2 font-medium">Ürünler:</p>
+                      <p className="text-sm text-gray-600 mb-2 font-medium">Products:</p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {order.items?.map((item, idx) => (
                           <div key={idx} className="flex justify-between bg-amber-50 p-2 rounded">
@@ -205,7 +205,7 @@ export default function AdminOrders() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-amber-100">
                       <div>
                         <label className="text-sm font-medium text-gray-700 mb-2 block">
-                          Sipariş Durumu
+                          Order Status
                         </label>
                         <Select
                           value={order.status}
@@ -215,15 +215,15 @@ export default function AdminOrders() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="preparing">Hazırlanıyor</SelectItem>
-                            <SelectItem value="in_transit">Kargo/Kuryede</SelectItem>
-                            <SelectItem value="delivered">Teslim Edildi</SelectItem>
+                            <SelectItem value="preparing">Preparing</SelectItem>
+                            <SelectItem value="in_transit">In Transit</SelectItem>
+                            <SelectItem value="delivered">Delivered</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div>
                         <label className="text-sm font-medium text-gray-700 mb-2 block">
-                          Ödeme Durumu
+                          Payment Status
                         </label>
                         <Select
                           value={order.payment_status}
@@ -233,9 +233,9 @@ export default function AdminOrders() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="pending">Bekliyor</SelectItem>
-                            <SelectItem value="paid">Ödendi</SelectItem>
-                            <SelectItem value="failed">Başarısız</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="paid">Paid</SelectItem>
+                            <SelectItem value="failed">Failed</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -245,7 +245,7 @@ export default function AdminOrders() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                       <div>
                         <label className="text-sm font-medium text-gray-700 mb-2 block">
-                          Tahmini Teslimat Tarihi
+                          Estimated Delivery Date
                         </label>
                         <input
                           type="date"
@@ -259,7 +259,7 @@ export default function AdminOrders() {
                       </div>
                       <div>
                         <label className="text-sm font-medium text-gray-700 mb-2 block">
-                          Kargo Takip No
+                          Tracking Number
                         </label>
                         <input
                           type="text"
@@ -268,7 +268,7 @@ export default function AdminOrders() {
                             id: order.id,
                             data: { tracking_number: e.target.value }
                           })}
-                          placeholder="Örn: TR123456789"
+                          placeholder="Example: TR123456789"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                         />
                       </div>
@@ -277,14 +277,14 @@ export default function AdminOrders() {
                     {/* Total and Action */}
                     <div className="flex items-center justify-between pt-4 border-t border-amber-100">
                       <div>
-                        <span className="text-sm text-gray-600">Toplam Tutar</span>
+                        <span className="text-sm text-gray-600">Total Amount</span>
                         <p className="text-2xl font-bold text-amber-900">
                           £{order.total_amount.toFixed(2)}
                         </p>
                       </div>
                       <Link to={createPageUrl('OrderDetails') + `?id=${order.id}`}>
                         <Button className="bg-amber-900 hover:bg-amber-800">
-                          Detaylar
+                          Details
                           <ArrowRight className="w-4 h-4 ml-2" />
                         </Button>
                       </Link>

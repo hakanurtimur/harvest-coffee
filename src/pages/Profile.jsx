@@ -58,7 +58,7 @@ export default function Profile() {
 
   const handleAddAddress = () => {
     if (!addressForm.title.trim() || !addressForm.address.trim()) {
-      alert('Lütfen tüm alanları doldurun');
+      alert('Please fill in all fields.');
       return;
     }
 
@@ -80,7 +80,7 @@ export default function Profile() {
   };
 
   const handleDeleteAddress = (index) => {
-    if (!confirm('Bu adresi silmek istediğinizden emin misiniz?')) return;
+    if (!confirm('Are you sure you want to delete this address?')) return;
     
     const addresses = [...(user?.addresses || [])];
     addresses.splice(index, 1);
@@ -101,12 +101,12 @@ export default function Profile() {
       await base44.auth.logout();
     } catch (error) {
       console.error('Error deleting account:', error);
-      alert('Hesap silme sırasında hata oluştu. Lütfen daha sonra tekrar deneyin.');
+      alert('An error occurred while deleting the account. Please try again later.');
     }
   };
 
   if (!user) {
-    return <div className="text-center py-12">Yükleniyor...</div>;
+    return <div className="text-center py-12">Loading...</div>;
   }
 
   // Calculate activity metrics
@@ -122,11 +122,11 @@ export default function Profile() {
 
   const getSegmentBadge = (segment) => {
     const segments = {
-      new: { label: 'Yeni', className: 'bg-blue-100 text-blue-800' },
-      regular: { label: 'Düzenli', className: 'bg-green-100 text-green-800' },
+      new: { label: 'New', className: 'bg-blue-100 text-blue-800' },
+      regular: { label: 'Regular', className: 'bg-green-100 text-green-800' },
       vip: { label: 'VIP', className: 'bg-purple-100 text-purple-800' },
-      lapsed: { label: 'Pasif', className: 'bg-gray-100 text-gray-800' },
-      at_risk: { label: 'Risk Altında', className: 'bg-red-100 text-red-800' },
+      lapsed: { label: 'Lapsed', className: 'bg-gray-100 text-gray-800' },
+      at_risk: { label: 'At Risk', className: 'bg-red-100 text-red-800' },
     };
     const config = segments[segment] || segments.new;
     return <Badge className={config.className}>{config.label}</Badge>;

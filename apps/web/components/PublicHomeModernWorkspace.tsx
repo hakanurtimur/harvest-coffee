@@ -9,7 +9,7 @@ import { ArrowRight, Coffee, Flame, Handshake, Plus, ShoppingBag, ShoppingCart, 
 import Link from "next/link";
 import MotionReveal from "./MotionReveal";
 
-type PublicHomeV2WorkspaceProps = {
+type PublicHomeModernWorkspaceProps = {
   isAuthenticated: boolean;
   featuredProduct?: Product;
   products: Product[];
@@ -22,14 +22,14 @@ const heroImage = "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?
 const roastingImage = "https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=1200&q=85";
 const cafeImage = "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=1200&q=85";
 
-export default function PublicHomeV2Workspace({
+export default function PublicHomeModernWorkspace({
   isAuthenticated,
   featuredProduct,
   products,
   mostOrderedProducts,
   cartQuantity,
   onQuickAdd,
-}: PublicHomeV2WorkspaceProps) {
+}: PublicHomeModernWorkspaceProps) {
   return (
     <div className="harvest-theme bg-background text-foreground">
       <section className="relative min-h-screen overflow-hidden bg-sidebar">
@@ -210,10 +210,10 @@ export default function PublicHomeV2Workspace({
               />
             </MotionReveal>
 
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
               {mostOrderedProducts.map((product, index) => (
                 <MotionReveal delay={index * 75} key={product.id} variant="scale">
-                <Card className="motion-card overflow-hidden rounded-lg border-border bg-card p-2 shadow-sm shadow-primary/5 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/10">
+                <Card className="motion-card flex h-full flex-col overflow-hidden rounded-lg border-border bg-card p-2 shadow-sm shadow-primary/5 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/10">
                   <div className="overflow-hidden rounded-md bg-secondary">
                     {product.imageUrl ? (
                       <img alt={product.name} className="motion-image aspect-[4/3] w-full object-cover" src={product.imageUrl} />
@@ -223,7 +223,7 @@ export default function PublicHomeV2Workspace({
                       </div>
                     )}
                   </div>
-                  <CardContent className="p-3">
+                  <CardContent className="flex flex-1 flex-col p-3">
                     <div className="min-h-[52px]">
                       <h3 className="line-clamp-2 text-sm font-extrabold leading-5 text-foreground">{product.name}</h3>
                       <p className="mt-1 text-xs font-medium text-muted-foreground">
@@ -231,11 +231,11 @@ export default function PublicHomeV2Workspace({
                         {product.weight ? ` · ${product.weight}` : ""}
                       </p>
                     </div>
-                    <div className="mt-3 flex items-center justify-between gap-3">
-                      <strong className="font-display text-xl font-black text-primary">£{product.price.toFixed(2)}</strong>
-                      <Badge className="border-primary/10 bg-secondary px-2 py-0.5 text-[10px] text-secondary-foreground">Popular</Badge>
+                    <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-3">
+                      <strong className="font-display whitespace-nowrap text-lg font-black text-primary">£{product.price.toFixed(2)}</strong>
+                      <Badge className="shrink-0 border-primary/10 bg-secondary px-2 py-0.5 text-[10px] text-secondary-foreground">Popular</Badge>
                     </div>
-                    <Button className="mt-3 h-9 w-full rounded-md text-xs" onClick={() => onQuickAdd(product.id)} variant="default">
+                    <Button className="mt-3 h-9 w-full min-w-0 rounded-md text-xs" onClick={() => onQuickAdd(product.id)} variant="default">
                       <Plus className="h-3.5 w-3.5" />
                       Quick Add
                     </Button>

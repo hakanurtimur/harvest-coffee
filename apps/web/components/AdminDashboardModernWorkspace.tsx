@@ -82,7 +82,7 @@ const paymentMethodsChartConfig = {
   cash_on_delivery: { label: "Cash on delivery", color: adminChartColors[3] },
 } satisfies ChartConfig;
 
-export default function AdminDashboardV2Workspace() {
+export default function AdminDashboardModernWorkspace() {
   const dashboardQuery = useAdminDashboardQuery();
   const [timeRange, setTimeRange] = useState<TimeRange>("week");
   const orders = dashboardQuery.data?.orders ?? [];

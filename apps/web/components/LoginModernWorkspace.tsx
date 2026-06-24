@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { ShieldCheck, Store, UserCog } from "lucide-react";
 import Link from "next/link";
 
-type LoginV2WorkspaceProps = {
+type LoginModernWorkspaceProps = {
   adminLoginTarget: string;
   dealerLoginTarget: string;
   liveLoginEnabled?: boolean;
@@ -15,7 +15,7 @@ type LoginV2WorkspaceProps = {
   onLogin: (role: "dealer" | "admin") => void;
 };
 
-export default function LoginV2Workspace({ adminLoginTarget, dealerLoginTarget, liveLoginEnabled, mockLoginEnabled = false, onGoogleLogin, onLogin }: LoginV2WorkspaceProps) {
+export default function LoginModernWorkspace({ adminLoginTarget, dealerLoginTarget, liveLoginEnabled, mockLoginEnabled = false, onGoogleLogin, onLogin }: LoginModernWorkspaceProps) {
   return (
     <div className="harvest-theme overflow-hidden bg-background text-foreground">
       <section className="relative px-5 pb-16 pt-32 sm:px-8 lg:px-10 lg:pb-24">

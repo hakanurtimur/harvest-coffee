@@ -1,7 +1,6 @@
 "use client";
 
 import { clearHarvestSession, getHarvestAccessToken, getHarvestApi, getHarvestMockRole, hasHarvestSession, isHarvestMockAuthEnabled, syncHarvestSessionFromUrl } from "@/lib/harvest-api";
-import { useV2Enabled } from "@/lib/v2-pages";
 import { CalendarDays, CircleUserRound, ClipboardList, Home, Info, LogIn, LogOut, Mail, MapPin, Menu, Search, ShoppingBag, User, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -39,10 +38,6 @@ export default function PublicShell({ children }: PublicShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const currentPageName = getCurrentPageName(pathname);
-  const currentV2Enabled = useV2Enabled(pathname || "/home");
-  const isModernPublicV2 =
-    ["Home", "About", "Contact", "Products", "Login", "TrackOrder", "Orders", "OrderDetails", "Rentals", "CreateRental", "Profile", "Notifications"].includes(currentPageName) &&
-    currentV2Enabled;
   const [userLabel, setUserLabel] = useState(() => {
     if (typeof window === "undefined") return fallbackUserLabel;
     return window.localStorage.getItem(userLabelCacheKey) || fallbackUserLabel;
@@ -131,8 +126,7 @@ export default function PublicShell({ children }: PublicShellProps) {
     return <PublicAuthLoading />;
   }
 
-  if (isModernPublicV2) {
-    return (
+  return (
       <div
         className="harvest-theme flex min-h-screen flex-col bg-background text-foreground"
         style={{
@@ -306,128 +300,7 @@ export default function PublicShell({ children }: PublicShellProps) {
     );
   }
 
-  return (
-    <div
-      className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-orange-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 md:pb-0 pb-20"
-      style={{
-        overscrollBehavior: "none",
-        paddingTop: "max(0px, env(safe-area-inset-top))",
-        paddingBottom: "max(5rem, env(safe-area-inset-bottom))",
-      }}
-    >
-      <nav className="hidden md:block bg-white dark:bg-gray-900 border-b border-amber-100 dark:border-gray-700 sticky top-0 z-50 shadow-sm dark:shadow-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <Link href="/home" className="flex items-center gap-3 group">
-              <img
-                src="https://media.base44.com/images/public/691daa20af5806873f836b87/d851d43b8_image.png"
-                alt="Harvest Coffee Logo"
-                className="w-16 h-16 object-contain group-hover:scale-105 transition-transform"
-              />
-              <div>
-                <h1 className="text-2xl font-bold text-amber-900" style={{ fontFamily: "Georgia, serif" }}>
-                  Harvest Coffee
-                </h1>
-                <p className="text-xs text-amber-700 tracking-wide">PREMIUM B2B</p>
-              </div>
-            </Link>
 
-            <button
-              onClick={() => setMobileMenuOpen((open) => !open)}
-              className="md:hidden p-2 text-amber-900 hover:bg-amber-50 rounded-lg"
-              type="button"
-              aria-label="Toggle navigation"
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-
-            <div
-              className={`fixed md:relative top-20 md:top-auto left-0 right-0 md:flex items-center gap-2 bg-white md:bg-transparent border-b md:border-0 border-amber-100 ${
-                mobileMenuOpen ? "flex flex-col p-4 gap-1 z-40" : "hidden md:flex"
-              }`}
-            >
-              {navItems
-                .filter((item) => !item.authenticatedOnly || isAuthenticated)
-                .map((item) => {
-                  const Icon = item.icon;
-                  const active = item.pageNames.includes(currentPageName);
-                  return (
-                    <Link
-                      key={item.label}
-                      href={item.href}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all ${
-                        mobileMenuOpen ? "w-full" : ""
-                      } ${active ? "bg-amber-900 text-white shadow-md" : "text-amber-900 hover:bg-amber-50"}`}
-                    >
-                      {Icon && <Icon className="w-4 h-4" />}
-                      <span className="font-medium">{item.label}</span>
-                    </Link>
-                  );
-                })}
-
-              {isAuthenticated ? (
-                <div className="flex items-center gap-2 ml-2">
-                  <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-amber-50 rounded-lg">
-                    <User className="w-4 h-4 text-amber-700" />
-                    <span className="text-sm font-medium text-amber-900">{userLabel}</span>
-                  </div>
-                  <button
-                    onClick={handleLogout}
-                    className="inline-flex items-center px-4 py-2 text-amber-900 hover:bg-amber-50 rounded-lg transition-colors"
-                    type="button"
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    <span className="hidden sm:inline">Logout</span>
-                  </button>
-                </div>
-              ) : (
-                <Link
-                  href={loginHref}
-                  className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-amber-900 hover:bg-amber-800 text-white ml-2 transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <LogIn className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Dealer Login</span>
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:pb-0 pb-24">
-        <div>{children}</div>
-      </main>
-
-      <footer className="hidden md:block bg-amber-900 dark:bg-gray-900 text-amber-50 dark:text-gray-300 mt-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="text-center md:text-left">
-              <h3 className="text-xl font-bold mb-2" style={{ fontFamily: "Georgia, serif" }}>
-                Harvest Coffee
-              </h3>
-              <p className="text-amber-200 text-sm">Premium B2B Coffee Supply</p>
-              <p className="text-amber-300 text-xs mt-2">The Breeches, Galleyhill Road, Waltham Abbey, EN9 2AQ</p>
-            </div>
-            <div className="text-center md:text-right text-amber-200 text-sm">
-              <p>© 2026 Harvest Coffee. All rights reserved.</p>
-            </div>
-          </div>
-        </div>
-      </footer>
-
-      <footer className="md:hidden bg-amber-900 dark:bg-gray-900 text-amber-50 dark:text-gray-300 py-8 px-4 border-t border-amber-800 dark:border-gray-700 mb-16">
-        <div className="text-center">
-          <h3 className="text-lg font-bold mb-2" style={{ fontFamily: "Georgia, serif" }}>
-            Harvest Coffee
-          </h3>
-          <p className="text-amber-200 text-xs">© 2026 All rights reserved</p>
-        </div>
-      </footer>
-    </div>
-  );
-}
 
 function FooterStamp() {
   return (
