@@ -10,6 +10,7 @@ import type { CreateOrderInput, CreateRentalInput, User } from "@/lib/domain";
 type RawRecord = Record<string, unknown>;
 
 const DEFAULT_BASE44_APP_ID = "691daa20af5806873f836b87";
+const DEFAULT_BASE44_APP_BASE_URL = "https://app.base44.com";
 const DEFAULT_BASE44_BACKEND_URL = "https://harvest-coffee-b2-b-orders-3f836b87.base44.app/api";
 
 const WRITE_ACTIONS = new Set([
@@ -38,6 +39,7 @@ export function GET(request: Request) {
 
   const appId = process.env.BASE44_APP_ID || process.env.NEXT_PUBLIC_BASE44_APP_ID || DEFAULT_BASE44_APP_ID;
   const serverUrl = process.env.BASE44_BACKEND_URL || process.env.NEXT_PUBLIC_BASE44_BACKEND_URL || DEFAULT_BASE44_BACKEND_URL;
+  const appBaseUrl = process.env.BASE44_APP_BASE_URL || DEFAULT_BASE44_APP_BASE_URL;
   if (!appId || !serverUrl) {
     return jsonError("BASE44_APP_ID and BASE44_BACKEND_URL are required for Google login.", 500);
   }
@@ -48,7 +50,7 @@ export function GET(request: Request) {
       ? requestedFrom
       : new URL(requestedFrom, url.origin).toString()
   );
-  const loginUrl = new URL(`${normalizeBase44ServerUrl(serverUrl)}/api/apps/auth/login`);
+  const loginUrl = new URL("/api/apps/auth/login", normalizeBase44AppBaseUrl(appBaseUrl));
   loginUrl.searchParams.set("app_id", appId);
   loginUrl.searchParams.set("from_url", fromUrl);
 
@@ -262,6 +264,10 @@ function httpError(message: string, status: number) {
 
 function normalizeBase44ServerUrl(value: string) {
   return value.replace(/\/api\/?$/, "").replace(/\/$/, "");
+}
+
+function normalizeBase44AppBaseUrl(value: string) {
+  return value.replace(/\/$/, "");
 }
 
 function normalizeLoginRedirectUrl(value: string) {
