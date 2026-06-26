@@ -1,7 +1,7 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, usePathname } from "expo-router";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { AppScreen, BrandStamp, colors, FadeInView, fontFamilies } from "./ui";
 
@@ -28,8 +28,13 @@ function isMainPublicRoute(pathname: string) {
 
 export function PublicShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const scrollRef = useRef<ScrollView>(null);
   const title = routeTitles[pathname] ?? "Harvest Coffee";
   const isInnerRoute = !isMainPublicRoute(pathname);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ animated: false, y: 0 });
+  }, [pathname]);
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
@@ -39,7 +44,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
   return (
     <AppScreen>
       <View style={publicStyles.shell}>
-        <ScrollView contentContainerStyle={publicStyles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView ref={scrollRef} contentContainerStyle={publicStyles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <FadeInView distance={6} style={publicStyles.header}>
             <View style={publicStyles.routeHeader}>
               {isInnerRoute ? (

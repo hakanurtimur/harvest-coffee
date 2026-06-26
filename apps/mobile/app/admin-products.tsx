@@ -106,14 +106,12 @@ export default function AdminProductsScreen() {
       };
       if (editingId) {
         await updateProduct(editingId, input);
-        setMessage({ text: "Product updated.", tone: "success" });
       } else {
         await createProduct(input);
-        setMessage({ text: "Product created.", tone: "success" });
       }
       cancel();
-    } catch (error) {
-      setMessage({ text: error instanceof Error ? error.message : "Product could not be saved.", tone: "error" });
+    } catch {
+      // Global feedback handles API failures.
     } finally {
       setSaving(false);
     }
@@ -129,10 +127,9 @@ export default function AdminProductsScreen() {
     setMessage(null);
     try {
       await deleteProduct(deleteCandidate.id);
-      setMessage({ text: "Product deleted.", tone: "success" });
       setDeleteCandidate(null);
-    } catch (error) {
-      setMessage({ text: error instanceof Error ? error.message : "Product could not be deleted.", tone: "error" });
+    } catch {
+      // Global feedback handles API failures.
     } finally {
       setDeletingId(null);
     }

@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { AdminSettings } from "@harvest/domain";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, Field, fontFamilies, ScrollContent, SectionTitle, StatusBanner, styles } from "../components/ui";
+import { colors, Field, fontFamilies, ScrollContent, SectionTitle, styles } from "../components/ui";
 import { useMobileState } from "../lib/mobile-state";
 
 const defaultSettings: AdminSettings = {
@@ -19,7 +19,6 @@ const reminderRules = [
 
 export default function AdminSettingsScreen() {
   const { currentUser, saveAdminSettings } = useMobileState();
-  const [message, setMessage] = useState<{ text: string; tone: "error" | "success" } | null>(null);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<AdminSettings>(currentUser?.adminSettings ?? defaultSettings);
 
@@ -37,13 +36,11 @@ export default function AdminSettingsScreen() {
     };
 
     setSaving(true);
-    setMessage(null);
     try {
       await saveAdminSettings(nextSettings);
       setSettings(nextSettings);
-      setMessage({ text: "Settings saved for this session.", tone: "success" });
-    } catch (error) {
-      setMessage({ text: error instanceof Error ? error.message : "Error saving settings.", tone: "error" });
+    } catch {
+      // Global feedback handles API failures.
     } finally {
       setSaving(false);
     }
@@ -52,7 +49,6 @@ export default function AdminSettingsScreen() {
   return (
     <ScrollContent>
       <SectionTitle eyebrow="Admin" title="Admin settings" />
-      {message ? <StatusBanner title={message.text} tone={message.tone} /> : null}
 
       <View style={settingStyles.summaryCard}>
         <View style={settingStyles.summaryIcon}>

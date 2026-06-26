@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Badge, Card, colors, ConfirmDialog, EmptyState, fontFamilies, ScrollContent, SectionTitle, StatusBanner, formatDate, styles } from "../components/ui";
+import { Badge, Card, colors, ConfirmDialog, EmptyState, fontFamilies, ScrollContent, SectionTitle, formatDate, styles } from "../components/ui";
 import { useMobileState } from "../lib/mobile-state";
 
 export default function NotificationsScreen() {
   const { currentUser, deleteNotification, markNotificationRead, notifications } = useMobileState();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ body?: string; title: string; tone: "error" | "success" } | null>(null);
   const isAdmin = currentUser?.role === "admin";
   const deleteCandidate = notifications.find((notification) => notification.id === deleteCandidateId) ?? null;
 
@@ -22,13 +21,11 @@ export default function NotificationsScreen() {
 
   const remove = async (id: string) => {
     setBusyId(id);
-    setMessage(null);
     try {
       await deleteNotification(id);
-      setMessage({ title: "Notification deleted", tone: "success" });
       setDeleteCandidateId(null);
-    } catch (error) {
-      setMessage({ body: error instanceof Error ? error.message : "Notification could not be deleted.", title: "Delete failed", tone: "error" });
+    } catch {
+      // Global feedback handles API failures.
     } finally {
       setBusyId(null);
     }
@@ -41,7 +38,6 @@ export default function NotificationsScreen() {
   return (
     <ScrollContent>
       <SectionTitle eyebrow={isAdmin ? "Admin" : "Activity"} title="Notifications" />
-      {message ? <StatusBanner body={message.body} title={message.title} tone={message.tone} /> : null}
       {notifications.length === 0 ? (
         <EmptyState
           title="No notifications"

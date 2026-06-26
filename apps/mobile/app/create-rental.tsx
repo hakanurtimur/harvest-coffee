@@ -17,7 +17,7 @@ const durationPresets = [
 
 type DateTarget = "end" | "start";
 type PeriodOption = "custom" | number;
-type RentalMessage = { body?: string; title: string; tone: "error" | "success" };
+type RentalMessage = { body?: string; title: string; tone: "error" };
 
 const DEFAULT_PERIOD_DAYS = 30;
 
@@ -101,9 +101,9 @@ export default function CreateRentalScreen() {
         productName: selectedProduct.name,
         startDate: dates.value.startDate,
       });
-      router.replace({ pathname: "/rentals", params: { created: "1" } });
-    } catch (error) {
-      setMessage({ body: error instanceof Error ? error.message : "The rental request could not be created.", title: "Rental failed", tone: "error" });
+      router.replace("/rentals");
+    } catch {
+      // Global feedback handles API failures.
     } finally {
       setSaving(false);
     }

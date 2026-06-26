@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { CustomerSegment, User, customerSegmentLabels } from "@harvest/domain";
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, EmptyState, Field, fontFamilies, formatCurrency, ScrollContent, SectionTitle, StatusBanner, styles } from "../components/ui";
+import { colors, EmptyState, Field, fontFamilies, formatCurrency, ScrollContent, SectionTitle, styles } from "../components/ui";
 import { getOrdersForUser } from "../lib/admin-analytics";
 import { useMobileState } from "../lib/mobile-state";
 
@@ -27,7 +27,6 @@ const segmentConfig: Record<CustomerSegment, { icon: keyof typeof Feather.glyphM
 
 export default function AdminCustomersScreen() {
   const { orders, updateUser, users } = useMobileState();
-  const [message, setMessage] = useState<{ text: string; tone: "error" | "success" } | null>(null);
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [segmentFilter, setSegmentFilter] = useState<SegmentFilter>("all");
@@ -74,12 +73,10 @@ export default function AdminCustomersScreen() {
 
   const changeSegment = async (userId: string, customerSegment: CustomerSegment) => {
     setSavingUserId(userId);
-    setMessage(null);
     try {
       await updateUser(userId, { customerSegment });
-      setMessage({ text: "Customer segment updated.", tone: "success" });
-    } catch (error) {
-      setMessage({ text: error instanceof Error ? error.message : "Customer segment could not be updated.", tone: "error" });
+    } catch {
+      // Global feedback handles API failures.
     } finally {
       setSavingUserId(null);
     }
@@ -88,7 +85,6 @@ export default function AdminCustomersScreen() {
   return (
     <ScrollContent>
       <SectionTitle eyebrow="Admin" title="Customer management" />
-      {message ? <StatusBanner title={message.text} tone={message.tone} /> : null}
 
       <View style={customerStyles.metricsGrid}>
         <CustomerMetric icon="users" label="Customers" value={String(customerStats.length)} />

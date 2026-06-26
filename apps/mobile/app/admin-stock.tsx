@@ -6,7 +6,7 @@ import { colors, EmptyState, Field, fontFamilies, formatCurrency, ScrollContent,
 import { getStockStatus } from "../lib/admin-analytics";
 import { useMobileState } from "../lib/mobile-state";
 
-type MessageState = { body?: string; text: string; tone: "error" | "info" | "success" } | null;
+type MessageState = { body?: string; text: string; tone: "error" } | null;
 type StockFilter = "all" | "healthy" | "low" | "out";
 type ViewMode = "cards" | "list";
 
@@ -85,25 +85,14 @@ export default function AdminStockScreen() {
     setSavingId(product.id);
     setMessage(null);
     try {
-      const updated = await updateProduct(product.id, {
+      await updateProduct(product.id, {
         lowStockThreshold: nextThreshold,
         stockQuantity: nextQuantity,
         stockStatus: getStockStatus(nextQuantity, nextThreshold),
       });
       cancel();
-      if (updated.stockQuantity <= updated.lowStockThreshold && updated.stockQuantity > 0) {
-        setMessage({
-          body: `${updated.name} is at ${updated.stockQuantity}/${updated.lowStockThreshold}. Admin alerts will sync through the Base44 notification flow when available.`,
-          text: "Low stock status updated.",
-          tone: "info",
-        });
-      } else if (updated.stockQuantity === 0) {
-        setMessage({ text: "Product marked out of stock.", tone: "info" });
-      } else {
-        setMessage({ text: "Stock updated.", tone: "success" });
-      }
-    } catch (error) {
-      setMessage({ text: error instanceof Error ? error.message : "Stock could not be updated.", tone: "error" });
+    } catch {
+      // Global feedback handles API failures.
     } finally {
       setSavingId(null);
     }

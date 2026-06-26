@@ -23,6 +23,7 @@ const BOOT_DELAY_MS = 950;
 
 interface MobileState {
   api: HarvestApi;
+  blockingMessage: string | null;
   booting: boolean;
   cartItemCount: number;
   cartOpen: boolean;
@@ -30,6 +31,7 @@ interface MobileState {
   currentUser: User | null;
   dataError: string | null;
   deliveryAddress: string;
+  feedback: MobileFeedback | null;
   isAuthenticated: boolean;
   lastSyncedAt: string | null;
   loadingData: boolean;
@@ -40,6 +42,7 @@ interface MobileState {
   users: User[];
   addAddress(title: string, address: string): Promise<void>;
   clearCart(): void;
+  clearFeedback(): void;
   closeCart(): void;
   createProduct(input: CreateProductInput): Promise<Product>;
   createOrder(input: CreateOrderInput): Promise<Order>;
@@ -67,8 +70,16 @@ interface MobileState {
 
 const MobileStateContext = createContext<MobileState | null>(null);
 
+export interface MobileFeedback {
+  body?: string;
+  id: number;
+  title: string;
+  tone: "error" | "info" | "success";
+}
+
 export function MobileStateProvider({ children }: { children: ReactNode }) {
   const [booting, setBooting] = useState(true);
+  const [blockingMessage, setBlockingMessage] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [cartQuantities, setCartQuantities] = useState<Record<string, number>>({});
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -76,6 +87,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [loadingData, setLoadingData] = useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [feedback, setFeedback] = useState<MobileFeedback | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
@@ -86,6 +98,14 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     () => Object.values(cartQuantities).reduce((sum, quantity) => sum + quantity, 0),
     [cartQuantities],
   );
+
+  const showFeedback = useCallback((title: string, tone: MobileFeedback["tone"], body?: string) => {
+    setFeedback({ body, id: Date.now(), title, tone });
+  }, []);
+
+  const clearFeedback = useCallback(() => {
+    setFeedback(null);
+  }, []);
 
   const updateCartQuantity = useCallback((productId: string, delta: number) => {
     setCartQuantities((current) => {
@@ -181,23 +201,27 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
 
   const completeLiveLogin = useCallback(async (accessToken: string) => {
     setLoadingData(true);
+    setBlockingMessage("Signing in with Base44");
     try {
       mobileAccessToken = accessToken;
       const user = await api.getCurrentUser();
       if (!user) throw new Error("Base44 session could not be resolved.");
       setCurrentUser(user);
       setDeliveryAddress(user.addresses[0]?.address ?? "");
+      setBlockingMessage(user.role === "admin" ? "Loading admin workspace" : "Loading dealer workspace");
       try {
         if (user.role === "admin") await refreshAdminData(user);
         else await refreshDealerData(user);
+        showFeedback("Signed in", "success", user.role === "admin" ? "Admin workspace is ready." : "Dealer workspace is ready.");
       } catch {
         // The session is valid if Base44 resolved the user. Keep the user signed in
         // and surface workspace data failures through dataError instead of failing auth.
       }
     } finally {
+      setBlockingMessage(null);
       setLoadingData(false);
     }
-  }, [refreshAdminData, refreshDealerData]);
+  }, [refreshAdminData, refreshDealerData, showFeedback]);
 
   const logout = useCallback(() => {
     mobileAccessToken = null;
@@ -215,124 +239,216 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const createOrder = useCallback(async (input: CreateOrderInput) => {
-    const order = await api.createOrder(input);
-    await refreshDealerData();
-    return order;
-  }, [refreshDealerData]);
+    setBlockingMessage("Placing order");
+    try {
+      const order = await api.createOrder(input);
+      await refreshDealerData();
+      showFeedback("Order created", "success", `${order.orderNumber} is ready in your orders.`);
+      return order;
+    } catch (error) {
+      showFeedback("Order failed", "error", error instanceof Error ? error.message : "The order could not be created.");
+      throw error;
+    } finally {
+      setBlockingMessage(null);
+    }
+  }, [refreshDealerData, showFeedback]);
 
   const createRental = useCallback(async (input: CreateRentalInput) => {
-    const rental = await api.createRental(input);
-    if (currentUser?.role === "admin") await refreshAdminData();
-    else await refreshDealerData();
-    return rental;
-  }, [currentUser?.role, refreshAdminData, refreshDealerData]);
+    setBlockingMessage("Creating rental");
+    try {
+      const rental = await api.createRental(input);
+      if (currentUser?.role === "admin") await refreshAdminData();
+      else await refreshDealerData();
+      showFeedback("Rental created", "success", rental.productName);
+      return rental;
+    } catch (error) {
+      showFeedback("Rental failed", "error", error instanceof Error ? error.message : "The rental request could not be created.");
+      throw error;
+    } finally {
+      setBlockingMessage(null);
+    }
+  }, [currentUser?.role, refreshAdminData, refreshDealerData, showFeedback]);
 
   const updateOrder = useCallback(async (id: string, input: UpdateOrderInput) => {
-    const order = await api.updateOrder(id, input);
-    if (currentUser?.role === "admin") await refreshAdminData();
-    else await refreshDealerData();
-    return order;
-  }, [currentUser?.role, refreshAdminData, refreshDealerData]);
+    try {
+      const order = await api.updateOrder(id, input);
+      if (currentUser?.role === "admin") await refreshAdminData();
+      else await refreshDealerData();
+      showFeedback("Order updated", "success", order.orderNumber);
+      return order;
+    } catch (error) {
+      showFeedback("Order update failed", "error", error instanceof Error ? error.message : "Order could not be updated.");
+      throw error;
+    }
+  }, [currentUser?.role, refreshAdminData, refreshDealerData, showFeedback]);
 
   const createProduct = useCallback(async (input: CreateProductInput) => {
-    const product = await api.createProduct(input);
-    await refreshAdminData();
-    return product;
-  }, [refreshAdminData]);
+    try {
+      const product = await api.createProduct(input);
+      await refreshAdminData();
+      showFeedback("Product created", "success", product.name);
+      return product;
+    } catch (error) {
+      showFeedback("Product failed", "error", error instanceof Error ? error.message : "Product could not be created.");
+      throw error;
+    }
+  }, [refreshAdminData, showFeedback]);
 
   const updateProduct = useCallback(async (id: string, input: UpdateProductInput) => {
-    const product = await api.updateProduct(id, input);
-    await refreshAdminData();
-    return product;
-  }, [refreshAdminData]);
+    try {
+      const product = await api.updateProduct(id, input);
+      await refreshAdminData();
+      showFeedback("Product updated", "success", product.name);
+      return product;
+    } catch (error) {
+      showFeedback("Product update failed", "error", error instanceof Error ? error.message : "Product could not be updated.");
+      throw error;
+    }
+  }, [refreshAdminData, showFeedback]);
 
   const deleteProduct = useCallback(async (id: string) => {
-    await api.deleteProduct(id);
-    await refreshAdminData();
-  }, [refreshAdminData]);
+    try {
+      await api.deleteProduct(id);
+      await refreshAdminData();
+      showFeedback("Product deleted", "success");
+    } catch (error) {
+      showFeedback("Product delete failed", "error", error instanceof Error ? error.message : "Product could not be deleted.");
+      throw error;
+    }
+  }, [refreshAdminData, showFeedback]);
 
   const updateRental = useCallback(async (id: string, input: UpdateRentalInput) => {
-    const rental = await api.updateRental(id, input);
-    if (currentUser?.role === "admin") await refreshAdminData();
-    else await refreshDealerData();
-    return rental;
-  }, [currentUser?.role, refreshAdminData, refreshDealerData]);
+    try {
+      const rental = await api.updateRental(id, input);
+      if (currentUser?.role === "admin") await refreshAdminData();
+      else await refreshDealerData();
+      showFeedback("Rental updated", "success", rental.productName);
+      return rental;
+    } catch (error) {
+      showFeedback("Rental update failed", "error", error instanceof Error ? error.message : "Rental could not be updated.");
+      throw error;
+    }
+  }, [currentUser?.role, refreshAdminData, refreshDealerData, showFeedback]);
 
   const deleteRental = useCallback(async (id: string) => {
-    await api.deleteRental(id);
-    if (currentUser?.role === "admin") await refreshAdminData();
-    else await refreshDealerData();
-  }, [currentUser?.role, refreshAdminData, refreshDealerData]);
+    try {
+      await api.deleteRental(id);
+      if (currentUser?.role === "admin") await refreshAdminData();
+      else await refreshDealerData();
+      showFeedback("Rental deleted", "success");
+    } catch (error) {
+      showFeedback("Rental delete failed", "error", error instanceof Error ? error.message : "Rental could not be deleted.");
+      throw error;
+    }
+  }, [currentUser?.role, refreshAdminData, refreshDealerData, showFeedback]);
 
   const updateUser = useCallback(async (id: string, input: Partial<User>) => {
-    const user = await api.updateUser(id, input);
-    setUsers((current) => current.map((item) => item.id === id ? user : item));
-    if (currentUser?.id === id) setCurrentUser(user);
-    return user;
-  }, [currentUser?.id]);
+    try {
+      const user = await api.updateUser(id, input);
+      setUsers((current) => current.map((item) => item.id === id ? user : item));
+      if (currentUser?.id === id) setCurrentUser(user);
+      showFeedback("Customer updated", "success", user.fullName || user.email);
+      return user;
+    } catch (error) {
+      showFeedback("Customer update failed", "error", error instanceof Error ? error.message : "Customer could not be updated.");
+      throw error;
+    }
+  }, [currentUser?.id, showFeedback]);
 
   const saveAdminSettings = useCallback(async (settings: AdminSettings) => {
     if (!currentUser) throw new Error("Admin session is not active.");
     const user = { ...currentUser, adminSettings: settings, updatedAt: new Date().toISOString() };
     setCurrentUser(user);
     setUsers((current) => current.map((item) => item.id === user.id ? user : item));
+    showFeedback("Settings saved", "success", "Admin settings were saved for this session.");
     return user;
-  }, [currentUser]);
+  }, [currentUser, showFeedback]);
 
   const addAddress = useCallback(async (title: string, address: string) => {
     if (!currentUser) return;
-    const nextUser = await api.updateCurrentUser({
-      addresses: [...currentUser.addresses, { title, address }],
-    });
-    setCurrentUser(nextUser);
-    setDeliveryAddress(address);
-  }, [currentUser]);
+    try {
+      const nextUser = await api.updateCurrentUser({
+        addresses: [...currentUser.addresses, { title, address }],
+      });
+      setCurrentUser(nextUser);
+      setDeliveryAddress(address);
+      showFeedback("Address added", "success", title);
+    } catch (error) {
+      showFeedback("Address failed", "error", error instanceof Error ? error.message : "The address could not be saved.");
+      throw error;
+    }
+  }, [currentUser, showFeedback]);
 
   const updateAddress = useCallback(async (index: number, title: string, address: string) => {
     if (!currentUser?.addresses[index]) return;
-    const previousAddress = currentUser.addresses[index].address;
-    const nextUser = await api.updateCurrentUser({
-      addresses: currentUser.addresses.map((item, itemIndex) => (
-        itemIndex === index ? { title, address } : item
-      )),
-    });
-    setCurrentUser(nextUser);
-    if (deliveryAddress === previousAddress) {
-      setDeliveryAddress(address);
+    try {
+      const previousAddress = currentUser.addresses[index].address;
+      const nextUser = await api.updateCurrentUser({
+        addresses: currentUser.addresses.map((item, itemIndex) => (
+          itemIndex === index ? { title, address } : item
+        )),
+      });
+      setCurrentUser(nextUser);
+      if (deliveryAddress === previousAddress) {
+        setDeliveryAddress(address);
+      }
+      showFeedback("Address updated", "success", title);
+    } catch (error) {
+      showFeedback("Address failed", "error", error instanceof Error ? error.message : "The address could not be saved.");
+      throw error;
     }
-  }, [currentUser, deliveryAddress]);
+  }, [currentUser, deliveryAddress, showFeedback]);
 
   const deleteAddress = useCallback(async (index: number) => {
     if (!currentUser) return;
-    const nextUser = await api.updateCurrentUser({
-      addresses: currentUser.addresses.filter((_, itemIndex) => itemIndex !== index),
-    });
-    setCurrentUser(nextUser);
-    if (deliveryAddress === currentUser.addresses[index]?.address) {
-      setDeliveryAddress(nextUser.addresses[0]?.address ?? "");
+    try {
+      const nextUser = await api.updateCurrentUser({
+        addresses: currentUser.addresses.filter((_, itemIndex) => itemIndex !== index),
+      });
+      setCurrentUser(nextUser);
+      if (deliveryAddress === currentUser.addresses[index]?.address) {
+        setDeliveryAddress(nextUser.addresses[0]?.address ?? "");
+      }
+      showFeedback("Address deleted", "success");
+    } catch (error) {
+      showFeedback("Address delete failed", "error", error instanceof Error ? error.message : "The address could not be deleted.");
+      throw error;
     }
-  }, [currentUser, deliveryAddress]);
+  }, [currentUser, deliveryAddress, showFeedback]);
 
   const markNotificationRead = useCallback(async (id: string) => {
-    await api.markNotificationRead(id);
-    if (currentUser?.role === "admin") await refreshAdminData();
-    else await refreshDealerData();
-  }, [currentUser?.role, refreshAdminData, refreshDealerData]);
+    try {
+      await api.markNotificationRead(id);
+      if (currentUser?.role === "admin") await refreshAdminData();
+      else await refreshDealerData();
+    } catch (error) {
+      showFeedback("Notification update failed", "error", error instanceof Error ? error.message : "Notification could not be updated.");
+      throw error;
+    }
+  }, [currentUser?.role, refreshAdminData, refreshDealerData, showFeedback]);
 
   const deleteNotification = useCallback(async (id: string) => {
-    await api.deleteNotification(id);
-    if (currentUser?.role === "admin") await refreshAdminData();
-    else await refreshDealerData();
-  }, [currentUser?.role, refreshAdminData, refreshDealerData]);
+    try {
+      await api.deleteNotification(id);
+      if (currentUser?.role === "admin") await refreshAdminData();
+      else await refreshDealerData();
+      showFeedback("Notification deleted", "success");
+    } catch (error) {
+      showFeedback("Notification delete failed", "error", error instanceof Error ? error.message : "Notification could not be deleted.");
+      throw error;
+    }
+  }, [currentUser?.role, refreshAdminData, refreshDealerData, showFeedback]);
 
   const value = useMemo<MobileState>(() => ({
     api,
     addAddress,
+    blockingMessage,
     booting,
     cartItemCount,
     cartOpen,
     cartQuantities,
     clearCart,
+    clearFeedback,
     closeCart,
     createProduct,
     createOrder,
@@ -344,6 +460,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     deleteProduct,
     deleteRental,
     deliveryAddress,
+    feedback,
     isAuthenticated: Boolean(currentUser),
     lastSyncedAt,
     loadingData,
@@ -369,11 +486,13 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     users,
   }), [
     addAddress,
+    blockingMessage,
     booting,
     cartItemCount,
     cartOpen,
     cartQuantities,
     clearCart,
+    clearFeedback,
     closeCart,
     createProduct,
     createOrder,
@@ -385,6 +504,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     deleteProduct,
     deleteRental,
     deliveryAddress,
+    feedback,
     lastSyncedAt,
     loadingData,
     completeLiveLogin,

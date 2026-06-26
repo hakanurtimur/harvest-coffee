@@ -7,6 +7,7 @@ import {
   RentalStatus,
   Order,
 } from "@harvest/domain";
+import { usePathname } from "expo-router";
 import { ReactNode, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
@@ -50,8 +51,15 @@ export function AppScreen({ children }: { children: ReactNode }) {
 }
 
 export function ScrollContent({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ animated: false, y: 0 });
+  }, [pathname]);
+
   return (
-    <ScrollView contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+    <ScrollView ref={scrollRef} contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       {children}
     </ScrollView>
   );

@@ -84,9 +84,9 @@ export default function ProductsScreen() {
       clearCart();
       setNotes("");
       closeCart();
-      router.push({ pathname: "/order/[id]", params: { created: "1", id: order.id, orderNumber: order.orderNumber } });
-    } catch (error) {
-      setCartMessage({ body: error instanceof Error ? error.message : "The order could not be created.", title: "Order failed", tone: "error" });
+      router.push({ pathname: "/order/[id]", params: { id: order.id } });
+    } catch {
+      // Global feedback handles API failures.
     } finally {
       setSaving(false);
     }

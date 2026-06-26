@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { Rental, RentalStatus } from "@harvest/domain";
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Badge, Card, colors, ConfirmDialog, EmptyState, fontFamilies, formatDate, ScrollContent, SectionTitle, StatusBanner, styles } from "../components/ui";
+import { Badge, Card, colors, ConfirmDialog, EmptyState, fontFamilies, formatDate, ScrollContent, SectionTitle, styles } from "../components/ui";
 import { useMobileState } from "../lib/mobile-state";
 
 type RentalFilter = "all" | RentalStatus;
@@ -27,7 +27,6 @@ export default function AdminRentalsScreen() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<Rental | null>(null);
   const [filter, setFilter] = useState<RentalFilter>("all");
-  const [message, setMessage] = useState<{ body?: string; title: string; tone: "error" | "success" } | null>(null);
 
   const filteredRentals = useMemo(
     () => filter === "all" ? rentals : rentals.filter((rental) => rental.status === filter),
@@ -44,11 +43,10 @@ export default function AdminRentalsScreen() {
   const setStatus = async (rental: Rental, status: RentalStatus) => {
     if (rental.status === status || busyId === rental.id) return;
     setBusyId(rental.id);
-    setMessage(null);
     try {
       await updateRental(rental.id, { status });
-    } catch (error) {
-      setMessage({ body: error instanceof Error ? error.message : "Rental could not be updated.", title: "Update failed", tone: "error" });
+    } catch {
+      // Global feedback handles API failures.
     } finally {
       setBusyId(null);
     }
@@ -61,13 +59,11 @@ export default function AdminRentalsScreen() {
   const confirmDeleteRental = async () => {
     if (!deleteCandidate) return;
     setBusyId(deleteCandidate.id);
-    setMessage(null);
     try {
       await deleteRental(deleteCandidate.id);
-      setMessage({ title: "Rental deleted", tone: "success" });
       setDeleteCandidate(null);
-    } catch (error) {
-      setMessage({ body: error instanceof Error ? error.message : "Rental could not be deleted.", title: "Delete failed", tone: "error" });
+    } catch {
+      // Global feedback handles API failures.
     } finally {
       setBusyId(null);
     }
@@ -76,7 +72,6 @@ export default function AdminRentalsScreen() {
   return (
     <ScrollContent>
       <SectionTitle eyebrow="Admin" title="Rental management" />
-      {message ? <StatusBanner body={message.body} title={message.title} tone={message.tone} /> : null}
 
       <View style={adminRentalStyles.metrics}>
         <Metric label="Total" value={String(statusCounts.total)} />

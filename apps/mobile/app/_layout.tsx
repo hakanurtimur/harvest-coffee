@@ -4,10 +4,12 @@ import { PlusJakartaSans_600SemiBold } from "@expo-google-fonts/plus-jakarta-san
 import { PlusJakartaSans_700Bold } from "@expo-google-fonts/plus-jakarta-sans/700Bold";
 import { PlusJakartaSans_800ExtraBold } from "@expo-google-fonts/plus-jakarta-sans/800ExtraBold";
 import { useFonts } from "@expo-google-fonts/plus-jakarta-sans/useFonts";
-import { Redirect, Stack, usePathname } from "expo-router";
-import { Text, TextInput } from "react-native";
+import { router, Stack, usePathname } from "expo-router";
+import { useEffect } from "react";
+import { Text, TextInput, View } from "react-native";
 import { AdminShell } from "../components/admin-shell";
 import { DealerShell } from "../components/dealer-shell";
+import { MobileFeedbackOverlay } from "../components/mobile-feedback";
 import { PublicShell } from "../components/public-shell";
 import { MobileStateProvider } from "../lib/mobile-state";
 import { fontFamilies } from "../components/ui";
@@ -46,7 +48,10 @@ export default function RootLayout() {
 
   return (
     <MobileStateProvider>
-      <RootStack />
+      <View style={{ flex: 1 }}>
+        <RootStack />
+        <MobileFeedbackOverlay />
+      </View>
     </MobileStateProvider>
   );
 }
@@ -75,18 +80,23 @@ function RootStack() {
   const shouldUseAdminShell = isAdminPath && currentUser?.role === "admin";
   const shouldUsePublicShell = !isAuthenticated && pathname === "/track-order";
   const stack = <Stack screenOptions={{ headerShown: false }} />;
+  const redirectTarget =
+    !isAuthenticated && (isPrivateDealerPath || isAdminPath)
+      ? "/login"
+      : isAuthenticated &&
+          currentUser?.role === "admin" &&
+          (isPublicMarketingPath || pathname === "/products" || pathname === "/track-order")
+        ? "/admin-dashboard"
+        : isAuthenticated && currentUser?.role !== "admin" && isPublicMarketingPath
+          ? "/products"
+          : null;
 
-  if (!isAuthenticated && (isPrivateDealerPath || isAdminPath)) return <Redirect href="/login" />;
-  if (
-    isAuthenticated &&
-    currentUser?.role === "admin" &&
-    (isPublicMarketingPath || pathname === "/products" || pathname === "/track-order")
-  ) {
-    return <Redirect href="/admin-dashboard" />;
-  }
-  if (isAuthenticated && currentUser?.role !== "admin" && isPublicMarketingPath) {
-    return <Redirect href="/products" />;
-  }
+  useEffect(() => {
+    if (redirectTarget && pathname !== redirectTarget) {
+      router.replace(redirectTarget);
+    }
+  }, [pathname, redirectTarget]);
+
   if (shouldUseAdminShell) return <AdminShell>{stack}</AdminShell>;
   if (shouldUsePublicShell) return <PublicShell>{stack}</PublicShell>;
   return shouldUseDealerShell ? <DealerShell>{stack}</DealerShell> : stack;

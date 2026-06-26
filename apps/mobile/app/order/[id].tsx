@@ -6,7 +6,7 @@ import { useMobileState } from "../../lib/mobile-state";
 
 export default function OrderDetailScreen() {
   const { api, currentUser, orders } = useMobileState();
-  const { created, id, orderNumber } = useLocalSearchParams<{ created?: string; id: string; orderNumber?: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const [order, setOrder] = useState<Order | null>(orders.find((item) => item.id === id) ?? null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!order);
@@ -40,13 +40,6 @@ export default function OrderDetailScreen() {
         <OutlineButton label={isAdmin ? "Back to admin orders" : "Back to orders"} onPress={() => router.replace(isAdmin ? "/admin-orders" : "/orders")} />
         {order ? (
           <>
-            {created === "1" ? (
-              <StatusBanner
-                body={orderNumber ? `Order ${orderNumber} is ready to track.` : "Your order is ready to track."}
-                title="Order created"
-                tone="success"
-              />
-            ) : null}
             <SectionTitle eyebrow="Order detail" title={order.orderNumber} />
             <OrderDetailContent order={order} />
           </>

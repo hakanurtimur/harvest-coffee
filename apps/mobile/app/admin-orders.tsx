@@ -3,7 +3,7 @@ import { Order, OrderStatus, PaymentStatus, User, orderStatusLabels, paymentStat
 import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, EmptyState, Field, fontFamilies, formatCurrency, formatDate, ScrollContent, SectionTitle, StatusBanner, styles } from "../components/ui";
+import { colors, EmptyState, Field, fontFamilies, formatCurrency, formatDate, ScrollContent, SectionTitle, styles } from "../components/ui";
 import { getOrderCustomerLabel } from "../lib/admin-analytics";
 import { useMobileState } from "../lib/mobile-state";
 
@@ -36,7 +36,6 @@ export default function AdminOrdersScreen() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
   const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ text: string; tone: "error" | "success" } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
 
   const sortedOrders = useMemo(
@@ -57,12 +56,10 @@ export default function AdminOrdersScreen() {
 
   const saveOrder = async (id: string, input: Partial<Pick<Order, "estimatedDeliveryDate" | "paymentStatus" | "status" | "trackingNumber">>) => {
     setSavingOrderId(id);
-    setMessage(null);
     try {
-      const updated = await updateOrder(id, input);
-      setMessage({ text: `Order #${updated.orderNumber} updated.`, tone: "success" });
-    } catch (error) {
-      setMessage({ text: error instanceof Error ? error.message : "Order could not be updated.", tone: "error" });
+      await updateOrder(id, input);
+    } catch {
+      // Global feedback handles API failures.
     } finally {
       setSavingOrderId(null);
     }
@@ -71,8 +68,6 @@ export default function AdminOrdersScreen() {
   return (
     <ScrollContent>
       <SectionTitle eyebrow="Operations" title="Orders" />
-
-      {message ? <StatusBanner title={message.tone === "success" ? "Order updated" : "Order update failed"} body={message.text} tone={message.tone} /> : null}
 
       <View style={orderStyles.metricsGrid}>
         <AdminSummaryCard icon="shopping-bag" label="Total orders" value={String(orders.length)} />

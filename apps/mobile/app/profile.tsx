@@ -31,7 +31,7 @@ export default function ProfileScreen() {
   const [editingAddressIndex, setEditingAddressIndex] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab>("account");
   const [deleteAddressIndex, setDeleteAddressIndex] = useState<number | null>(null);
-  const [message, setMessage] = useState<{ body?: string; title: string; tone: "error" | "success" } | null>(null);
+  const [message, setMessage] = useState<{ body?: string; title: string; tone: "error" } | null>(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -78,14 +78,12 @@ export default function ProfileScreen() {
     try {
       if (isEditingAddress) {
         await updateAddress(editingAddressIndex, address.value.title, address.value.address);
-        setMessage({ title: "Address updated", tone: "success" });
       } else {
         await addAddress(address.value.title, address.value.address);
-        setMessage({ title: "Address added", tone: "success" });
       }
       resetAddressForm();
-    } catch (error) {
-      setMessage({ body: error instanceof Error ? error.message : "The address could not be saved.", title: "Address failed", tone: "error" });
+    } catch {
+      // Global feedback handles API failures.
     } finally {
       setSaving(false);
     }
@@ -108,10 +106,9 @@ export default function ProfileScreen() {
     setMessage(null);
     try {
       await deleteAddress(deleteAddressIndex);
-      setMessage({ title: "Address deleted", tone: "success" });
       setDeleteAddressIndex(null);
-    } catch (error) {
-      setMessage({ body: error instanceof Error ? error.message : "The address could not be deleted.", title: "Delete failed", tone: "error" });
+    } catch {
+      // Global feedback handles API failures.
     } finally {
       setSaving(false);
     }

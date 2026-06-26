@@ -1,4 +1,4 @@
-import { getBase44Client } from "@/lib/harvest-api";
+import { getBase44Client, getHarvestAccessToken } from "@/lib/harvest-api";
 
 type RawRecord = Record<string, unknown>;
 
@@ -72,7 +72,7 @@ export interface HarvestIntegrations {
 export function getHarvestIntegrations(): HarvestIntegrations {
   const base44 = getBase44Client();
   if (base44) return createBase44HarvestIntegrations(base44 as Base44FunctionClientLike);
-  throw new Error("Base44 client is required for Harvest integrations.");
+  return createProxyHarvestIntegrations();
 }
 
 const nowIso = () => new Date().toISOString();
@@ -149,6 +149,72 @@ function createBase44HarvestIntegrations(base44: Base44FunctionClientLike): Harv
   };
 }
 
+function createProxyHarvestIntegrations(): HarvestIntegrations {
+  return {
+    async checkRentalReminders() {
+      const data = await invokeHarvestProxyFunction<{ processed?: number; success?: boolean }>("checkRentalReminders", {});
+      return {
+        message: data.success === false ? "Rental reminder check returned without success." : "Rental reminder check completed.",
+        processed: data.processed,
+      };
+    },
+    async generateProductDescription(input) {
+      const data = await invokeHarvestProxyFunction<RawRecord>("generateProductDescription", input as unknown as RawRecord);
+      return {
+        description: stringFromUnknown(data.description),
+        message: stringFromUnknown(data.message, "Product description generated."),
+      };
+    },
+    async generateRentalInvoice(input) {
+      const data = await invokeHarvestProxyFunction<RawRecord>("generateRentalInvoice", { rentalId: input.rentalId });
+      const customer = readRecord(data.customer);
+      const rental = readRecord(data.rental);
+      const totalAmount = numberFromUnknown(data.totalAmount, input.totalAmount);
+      return {
+        customerEmail: stringFromUnknown(customer.email, input.customerEmail),
+        customerName: stringFromUnknown(customer.name, input.customerName),
+        date: stringFromUnknown(data.date, nowIso().slice(0, 10)),
+        invoiceNumber: stringFromUnknown(data.invoiceNumber, `INV-${input.rentalId.slice(0, 8).toUpperCase()}`),
+        productName: stringFromUnknown(rental.product, input.productName),
+        rentalDays: numberFromUnknown(rental.days, calculateRentalDays(input.startDate, input.endDate)),
+        totalAmount,
+      };
+    },
+    async onOrderCreated(input) {
+      const data = await invokeHarvestProxyFunction<RawRecord>("onOrderCreated", input as unknown as RawRecord);
+      return {
+        message: stringFromUnknown(data.message, "Order created function completed."),
+      };
+    },
+    async onOrderStatusChanged(input) {
+      const data = await invokeHarvestProxyFunction<RawRecord>("onOrderStatusChanged", input as unknown as RawRecord);
+      return {
+        message: stringFromUnknown(data.message, "Order status changed function completed."),
+      };
+    },
+    async sendNotification(input) {
+      const data = await invokeHarvestProxyFunction<{ notificationId?: string; success?: boolean }>("sendNotification", input as unknown as RawRecord);
+      return {
+        message: data.success === false ? "Notification function returned without success." : "Notification function completed.",
+        notificationId: data.notificationId,
+      };
+    },
+    async sendLowStockEmail(input) {
+      const data = await invokeHarvestProxyFunction<RawRecord>("sendLowStockEmail", input as unknown as RawRecord);
+      return {
+        message: stringFromUnknown(data.message, "Low stock email notification completed."),
+      };
+    },
+    async updateRentalStatus() {
+      const data = await invokeHarvestProxyFunction<{ updatedCount?: number; success?: boolean }>("updateRentalStatus", {});
+      return {
+        message: data.success === false ? "Rental status update returned without success." : "Rental status update completed.",
+        updatedCount: data.updatedCount,
+      };
+    },
+  };
+}
+
 async function invokeBase44Function<T extends RawRecord = RawRecord>(
   base44: Base44FunctionClientLike,
   functionName: string,
@@ -156,6 +222,31 @@ async function invokeBase44Function<T extends RawRecord = RawRecord>(
 ): Promise<T> {
   const result = await base44.functions.invoke(functionName, payload);
   return unwrapFunctionResult(result) as T;
+}
+
+async function invokeHarvestProxyFunction<T extends RawRecord = RawRecord>(
+  action: string,
+  input: RawRecord,
+): Promise<T> {
+  const response = await fetch(process.env.NEXT_PUBLIC_HARVEST_API_URL || "/api/harvest", {
+    body: JSON.stringify({
+      action,
+      input,
+      token: getHarvestAccessToken() ?? undefined,
+    }),
+    headers: {
+      "content-type": "application/json",
+    },
+    method: "POST",
+  });
+  const payload = await response.json().catch(() => ({}));
+  const row = readRecord(payload);
+
+  if (!response.ok) {
+    throw new Error(stringFromUnknown(row.error, `Harvest proxy function failed: ${action}`));
+  }
+
+  return readRecord(row.data) as T;
 }
 
 function unwrapFunctionResult(result: unknown) {

@@ -27,6 +27,14 @@ const WRITE_ACTIONS = new Set([
   "updateUser",
   "markNotificationRead",
   "deleteNotification",
+  "checkRentalReminders",
+  "generateProductDescription",
+  "generateRentalInvoice",
+  "onOrderCreated",
+  "onOrderStatusChanged",
+  "sendNotification",
+  "sendLowStockEmail",
+  "updateRentalStatus",
 ]);
 
 export const runtime = "nodejs";
@@ -73,7 +81,7 @@ export async function POST(request: Request) {
     const api = createBase44HarvestApi(base44 as unknown as Base44ClientLike);
 
     const actor = await getActor(base44, token);
-    const data = await runHarvestAction(action, input, api, actor);
+    const data = await runHarvestAction(action, input, api, actor, base44);
     return jsonOk(data);
   } catch (error) {
     const status = numberValue(readRecord(error).status, 500);
@@ -86,6 +94,7 @@ async function runHarvestAction(
   input: RawRecord,
   api: HarvestApi,
   actor: User | null,
+  base44: ReturnType<typeof createClient>,
 ) {
   switch (action) {
     case "getCurrentUser":
@@ -164,9 +173,49 @@ async function runHarvestAction(
       requireUser(actor);
       await assertNotificationAccess(api, actor, stringValue(input.id));
       return api.deleteNotification(stringValue(input.id));
+    case "checkRentalReminders":
+      requireAdmin(actor);
+      return invokeBase44Function(base44, "checkRentalReminders", {});
+    case "generateProductDescription":
+      requireAdmin(actor);
+      return invokeBase44Function(base44, "generateProductDescription", input);
+    case "generateRentalInvoice":
+      requireAdmin(actor);
+      return invokeBase44Function(base44, "generateRentalInvoice", input);
+    case "onOrderCreated":
+      requireAdmin(actor);
+      return invokeBase44Function(base44, "onOrderCreated", input);
+    case "onOrderStatusChanged":
+      requireAdmin(actor);
+      return invokeBase44Function(base44, "onOrderStatusChanged", input);
+    case "sendNotification":
+      requireAdmin(actor);
+      return invokeBase44Function(base44, "sendNotification", input);
+    case "sendLowStockEmail":
+      requireAdmin(actor);
+      return invokeBase44Function(base44, "sendLowStockEmail", input);
+    case "updateRentalStatus":
+      requireAdmin(actor);
+      return invokeBase44Function(base44, "updateRentalStatus", {});
     default:
       throw httpError(`Unsupported harvest proxy action: ${action}`, 400);
   }
+}
+
+async function invokeBase44Function(base44: ReturnType<typeof createClient>, functionName: string, payload: RawRecord) {
+  const functionClient = base44 as unknown as {
+    functions?: {
+      invoke(functionName: string, data?: RawRecord): Promise<unknown>;
+    };
+  };
+
+  if (!functionClient.functions?.invoke) {
+    throw httpError("Base44 function client is not available.", 500);
+  }
+
+  const result = await functionClient.functions.invoke(functionName, payload);
+  const row = readRecord(result);
+  return "data" in row ? readRecord(row.data) : row;
 }
 
 function createServerBase44Client(token?: string) {
