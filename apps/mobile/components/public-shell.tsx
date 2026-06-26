@@ -19,6 +19,7 @@ const routeTitles: Record<string, string> = {
   "/home": "Harvest Coffee",
   "/login": "Login",
   "/products": "Products",
+  "/track-order": "Track Order",
 };
 
 function isMainPublicRoute(pathname: string) {

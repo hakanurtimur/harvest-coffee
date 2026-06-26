@@ -188,7 +188,7 @@ export default function CreateRentalModernWorkspace() {
                 <div className="flex gap-3">
                   <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
                   <p className="text-sm font-semibold leading-6 text-foreground/75">
-                    This creates the same mock/API rental agreement and redirects back to Rentals.
+                    This creates the live rental agreement and redirects back to Rentals.
                   </p>
                 </div>
               </div>

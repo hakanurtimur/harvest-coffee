@@ -1,4 +1,22 @@
-import { Order, OrderStatus, Product, Rental } from "@harvest/domain";
+import { Order, OrderStatus, Product, Rental, User } from "@harvest/domain";
+
+export type CustomerAggregate = {
+  email: string;
+  id?: string;
+  label: string;
+  orderCount: number;
+  pendingPayment: number;
+  totalSpent: number;
+};
+
+export function getOrdersForUser(orders: Order[], user: Pick<User, "email" | "id">) {
+  return orders.filter((order) => isOrderForUser(order, user));
+}
+
+export function getOrderCustomerLabel(order: Order, users: User[] = []) {
+  const user = findOrderUser(order, users);
+  return user?.fullName || user?.companyName || user?.email || order.customerName || order.customerEmail || order.createdById || "Unknown customer";
+}
 
 export function getTopProducts(orders: Order[]) {
   const products = new Map<string, { name: string; quantity: number; revenue: number }>();
@@ -13,12 +31,15 @@ export function getTopProducts(orders: Order[]) {
   return [...products.values()].sort((a, b) => b.quantity - a.quantity);
 }
 
-export function getTopCustomers(orders: Order[]) {
-  const customers = new Map<string, { email: string; orderCount: number; pendingPayment: number; totalSpent: number }>();
+export function getTopCustomers(orders: Order[], users: User[] = []): CustomerAggregate[] {
+  const customers = new Map<string, CustomerAggregate>();
   orders.forEach((order) => {
-    const customerKey = order.customerEmail || order.createdById || "unknown-customer";
+    const user = findOrderUser(order, users);
+    const customerKey = user?.id || normalizeEmail(order.customerEmail) || order.createdById || "unknown-customer";
     const current = customers.get(customerKey) ?? {
-      email: order.customerEmail || customerKey,
+      email: user?.email || order.customerEmail || customerKey,
+      id: user?.id || order.createdById || undefined,
+      label: user?.fullName || user?.companyName || user?.email || order.customerName || order.customerEmail || customerKey,
       orderCount: 0,
       pendingPayment: 0,
       totalSpent: 0,
@@ -29,6 +50,36 @@ export function getTopCustomers(orders: Order[]) {
     customers.set(customerKey, current);
   });
   return [...customers.values()].sort((a, b) => b.totalSpent - a.totalSpent);
+}
+
+function findOrderUser(order: Order, users: User[]) {
+  if (order.createdById) {
+    const byId = users.find((user) => sameRecordId(user.id, order.createdById));
+    if (byId) return byId;
+  }
+
+  if (order.customerEmail) {
+    return users.find((user) => sameEmail(user.email, order.customerEmail));
+  }
+
+  return undefined;
+}
+
+function isOrderForUser(order: Order, user: Pick<User, "email" | "id">) {
+  if (order.createdById && user.id) return sameRecordId(order.createdById, user.id);
+  return Boolean(order.customerEmail && sameEmail(order.customerEmail, user.email));
+}
+
+function normalizeEmail(value?: string) {
+  return value?.trim().toLowerCase() || "";
+}
+
+function sameEmail(left?: string, right?: string) {
+  return Boolean(left && right && normalizeEmail(left) === normalizeEmail(right));
+}
+
+function sameRecordId(left?: string, right?: string) {
+  return Boolean(left && right && left.trim() === right.trim());
 }
 
 export function getStatusStats(orders: Order[]) {

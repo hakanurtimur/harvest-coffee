@@ -1,9 +1,9 @@
 import { Feather } from "@expo/vector-icons";
 import { Rental, RentalStatus } from "@harvest/domain";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, EmptyState, fontFamilies, formatDate, PrimaryButton, ScrollContent, SectionTitle, styles } from "../components/ui";
+import { colors, EmptyState, fontFamilies, formatDate, PrimaryButton, ScrollContent, SectionTitle, StatusBanner, styles } from "../components/ui";
 import { useMobileState } from "../lib/mobile-state";
 
 type RentalFilter = "all" | RentalStatus;
@@ -39,6 +39,7 @@ const statusTone: Record<RentalStatus, { background: string; color: string }> = 
 
 export default function RentalsScreen() {
   const { rentals } = useMobileState();
+  const { created } = useLocalSearchParams<{ created?: string }>();
   const [filter, setFilter] = useState<RentalFilter>("all");
 
   const filteredRentals = useMemo(
@@ -51,6 +52,9 @@ export default function RentalsScreen() {
   return (
     <ScrollContent>
       <SectionTitle eyebrow="Equipment" title="Rental history" />
+      {created === "1" ? (
+        <StatusBanner body="The rental request has been created." title="Rental created" tone="success" />
+      ) : null}
       <Pressable
         accessibilityRole="button"
         onPress={() => router.push("/create-rental")}

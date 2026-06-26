@@ -8,12 +8,13 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Animated, FlatList, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Card, colors, FadeInView, fallbackImage, Field, fontFamilies, formatCurrency, OutlineButton, ProductCard, styles } from "../../components/ui";
+import { Animated, FlatList, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Card, colors, FadeInView, fallbackImage, Field, fontFamilies, formatCurrency, OutlineButton, ProductCard, StatusBanner, styles } from "../../components/ui";
 import { useMobileState } from "../../lib/mobile-state";
 import { validateDeliveryAddress } from "../../lib/validation";
 
 const paymentMethods: PaymentMethod[] = ["bank_transfer", "credit_card", "paypal", "cash_on_delivery"];
+type CartMessage = { body?: string; title: string; tone: "error" | "info" | "success" };
 
 export default function ProductsScreen() {
   const {
@@ -37,6 +38,7 @@ export default function ProductsScreen() {
   const [publicLoading, setPublicLoading] = useState(false);
   const [publicProducts, setPublicProducts] = useState<Product[]>([]);
   const [saving, setSaving] = useState(false);
+  const [cartMessage, setCartMessage] = useState<CartMessage | null>(null);
 
   useEffect(() => {
     if (isAuthenticated) return;
@@ -62,9 +64,10 @@ export default function ProductsScreen() {
 
   const submitOrder = async () => {
     if (!currentUser || cartItems.length === 0 || saving) return;
+    setCartMessage(null);
     const address = validateDeliveryAddress(deliveryAddress);
     if (!address.ok) {
-      Alert.alert(address.title, address.message);
+      setCartMessage({ body: address.message, title: address.title, tone: "error" });
       return;
     }
 
@@ -81,10 +84,9 @@ export default function ProductsScreen() {
       clearCart();
       setNotes("");
       closeCart();
-      router.push(`/order/${order.id}`);
-      Alert.alert("Order created", `Order ${order.orderNumber} has been created.`);
+      router.push({ pathname: "/order/[id]", params: { created: "1", id: order.id, orderNumber: order.orderNumber } });
     } catch (error) {
-      Alert.alert("Order failed", error instanceof Error ? error.message : "The order could not be created.");
+      setCartMessage({ body: error instanceof Error ? error.message : "The order could not be created.", title: "Order failed", tone: "error" });
     } finally {
       setSaving(false);
     }
@@ -137,8 +139,12 @@ export default function ProductsScreen() {
         cartItems={cartItems}
         cartTotal={cartTotal}
         deliveryAddress={deliveryAddress}
+        message={cartMessage}
         notes={notes}
-        onClose={closeCart}
+        onClose={() => {
+          setCartMessage(null);
+          closeCart();
+        }}
         onNotesChange={setNotes}
         onPaymentMethodChange={setPaymentMethod}
         onPlaceOrder={submitOrder}
@@ -157,6 +163,7 @@ function CartModal({
   cartItems,
   cartTotal,
   deliveryAddress,
+  message,
   notes,
   onClose,
   onDeliveryAddressChange,
@@ -172,6 +179,7 @@ function CartModal({
   cartItems: ReturnType<typeof calculateOrderItems>;
   cartTotal: number;
   deliveryAddress: string;
+  message?: CartMessage | null;
   notes: string;
   onClose: () => void;
   onDeliveryAddressChange: (address: string) => void;
@@ -213,6 +221,7 @@ function CartModal({
           </View>
 
           <ScrollView contentContainerStyle={productStyles.cartContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            {message ? <StatusBanner body={message.body} title={message.title} tone={message.tone} /> : null}
             <View style={productStyles.selectedItems}>
               <View style={productStyles.selectedItemsHeader}>
                 <Text style={productStyles.fieldLabel}>Selected items</Text>

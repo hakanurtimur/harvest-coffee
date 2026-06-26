@@ -12,8 +12,8 @@ const defaultSettings: AdminSettings = {
 };
 
 const reminderRules = [
-  "Reminders are configured from the admin profile settings and used by the existing Base44 reminder flow.",
-  "Emails use the admin notification email.",
+  "These preferences stay in the admin session until Base44 exposes a supported settings field.",
+  "Live notification delivery still belongs to the Base44 notification functions.",
   "The reminder window is limited to 1-30 days.",
 ];
 
@@ -41,7 +41,7 @@ export default function AdminSettingsScreen() {
     try {
       await saveAdminSettings(nextSettings);
       setSettings(nextSettings);
-      setMessage({ text: "Settings saved successfully.", tone: "success" });
+      setMessage({ text: "Settings saved for this session.", tone: "success" });
     } catch (error) {
       setMessage({ text: error instanceof Error ? error.message : "Error saving settings.", tone: "error" });
     } finally {
@@ -81,6 +81,7 @@ export default function AdminSettingsScreen() {
           <Text style={settingStyles.fieldHelp}>Email address where admin alerts and rental reminders will be sent.</Text>
           <Field
             autoCapitalize="none"
+            editable={!saving}
             keyboardType="email-address"
             onChangeText={(adminNotificationEmail) => setSettings((current) => ({ ...current, adminNotificationEmail }))}
             placeholder="admin@example.com"
@@ -92,6 +93,7 @@ export default function AdminSettingsScreen() {
           <Text style={settingStyles.fieldLabel}>Rental reminder days before expiration</Text>
           <Text style={settingStyles.fieldHelp}>Number of days before rental expiration to send reminder.</Text>
           <Field
+            editable={!saving}
             keyboardType="number-pad"
             onChangeText={(value) => setSettings((current) => ({ ...current, rentalReminderDays: Number.parseInt(value, 10) || 3 }))}
             placeholder="3"

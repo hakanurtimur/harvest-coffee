@@ -1,9 +1,10 @@
 import { Feather } from "@expo/vector-icons";
-import { Order, OrderStatus, PaymentStatus, orderStatusLabels, paymentStatusLabels } from "@harvest/domain";
+import { Order, OrderStatus, PaymentStatus, User, orderStatusLabels, paymentStatusLabels } from "@harvest/domain";
 import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, EmptyState, Field, fontFamilies, formatCurrency, formatDate, ScrollContent, SectionTitle, StatusBanner, styles } from "../components/ui";
+import { getOrderCustomerLabel } from "../lib/admin-analytics";
 import { useMobileState } from "../lib/mobile-state";
 
 const orderStatusOptions: OrderStatus[] = ["preparing", "in_transit", "delivered"];
@@ -31,7 +32,7 @@ const paymentTone: Record<PaymentStatus, { background: string; border: string; c
 };
 
 export default function AdminOrdersScreen() {
-  const { orders, updateOrder } = useMobileState();
+  const { orders, updateOrder, users } = useMobileState();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
   const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
@@ -125,12 +126,12 @@ export default function AdminOrdersScreen() {
       ) : viewMode === "list" ? (
         <View style={orderStyles.listPanel}>
           {filteredOrders.map((order) => (
-            <AdminOrderListItem key={order.id} order={order} />
+            <AdminOrderListItem key={order.id} order={order} users={users} />
           ))}
         </View>
       ) : (
         filteredOrders.map((order) => (
-          <AdminOrderCard key={order.id} order={order} saving={savingOrderId === order.id} saveOrder={saveOrder} />
+          <AdminOrderCard key={order.id} order={order} saving={savingOrderId === order.id} saveOrder={saveOrder} users={users} />
         ))
       )}
     </ScrollContent>
@@ -224,9 +225,10 @@ function FilterGroup<TValue extends string>({
   );
 }
 
-function AdminOrderListItem({ order }: { order: Order }) {
+function AdminOrderListItem({ order, users }: { order: Order; users: User[] }) {
   const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
   const primaryItem = order.items[0]?.productName ?? "Order items";
+  const customerLabel = getOrderCustomerLabel(order, users);
 
   return (
     <Pressable
@@ -237,7 +239,7 @@ function AdminOrderListItem({ order }: { order: Order }) {
       <View style={orderStyles.listTopRow}>
         <View style={orderStyles.listTitleBlock}>
           <Text style={orderStyles.listOrderNumber}>#{order.orderNumber}</Text>
-          <Text numberOfLines={1} style={orderStyles.listCustomer}>{order.customerName || order.customerEmail}</Text>
+          <Text numberOfLines={1} style={orderStyles.listCustomer}>{customerLabel}</Text>
         </View>
         <Text style={orderStyles.listTotal}>{formatCurrency(order.totalAmount).replace("GBP ", "£")}</Text>
       </View>
@@ -262,16 +264,19 @@ function AdminOrderCard({
   order,
   saveOrder,
   saving,
+  users,
 }: {
   order: Order;
   saveOrder: (id: string, input: Partial<Pick<Order, "estimatedDeliveryDate" | "paymentStatus" | "status" | "trackingNumber">>) => Promise<void>;
   saving: boolean;
+  users: User[];
 }) {
   const [trackingNumber, setTrackingNumber] = useState(order.trackingNumber ?? "");
   const [estimatedDeliveryDate, setEstimatedDeliveryDate] = useState(order.estimatedDeliveryDate ?? "");
   const trackingChanged = trackingNumber.trim() !== (order.trackingNumber ?? "");
   const etaChanged = estimatedDeliveryDate.trim() !== (order.estimatedDeliveryDate ?? "");
   const canSaveTracking = trackingChanged || etaChanged;
+  const customerLabel = getOrderCustomerLabel(order, users);
 
   useEffect(() => {
     setTrackingNumber(order.trackingNumber ?? "");
@@ -289,7 +294,7 @@ function AdminOrderCard({
           </View>
           <View style={orderStyles.metaLine}>
             <Feather color={colors.primary} name="user" size={13} />
-            <Text numberOfLines={1} style={orderStyles.customerText}>{order.customerName || order.customerEmail}</Text>
+            <Text numberOfLines={1} style={orderStyles.customerText}>{customerLabel}</Text>
           </View>
         </View>
         <View style={orderStyles.totalBlock}>

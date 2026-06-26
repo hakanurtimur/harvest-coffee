@@ -2,7 +2,7 @@
 
 import AppShell from "@/components/AppShell";
 import PublicShell from "@/components/PublicShell";
-import { hasHarvestSession, syncHarvestSessionFromUrl } from "@/lib/harvest-api";
+import { HARVEST_AUTH_EVENT, hasHarvestSession, syncHarvestSessionFromUrl } from "@/lib/harvest-api";
 import { ReactNode, useEffect, useState } from "react";
 
 type ShellState = "checking" | "authenticated" | "public";
@@ -20,10 +20,10 @@ export default function ProductsRouteShell({ children }: ProductsRouteShellProps
     };
 
     syncSession();
-    window.addEventListener("harvest_mock_auth_changed", syncSession);
+    window.addEventListener(HARVEST_AUTH_EVENT, syncSession);
     window.addEventListener("storage", syncSession);
     return () => {
-      window.removeEventListener("harvest_mock_auth_changed", syncSession);
+      window.removeEventListener(HARVEST_AUTH_EVENT, syncSession);
       window.removeEventListener("storage", syncSession);
     };
   }, []);

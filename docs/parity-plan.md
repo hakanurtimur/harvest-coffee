@@ -7,10 +7,10 @@ This rewrite is a parity migration. New screens may be reorganized or redesigned
 | Capability | Legacy source | Existing backend calls | New route |
 | --- | --- | --- | --- |
 | Dealer catalog and order creation | `src/pages/Products.jsx` | `Product.list`, `Order.create` | `/catalog` |
-| Public home | `src/pages/Home.jsx` | `Product.list` for featured product; mock `auth.isAuthenticated`; `Order.list` only when mock-authenticated for Quick Order | `/`, `/home` |
+| Public home | `src/pages/Home.jsx` | `Product.list` for featured product; authenticated `Order.list` for Quick Order | `/`, `/home` |
 | Public about | `src/pages/About.jsx` | Static content | `/about` |
-| Public contact | `src/pages/Contact.jsx` | Static/mock form; legacy `Core.SendEmail` intentionally not wired yet | `/contact` |
-| Public layout/auth nav | `src/Layout.jsx` | Mock `auth.isAuthenticated`, mock `auth.me`, mock logout; live Base44 auth intentionally not wired in the browser shell yet | Shared public shell |
+| Public contact | `src/pages/Contact.jsx` | Live contact submission flow through approved Base44 integration | `/contact` |
+| Public layout/auth nav | `src/Layout.jsx` | Base44 auth session, profile lookup, and logout | Shared public shell |
 | Dealer order history | `src/pages/Orders.jsx`, `src/pages/Profile.jsx` | `Order.filter({ created_by })` | `/orders` |
 | Dealer order detail and payment status | `src/pages/OrderDetails.jsx` | `Order.filter({ id })`, `Order.update` | `/orders/[id]` |
 | Public order tracking | `src/pages/TrackOrder.jsx` | `Order.filter({ order_number })` | `/track-order` |
@@ -32,8 +32,8 @@ This rewrite is a parity migration. New screens may be reorganized or redesigned
 
 - UI must use `packages/domain` camelCase models.
 - Base44 snake_case fields stay inside `packages/api`.
-- Live Base44 access stays opt-in through `NEXT_PUBLIC_HARVEST_API_ADAPTER=base44`.
+- Live Base44 access stays behind the server proxy.
 - Read-only mode can be enabled with `NEXT_PUBLIC_HARVEST_API_READ_ONLY=true`.
 - No new Base44 entity, field, server function, or email side effect should be introduced without explicitly updating this plan.
 - Legacy account deletion in `src/pages/Profile.jsx` calls `User.delete` and `auth.logout`; it is intentionally not migrated yet because it is destructive and needs a separate product decision.
-- Legacy contact form email sending in `src/pages/Contact.jsx` calls `Core.SendEmail`; the Next.js contact form is intentionally mock/static until live email side effects are approved.
+- Legacy contact form email sending in `src/pages/Contact.jsx` calls `Core.SendEmail`; the Next.js contact form should use the approved live integration path.

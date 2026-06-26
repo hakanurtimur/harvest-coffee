@@ -1,9 +1,8 @@
 import { Feather } from "@expo/vector-icons";
-import { createMockHarvestIntegrations } from "@harvest/api";
 import { Product } from "@harvest/domain";
 import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
-import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, EmptyState, fallbackImage, Field, fontFamilies, formatCurrency, ScrollContent, SectionTitle, StatusBanner, styles } from "../components/ui";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { colors, ConfirmDialog, EmptyState, fallbackImage, Field, fontFamilies, formatCurrency, ScrollContent, SectionTitle, StatusBanner, styles } from "../components/ui";
 import { useMobileState } from "../lib/mobile-state";
 
 type ProductForm = {
@@ -42,12 +41,13 @@ const stockStatusConfig: Record<Product["stockStatus"], { icon: keyof typeof Fea
   out_of_stock: { icon: "x-circle", label: "Out of Stock", tone: colors.status.danger },
 };
 
-const integrations = createMockHarvestIntegrations();
-
 export default function AdminProductsScreen() {
   const { createProduct, deleteProduct, products, updateProduct } = useMobileState();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<Product | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
+  const [generatingDescription, setGeneratingDescription] = useState(false);
   const [message, setMessage] = useState<MessageState>(null);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -120,22 +120,22 @@ export default function AdminProductsScreen() {
   };
 
   const remove = (product: Product) => {
-    Alert.alert("Delete product", `Delete ${product.name}?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          setMessage(null);
-          try {
-            await deleteProduct(product.id);
-            setMessage({ text: "Product deleted.", tone: "success" });
-          } catch (error) {
-            setMessage({ text: error instanceof Error ? error.message : "Product could not be deleted.", tone: "error" });
-          }
-        },
-      },
-    ]);
+    setDeleteCandidate(product);
+  };
+
+  const confirmDeleteProduct = async () => {
+    if (!deleteCandidate) return;
+    setDeletingId(deleteCandidate.id);
+    setMessage(null);
+    try {
+      await deleteProduct(deleteCandidate.id);
+      setMessage({ text: "Product deleted.", tone: "success" });
+      setDeleteCandidate(null);
+    } catch (error) {
+      setMessage({ text: error instanceof Error ? error.message : "Product could not be deleted.", tone: "error" });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const generateDescription = async () => {
@@ -143,19 +143,17 @@ export default function AdminProductsScreen() {
       setMessage({ text: "Please enter a product name first.", tone: "error" });
       return;
     }
+    setGeneratingDescription(true);
     try {
-      const generated = await integrations.generateProductDescription({
-        category: form.category,
-        productName: form.name,
-        weight: form.weight,
-      });
       setForm((current) => ({
         ...current,
-        description: generated.description,
+        description: draftProductDescription(current),
       }));
-      setMessage({ text: generated.message, tone: "info" });
+      setMessage({ text: "Description drafted locally. Review it before saving.", tone: "info" });
     } catch (error) {
       setMessage({ text: error instanceof Error ? error.message : "Description could not be generated.", tone: "error" });
+    } finally {
+      setGeneratingDescription(false);
     }
   };
 
@@ -193,6 +191,7 @@ export default function AdminProductsScreen() {
           cancel={cancel}
           editing={Boolean(editingId)}
           form={form}
+          generatingDescription={generatingDescription}
           generateDescription={generateDescription}
           save={save}
           saving={saving}
@@ -204,13 +203,25 @@ export default function AdminProductsScreen() {
         <EmptyState title="No products yet" body="Create the first product from the admin form." />
       ) : viewMode === "list" ? (
         <View style={productStyles.productList}>
-          {products.map((product) => <AdminProductListItem editProduct={editProduct} key={product.id} product={product} remove={remove} />)}
+          {products.map((product) => <AdminProductListItem deleting={deletingId === product.id} editProduct={editProduct} key={product.id} product={product} remove={remove} />)}
         </View>
       ) : (
         <View style={productStyles.productList}>
-          {products.map((product) => <AdminProductCard editProduct={editProduct} key={product.id} product={product} remove={remove} />)}
+          {products.map((product) => <AdminProductCard deleting={deletingId === product.id} editProduct={editProduct} key={product.id} product={product} remove={remove} />)}
         </View>
       )}
+      <ConfirmDialog
+        body={deleteCandidate ? `${deleteCandidate.name} will be removed from the catalogue and stock views.` : ""}
+        confirmLabel="Delete"
+        confirming={Boolean(deleteCandidate && deletingId === deleteCandidate.id)}
+        destructive
+        onCancel={() => {
+          if (!deletingId) setDeleteCandidate(null);
+        }}
+        onConfirm={() => void confirmDeleteProduct()}
+        title="Delete product?"
+        visible={Boolean(deleteCandidate)}
+      />
     </ScrollContent>
   );
 }
@@ -272,6 +283,7 @@ function ProductFormCard({
   cancel,
   editing,
   form,
+  generatingDescription,
   generateDescription,
   save,
   saving,
@@ -280,6 +292,7 @@ function ProductFormCard({
   cancel: () => void;
   editing: boolean;
   form: ProductForm;
+  generatingDescription: boolean;
   generateDescription: () => void;
   save: () => Promise<void>;
   saving: boolean;
@@ -335,9 +348,15 @@ function ProductFormCard({
 
       <View style={productStyles.descriptionHeader}>
         <Text style={productStyles.controlLabel}>Product description</Text>
-        <Pressable accessibilityRole="button" onPress={generateDescription} style={({ pressed }) => [productStyles.aiButton, pressed && styles.pressed]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: generatingDescription || saving }}
+          disabled={generatingDescription || saving}
+          onPress={generateDescription}
+          style={({ pressed }) => [productStyles.aiButton, pressed && !generatingDescription && !saving && styles.pressed, (generatingDescription || saving) && styles.disabled]}
+        >
           <Feather color={colors.metric.purple.color} name="zap" size={14} />
-          <Text style={productStyles.aiButtonText}>Generate with AI</Text>
+          <Text style={productStyles.aiButtonText}>{generatingDescription ? "Drafting..." : "Draft copy"}</Text>
         </Pressable>
       </View>
       <Field
@@ -405,7 +424,7 @@ function ChoiceSection<TValue extends string>({
   );
 }
 
-function AdminProductListItem({ editProduct, product, remove }: { editProduct: (product: Product) => void; product: Product; remove: (product: Product) => void }) {
+function AdminProductListItem({ deleting, editProduct, product, remove }: { deleting: boolean; editProduct: (product: Product) => void; product: Product; remove: (product: Product) => void }) {
   const config = stockStatusConfig[product.stockStatus];
 
   return (
@@ -428,10 +447,10 @@ function AdminProductListItem({ editProduct, product, remove }: { editProduct: (
         </View>
 
         <View style={productStyles.listActions}>
-          <Pressable accessibilityRole="button" onPress={() => editProduct(product)} style={({ pressed }) => [productStyles.listIconButton, pressed && styles.pressed]}>
+          <Pressable accessibilityRole="button" disabled={deleting} onPress={() => editProduct(product)} style={({ pressed }) => [productStyles.listIconButton, pressed && !deleting && styles.pressed, deleting && styles.disabled]}>
             <Feather color={colors.primary} name="edit-2" size={15} />
           </Pressable>
-          <Pressable accessibilityRole="button" onPress={() => remove(product)} style={({ pressed }) => [productStyles.listDeleteButton, pressed && styles.pressed]}>
+          <Pressable accessibilityRole="button" accessibilityState={{ disabled: deleting }} disabled={deleting} onPress={() => remove(product)} style={({ pressed }) => [productStyles.listDeleteButton, pressed && !deleting && styles.pressed, deleting && styles.disabled]}>
             <Feather color={colors.status.danger.color} name="trash-2" size={15} />
           </Pressable>
         </View>
@@ -440,7 +459,7 @@ function AdminProductListItem({ editProduct, product, remove }: { editProduct: (
   );
 }
 
-function AdminProductCard({ editProduct, product, remove }: { editProduct: (product: Product) => void; product: Product; remove: (product: Product) => void }) {
+function AdminProductCard({ deleting, editProduct, product, remove }: { deleting: boolean; editProduct: (product: Product) => void; product: Product; remove: (product: Product) => void }) {
   const config = stockStatusConfig[product.stockStatus];
   return (
     <View style={productStyles.productCard}>
@@ -465,17 +484,26 @@ function AdminProductCard({ editProduct, product, remove }: { editProduct: (prod
         </View>
 
         <View style={productStyles.cardActions}>
-          <Pressable accessibilityRole="button" onPress={() => editProduct(product)} style={({ pressed }) => [productStyles.editButton, pressed && styles.pressed]}>
+          <Pressable accessibilityRole="button" disabled={deleting} onPress={() => editProduct(product)} style={({ pressed }) => [productStyles.editButton, pressed && !deleting && styles.pressed, deleting && styles.disabled]}>
             <Feather color={colors.primary} name="edit-2" size={15} />
             <Text style={productStyles.editButtonText}>Edit</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" onPress={() => remove(product)} style={({ pressed }) => [productStyles.deleteButton, pressed && styles.pressed]}>
+          <Pressable accessibilityRole="button" accessibilityState={{ disabled: deleting }} disabled={deleting} onPress={() => remove(product)} style={({ pressed }) => [productStyles.deleteButton, pressed && !deleting && styles.pressed, deleting && styles.disabled]}>
             <Feather color={colors.status.danger.color} name="trash-2" size={15} />
           </Pressable>
         </View>
       </View>
     </View>
   );
+}
+
+function draftProductDescription(form: ProductForm) {
+  const productName = form.name.trim();
+  const size = form.weight.trim();
+  const category = form.category;
+  const sizeSentence = size ? ` The ${size} format keeps replenishment simple for recurring B2B orders.` : "";
+
+  return `${productName} is selected for professional coffee shops, cafes, and hospitality teams that need reliable service and consistent quality. This ${category.toLowerCase()} product is easy to plan into daily operations and regular wholesale ordering.${sizeSentence}`;
 }
 
 const productStyles = StyleSheet.create({

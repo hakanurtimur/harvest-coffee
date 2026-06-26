@@ -3,6 +3,7 @@ import { CustomerSegment, User, customerSegmentLabels } from "@harvest/domain";
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, EmptyState, Field, fontFamilies, formatCurrency, ScrollContent, SectionTitle, StatusBanner, styles } from "../components/ui";
+import { getOrdersForUser } from "../lib/admin-analytics";
 import { useMobileState } from "../lib/mobile-state";
 
 type CustomerRow = User & {
@@ -35,7 +36,7 @@ export default function AdminCustomersScreen() {
   const customerStats = useMemo<CustomerRow[]>(() => users
     .filter((user) => user.role !== "admin")
     .map((customer) => {
-      const customerOrders = orders.filter((order) => order.customerEmail === customer.email);
+      const customerOrders = getOrdersForUser(orders, customer);
       const totalSpent = customerOrders.reduce((sum, order) => sum + order.totalAmount, 0);
       const lastOrderDate = customerOrders
         .map((order) => order.createdAt)

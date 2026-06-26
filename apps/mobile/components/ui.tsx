@@ -14,6 +14,7 @@ import {
   Easing,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Pressable,
   Platform,
   SafeAreaView,
@@ -261,6 +262,60 @@ export function StatusBanner({
   );
 }
 
+export function ConfirmDialog({
+  body,
+  confirmLabel = "Confirm",
+  confirming,
+  destructive,
+  onCancel,
+  onConfirm,
+  title,
+  visible,
+}: {
+  body: string;
+  confirmLabel?: string;
+  confirming?: boolean;
+  destructive?: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+  title: string;
+  visible: boolean;
+}) {
+  return (
+    <Modal animationType="fade" onRequestClose={onCancel} transparent visible={visible}>
+      <View style={styles.confirmOverlay}>
+        <FadeInView distance={8} style={styles.confirmCard}>
+          <Text style={styles.confirmTitle}>{title}</Text>
+          <Text style={styles.confirmBody}>{body}</Text>
+          <View style={styles.confirmActions}>
+            <Pressable
+              accessibilityRole="button"
+              disabled={confirming}
+              onPress={onCancel}
+              style={({ pressed }) => [styles.confirmCancelButton, pressed && !confirming && styles.pressed, confirming && styles.disabled]}
+            >
+              <Text style={styles.confirmCancelText}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              disabled={confirming}
+              onPress={onConfirm}
+              style={({ pressed }) => [
+                styles.confirmPrimaryButton,
+                destructive && styles.confirmDangerButton,
+                pressed && !confirming && styles.pressed,
+                confirming && styles.disabled,
+              ]}
+            >
+              <Text style={styles.confirmPrimaryText}>{confirming ? "Working..." : confirmLabel}</Text>
+            </Pressable>
+          </View>
+        </FadeInView>
+      </View>
+    </Modal>
+  );
+}
+
 export function Badge({ label }: { label: string }) {
   return (
     <View style={styles.badge}>
@@ -350,7 +405,9 @@ export function ProductCard({
 
   return (
     <FadeInView style={styles.productCard}>
-      <Image accessibilityLabel={product.name} source={{ uri: product.imageUrl || fallbackImage }} style={styles.productImage} />
+      <View style={styles.productImageFrame}>
+        <Image accessibilityLabel={product.name} source={{ uri: product.imageUrl || fallbackImage }} style={styles.productImage} />
+      </View>
       <View style={styles.productInfo}>
         <View style={styles.productTitleRow}>
           <View style={styles.productCopy}>
@@ -368,8 +425,8 @@ export function ProductCard({
             <Text style={styles.muted}>{product.weight || `${product.stockQuantity} in stock`}</Text>
           </View>
           <View style={styles.productAction}>
-            <Text style={[styles.lineTotal, quantity === 0 && styles.lineTotalHidden]}>
-              {quantity > 0 ? formatCurrency(subtotal) : formatCurrency(0)}
+            <Text style={quantity > 0 ? styles.lineTotal : styles.addHint}>
+              {quantity > 0 ? formatCurrency(subtotal) : "Quick add"}
             </Text>
             <View style={styles.quantityStepper}>
               <Pressable
@@ -457,10 +514,12 @@ export function OrderDetailContent({ order }: { order: Order }) {
           <Badge label={paymentStatusLabels[order.paymentStatus]} />
           <Badge label={paymentMethodLabels[order.paymentMethod]} />
         </View>
+        <Metric label="Created" value={formatDate(order.createdAt)} />
         <Metric label="Total" value={formatCurrency(order.totalAmount)} />
         <Metric label="Delivery address" value={order.deliveryAddress} />
         {order.trackingNumber ? <Metric label="Tracking" value={order.trackingNumber} /> : null}
         {order.estimatedDeliveryDate ? <Metric label="Estimated delivery" value={formatDate(order.estimatedDeliveryDate)} /> : null}
+        {order.notes ? <Metric label="Notes" value={order.notes} /> : null}
       </Card>
       <Card>
         <Text style={styles.cardTitle}>Items</Text>
@@ -610,6 +669,76 @@ export const styles = StyleSheet.create({
     fontFamily: fontFamilies.semiBold,
     fontSize: 16,
   },
+  confirmActions: {
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "flex-end",
+  },
+  confirmBody: {
+    color: colors.muted,
+    fontFamily: fontFamilies.regular,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  confirmCancelButton: {
+    alignItems: "center",
+    backgroundColor: colors.secondary,
+    borderColor: colors.border,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: "center",
+    minWidth: 96,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  confirmCancelText: {
+    color: colors.foreground,
+    fontFamily: fontFamilies.semiBold,
+    fontSize: 13,
+  },
+  confirmCard: {
+    backgroundColor: colors.secondary,
+    borderColor: colors.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 14,
+    maxWidth: 360,
+    padding: 16,
+    shadowColor: colors.foreground,
+    shadowOffset: { height: 14, width: 0 },
+    shadowOpacity: 0.16,
+    shadowRadius: 24,
+    width: "88%",
+  },
+  confirmDangerButton: {
+    backgroundColor: colors.status.danger.color,
+  },
+  confirmOverlay: {
+    alignItems: "center",
+    backgroundColor: "rgba(21, 18, 15, 0.38)",
+    flex: 1,
+    justifyContent: "center",
+    padding: 22,
+  },
+  confirmPrimaryButton: {
+    alignItems: "center",
+    backgroundColor: colors.foreground,
+    borderRadius: 12,
+    justifyContent: "center",
+    minWidth: 104,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  confirmPrimaryText: {
+    color: colors.onPrimary,
+    fontFamily: fontFamilies.semiBold,
+    fontSize: 13,
+  },
+  confirmTitle: {
+    color: colors.foreground,
+    fontFamily: fontFamilies.semiBold,
+    fontSize: 18,
+  },
   category: {
     color: colors.muted,
     fontFamily: fontFamilies.semiBold,
@@ -687,8 +816,12 @@ export const styles = StyleSheet.create({
     lineHeight: 16,
     textAlign: "right",
   },
-  lineTotalHidden: {
-    opacity: 0,
+  addHint: {
+    color: colors.muted,
+    fontFamily: fontFamilies.semiBold,
+    fontSize: 12,
+    lineHeight: 16,
+    textAlign: "right",
   },
   loadingText: {
     color: colors.primary,
@@ -751,28 +884,40 @@ export const styles = StyleSheet.create({
     fontFamily: fontFamilies.semiBold,
   },
   productCard: {
-    alignItems: "center",
+    alignItems: "flex-start",
     backgroundColor: colors.secondary,
     borderColor: colors.border,
     borderRadius: 13,
     borderWidth: 1,
     flexDirection: "row",
     gap: 10,
+    minHeight: 102,
     padding: 10,
     shadowColor: colors.foreground,
     shadowOffset: { height: 6, width: 0 },
     shadowOpacity: 0.035,
     shadowRadius: 12,
   },
-  productImage: {
-    backgroundColor: colors.border,
-    borderRadius: 11,
+  productImageFrame: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
+    borderRadius: 12,
+    borderWidth: 1,
     height: 74,
+    justifyContent: "center",
+    overflow: "hidden",
     width: 74,
+  },
+  productImage: {
+    height: "100%",
+    resizeMode: "cover",
+    width: "100%",
   },
   productAction: {
     alignItems: "flex-end",
     gap: 5,
+    minWidth: 96,
     minHeight: 53,
     justifyContent: "flex-end",
   },
@@ -806,7 +951,7 @@ export const styles = StyleSheet.create({
     gap: 7,
   },
   productMetaRow: {
-    alignItems: "center",
+    alignItems: "flex-end",
     flexDirection: "row",
     gap: 10,
     justifyContent: "space-between",
@@ -826,6 +971,7 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 5,
     padding: 2,
+    width: 96,
   },
   quantityButton: {
     alignItems: "center",

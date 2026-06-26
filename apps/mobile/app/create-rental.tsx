@@ -3,8 +3,8 @@ import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/dat
 import { Product } from "@harvest/domain";
 import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Image, Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, fallbackImage, Field, fontFamilies, formatCurrency, PrimaryButton, ScrollContent, SectionTitle, styles } from "../components/ui";
+import { Image, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { colors, fallbackImage, Field, fontFamilies, formatCurrency, PrimaryButton, ScrollContent, SectionTitle, StatusBanner, styles } from "../components/ui";
 import { useMobileState } from "../lib/mobile-state";
 import { addDays, formatDateInput, validateRentalDates } from "../lib/validation";
 
@@ -17,6 +17,7 @@ const durationPresets = [
 
 type DateTarget = "end" | "start";
 type PeriodOption = "custom" | number;
+type RentalMessage = { body?: string; title: string; tone: "error" | "success" };
 
 const DEFAULT_PERIOD_DAYS = 30;
 
@@ -34,6 +35,7 @@ export default function CreateRentalScreen() {
   const [period, setPeriod] = useState<PeriodOption>(DEFAULT_PERIOD_DAYS);
   const [pickerTarget, setPickerTarget] = useState<DateTarget | null>(null);
   const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<RentalMessage | null>(null);
 
   useEffect(() => {
     if (!selectedProduct && productOptions.length > 0) setSelectedProduct(productOptions[0]);
@@ -81,9 +83,10 @@ export default function CreateRentalScreen() {
 
   const submit = async () => {
     if (!currentUser || !selectedProduct || saving) return;
+    setMessage(null);
     const dates = validateRentalDates(startDate, endDate);
     if (!dates.ok) {
-      Alert.alert(dates.title, dates.message);
+      setMessage({ body: dates.message, title: dates.title, tone: "error" });
       return;
     }
 
@@ -98,10 +101,9 @@ export default function CreateRentalScreen() {
         productName: selectedProduct.name,
         startDate: dates.value.startDate,
       });
-      Alert.alert("Rental created", "The rental request has been created.");
-      router.replace("/rentals");
+      router.replace({ pathname: "/rentals", params: { created: "1" } });
     } catch (error) {
-      Alert.alert("Rental failed", error instanceof Error ? error.message : "The rental request could not be created.");
+      setMessage({ body: error instanceof Error ? error.message : "The rental request could not be created.", title: "Rental failed", tone: "error" });
     } finally {
       setSaving(false);
     }
@@ -110,6 +112,7 @@ export default function CreateRentalScreen() {
   return (
     <ScrollContent>
       <SectionTitle eyebrow="Rental request" title="Create rental" />
+      {message ? <StatusBanner body={message.body} title={message.title} tone={message.tone} /> : null}
 
       <View style={rentalStyles.panel}>
         <View style={rentalStyles.panelHeader}>

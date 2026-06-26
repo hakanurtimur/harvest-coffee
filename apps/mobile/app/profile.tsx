@@ -2,8 +2,8 @@ import { Feather } from "@expo/vector-icons";
 import { orderStatusLabels } from "@harvest/domain";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, EmptyState, Field, fontFamilies, formatCurrency, formatDate, initials, OutlineButton, PrimaryButton, ScrollContent, SectionTitle, styles } from "../components/ui";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { colors, ConfirmDialog, EmptyState, Field, fontFamilies, formatCurrency, formatDate, initials, OutlineButton, PrimaryButton, ScrollContent, SectionTitle, StatusBanner, styles } from "../components/ui";
 import { useMobileState } from "../lib/mobile-state";
 import { validateAddressForm } from "../lib/validation";
 
@@ -30,6 +30,8 @@ export default function ProfileScreen() {
   const [addressText, setAddressText] = useState("");
   const [editingAddressIndex, setEditingAddressIndex] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab>("account");
+  const [deleteAddressIndex, setDeleteAddressIndex] = useState<number | null>(null);
+  const [message, setMessage] = useState<{ body?: string; title: string; tone: "error" | "success" } | null>(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -67,20 +69,23 @@ export default function ProfileScreen() {
   const submitAddress = async () => {
     const address = validateAddressForm(addressTitle, addressText);
     if (!address.ok) {
-      Alert.alert(address.title, address.message);
+      setMessage({ body: address.message, title: address.title, tone: "error" });
       return;
     }
 
     setSaving(true);
+    setMessage(null);
     try {
       if (isEditingAddress) {
         await updateAddress(editingAddressIndex, address.value.title, address.value.address);
+        setMessage({ title: "Address updated", tone: "success" });
       } else {
         await addAddress(address.value.title, address.value.address);
+        setMessage({ title: "Address added", tone: "success" });
       }
       resetAddressForm();
     } catch (error) {
-      Alert.alert("Address failed", error instanceof Error ? error.message : "The address could not be saved.");
+      setMessage({ body: error instanceof Error ? error.message : "The address could not be saved.", title: "Address failed", tone: "error" });
     } finally {
       setSaving(false);
     }
@@ -91,9 +96,31 @@ export default function ProfileScreen() {
     router.replace("/login");
   };
 
+  const confirmDeleteAddress = (index: number) => {
+    const address = currentUser.addresses[index];
+    if (!address) return;
+    setDeleteAddressIndex(index);
+  };
+
+  const deleteSelectedAddress = async () => {
+    if (deleteAddressIndex === null) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      await deleteAddress(deleteAddressIndex);
+      setMessage({ title: "Address deleted", tone: "success" });
+      setDeleteAddressIndex(null);
+    } catch (error) {
+      setMessage({ body: error instanceof Error ? error.message : "The address could not be deleted.", title: "Delete failed", tone: "error" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <ScrollContent>
       <SectionTitle eyebrow="Account" title="Profile" />
+      {message ? <StatusBanner body={message.body} title={message.title} tone={message.tone} /> : null}
 
       <View style={profileStyles.heroCard}>
         <View style={profileStyles.avatar}>
@@ -134,7 +161,7 @@ export default function ProfileScreen() {
         <View style={profileStyles.sessionCard}>
           <View style={profileStyles.sessionCopy}>
             <Text style={profileStyles.panelTitle}>Session</Text>
-            <Text style={profileStyles.sessionText}>Mock dealer session is active.</Text>
+            <Text style={profileStyles.sessionText}>Dealer workspace session is active.</Text>
           </View>
           <OutlineButton label="Logout" onPress={handleLogout} />
         </View>
@@ -208,7 +235,7 @@ export default function ProfileScreen() {
                     <Pressable
                       accessibilityLabel={`Delete ${address.title}`}
                       accessibilityRole="button"
-                      onPress={() => deleteAddress(index)}
+                      onPress={() => confirmDeleteAddress(index)}
                       style={({ pressed }) => [profileStyles.deleteButton, pressed && styles.pressed]}
                     >
                       <Feather color={colors.status.danger.color} name="trash-2" size={15} />
@@ -261,6 +288,22 @@ export default function ProfileScreen() {
         )}
         </View>
       ) : null}
+      <ConfirmDialog
+        body={
+          deleteAddressIndex !== null && currentUser.addresses[deleteAddressIndex]
+            ? `${currentUser.addresses[deleteAddressIndex].title} will be removed from your saved delivery addresses.`
+            : "This address will be removed from your saved delivery addresses."
+        }
+        confirmLabel="Delete"
+        confirming={saving && deleteAddressIndex !== null}
+        destructive
+        onCancel={() => {
+          if (!saving) setDeleteAddressIndex(null);
+        }}
+        onConfirm={() => void deleteSelectedAddress()}
+        title="Delete address?"
+        visible={deleteAddressIndex !== null}
+      />
     </ScrollContent>
   );
 }

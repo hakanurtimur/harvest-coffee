@@ -23,14 +23,6 @@ import {
   User,
   UserRole,
 } from "@harvest/domain";
-import {
-  createDemoNotifications,
-  createDemoOrders,
-  createDemoProducts,
-  createDemoRentals,
-  createDemoUsers,
-} from "./fixtures";
-
 type RawRecord = Record<string, unknown>;
 
 export interface NotificationQueryOptions {
@@ -112,7 +104,6 @@ export interface OrderStatusChangedFunctionInput {
 
 export interface HarvestIntegrationResult {
   message: string;
-  mocked: boolean;
 }
 
 export interface HarvestRentalInvoice {
@@ -128,83 +119,12 @@ export interface HarvestRentalInvoice {
 export interface HarvestIntegrations {
   checkRentalReminders(): Promise<HarvestIntegrationResult & { processed?: number }>;
   generateProductDescription(input: GenerateProductDescriptionInput): Promise<HarvestIntegrationResult & { description: string }>;
-  generateRentalInvoice(input: RentalInvoiceInput): Promise<HarvestRentalInvoice & { mocked: boolean }>;
+  generateRentalInvoice(input: RentalInvoiceInput): Promise<HarvestRentalInvoice>;
   onOrderCreated(input: OrderCreatedFunctionInput): Promise<HarvestIntegrationResult>;
   onOrderStatusChanged(input: OrderStatusChangedFunctionInput): Promise<HarvestIntegrationResult>;
   sendNotification(input: SendNotificationInput): Promise<HarvestIntegrationResult & { notificationId?: string }>;
   sendLowStockEmail(input: LowStockNotificationInput): Promise<HarvestIntegrationResult>;
   updateRentalStatus(): Promise<HarvestIntegrationResult & { updatedCount?: number }>;
-}
-
-export function createMockHarvestIntegrations(): HarvestIntegrations {
-  return {
-    async checkRentalReminders() {
-      return {
-        message: "Rental reminder check is mocked for now; Base44 checkRentalReminders will be called in live mode.",
-        mocked: true,
-        processed: 0,
-      };
-    },
-    async generateProductDescription(input) {
-      const productName = input.productName.trim();
-      const context = [input.category, input.weight].filter(Boolean).join(" · ");
-      return {
-        description: `${productName} is prepared for professional coffee shops, cafes, and hospitality businesses. It is selected for reliable service, practical stock handling, and consistent quality across busy service periods.${context ? ` ${context} keeps the product easy to plan into recurring B2B orders.` : ""}`,
-        message: "AI description is mocked for now; Base44 InvokeLLM will be wired later.",
-        mocked: true,
-      };
-    },
-    async generateRentalInvoice(input) {
-      const start = Date.parse(input.startDate);
-      const end = Date.parse(input.endDate);
-      const rentalDays = Number.isNaN(start) || Number.isNaN(end)
-        ? 0
-        : Math.max(1, Math.ceil((end - start) / 86400000));
-
-      return {
-        customerEmail: input.customerEmail,
-        customerName: input.customerName,
-        date: nowIso().slice(0, 10),
-        invoiceNumber: `INV-${input.rentalId.slice(0, 8).toUpperCase()}`,
-        mocked: true,
-        productName: input.productName,
-        rentalDays,
-        totalAmount: input.totalAmount,
-      };
-    },
-    async onOrderCreated() {
-      return {
-        message: "Order created function is mocked for now; Base44 onOrderCreated will be called in live mode.",
-        mocked: true,
-      };
-    },
-    async onOrderStatusChanged() {
-      return {
-        message: "Order status changed function is mocked for now; Base44 onOrderStatusChanged will be called in live mode.",
-        mocked: true,
-      };
-    },
-    async sendNotification(input) {
-      return {
-        message: `Notification is mocked for now; Base44 sendNotification will be called in live mode. ${input.title}`,
-        mocked: true,
-        notificationId: `mock-${Date.now()}`,
-      };
-    },
-    async sendLowStockEmail(input) {
-      return {
-        message: `Low stock email notification is mocked for now; Base44 SendEmail will be wired later. ${input.productName} is at ${input.stockQuantity}/${input.lowStockThreshold}.`,
-        mocked: true,
-      };
-    },
-    async updateRentalStatus() {
-      return {
-        message: "Rental status update is mocked for now; Base44 updateRentalStatus will be called in live mode.",
-        mocked: true,
-        updatedCount: 0,
-      };
-    },
-  };
 }
 
 export interface Base44FunctionClientLike {
@@ -219,15 +139,14 @@ export function createBase44HarvestIntegrations(base44: Base44FunctionClientLike
       const data = await invokeBase44Function<{ processed?: number; success?: boolean }>(base44, "checkRentalReminders", {});
       return {
         message: data.success === false ? "Rental reminder check returned without success." : "Rental reminder check completed.",
-        mocked: false,
         processed: data.processed,
       };
     },
     async generateProductDescription(input) {
+      const data = await invokeBase44Function<RawRecord>(base44, "generateProductDescription", input as unknown as RawRecord);
       return {
-        description: `${input.productName} is prepared for professional coffee shops, cafes, and hospitality businesses.`,
-        message: "AI description remains local until a matching Base44 function exists.",
-        mocked: true,
+        description: stringFromUnknown(data.description),
+        message: stringFromUnknown(data.message, "Product description generated."),
       };
     },
     async generateRentalInvoice(input) {
@@ -239,7 +158,6 @@ export function createBase44HarvestIntegrations(base44: Base44FunctionClientLike
         customerName: stringFromUnknown(customer.name, input.customerName),
         date: stringFromUnknown(data.date, nowIso().slice(0, 10)),
         invoiceNumber: stringFromUnknown(data.invoiceNumber, `INV-${input.rentalId.slice(0, 8).toUpperCase()}`),
-        mocked: false,
         productName: stringFromUnknown(rental.product, input.productName),
         rentalDays: numberFromUnknown(rental.days, calculateRentalDays(input.startDate, input.endDate)),
         totalAmount: numberFromUnknown(data.totalAmount, input.totalAmount),
@@ -249,35 +167,31 @@ export function createBase44HarvestIntegrations(base44: Base44FunctionClientLike
       const data = await invokeBase44Function<RawRecord>(base44, "onOrderCreated", input as unknown as RawRecord);
       return {
         message: stringFromUnknown(data.message, "Order created function completed."),
-        mocked: false,
       };
     },
     async onOrderStatusChanged(input) {
       const data = await invokeBase44Function<RawRecord>(base44, "onOrderStatusChanged", input as unknown as RawRecord);
       return {
         message: stringFromUnknown(data.message, "Order status changed function completed."),
-        mocked: false,
       };
     },
     async sendNotification(input) {
       const data = await invokeBase44Function<{ notificationId?: string; success?: boolean }>(base44, "sendNotification", input as unknown as RawRecord);
       return {
         message: data.success === false ? "Notification function returned without success." : "Notification function completed.",
-        mocked: false,
         notificationId: data.notificationId,
       };
     },
     async sendLowStockEmail(input) {
+      const data = await invokeBase44Function<RawRecord>(base44, "sendLowStockEmail", input as unknown as RawRecord);
       return {
-        message: `Low stock email notification remains mocked until an admin recipient is provided. ${input.productName} is at ${input.stockQuantity}/${input.lowStockThreshold}.`,
-        mocked: true,
+        message: stringFromUnknown(data.message, "Low stock email notification completed."),
       };
     },
     async updateRentalStatus() {
       const data = await invokeBase44Function<{ updatedCount?: number; success?: boolean }>(base44, "updateRentalStatus", {});
       return {
         message: data.success === false ? "Rental status update returned without success." : "Rental status update completed.",
-        mocked: false,
         updatedCount: data.updatedCount,
       };
     },
@@ -309,140 +223,6 @@ interface EntityClient {
 
 const nowIso = () => new Date().toISOString();
 
-export function createMockHarvestApi(): HarvestApi {
-  const demoProducts = createDemoProducts();
-  let demoOrders = createDemoOrders();
-  let demoRentals = createDemoRentals();
-  let demoNotifications = createDemoNotifications();
-  let demoUsers = createDemoUsers();
-
-  return {
-    async getCurrentUser() {
-      return demoUsers[0] ?? null;
-    },
-    async updateCurrentUser(input) {
-      if (!demoUsers[0]) throw new Error("User not found");
-      demoUsers[0] = { ...demoUsers[0], ...input, updatedAt: nowIso() };
-      return demoUsers[0];
-    },
-    async deleteCurrentUser() {
-      if (!demoUsers[0]) throw new Error("User not found");
-      demoUsers = demoUsers.slice(1);
-    },
-    async getProducts() {
-      return demoProducts;
-    },
-    async createProduct(input) {
-      const product: Product = {
-        id: `product-${Date.now()}`,
-        description: "",
-        imageUrl: "",
-        weight: "",
-        stockStatus: "in_stock",
-        stockQuantity: 0,
-        lowStockThreshold: 10,
-        ...input,
-      };
-      demoProducts.unshift(product);
-      return product;
-    },
-    async updateProduct(id, input) {
-      const index = demoProducts.findIndex((product) => product.id === id);
-      if (index < 0) throw new Error("Product not found");
-      demoProducts[index] = { ...demoProducts[index], ...input };
-      return demoProducts[index];
-    },
-    async deleteProduct(id) {
-      const index = demoProducts.findIndex((product) => product.id === id);
-      if (index >= 0) demoProducts.splice(index, 1);
-    },
-    async getMyOrders(customerEmail) {
-      return demoOrders.filter((order) => order.customerEmail === customerEmail);
-    },
-    async getOrders() {
-      return demoOrders;
-    },
-    async getOrder(id) {
-      return demoOrders.find((order) => order.id === id) ?? null;
-    },
-    async getOrderByNumber(orderNumber) {
-      return demoOrders.find((order) => order.orderNumber === orderNumber) ?? null;
-    },
-    async createOrder(input) {
-      const order: Order = {
-        id: `order-${Date.now()}`,
-        orderNumber: createOrderNumber(),
-        customerEmail: input.customerEmail,
-        customerName: input.customerName,
-        items: input.items,
-        totalAmount: calculateOrderTotal(input.items),
-        status: "preparing",
-        paymentStatus: "pending",
-        paymentMethod: input.paymentMethod,
-        deliveryAddress: input.deliveryAddress,
-        notes: input.notes,
-        createdAt: nowIso(),
-      };
-
-      demoOrders = [order, ...demoOrders];
-      return order;
-    },
-    async updateOrder(id, input) {
-      const index = demoOrders.findIndex((order) => order.id === id);
-      if (index < 0) throw new Error("Order not found");
-      demoOrders[index] = { ...demoOrders[index], ...input, updatedAt: nowIso() };
-      return demoOrders[index];
-    },
-    async getRentals(customerEmail) {
-      return customerEmail ? demoRentals.filter((rental) => rental.customerEmail === customerEmail) : demoRentals;
-    },
-    async createRental(input) {
-      const rental: Rental = {
-        id: `rental-${Date.now()}`,
-        ...input,
-        status: "upcoming",
-        reminderSent: false,
-        createdAt: nowIso(),
-      };
-      demoRentals = [rental, ...demoRentals];
-      return rental;
-    },
-    async updateRental(id, input) {
-      const index = demoRentals.findIndex((rental) => rental.id === id);
-      if (index < 0) throw new Error("Rental not found");
-      demoRentals[index] = { ...demoRentals[index], ...input, updatedAt: nowIso() };
-      return demoRentals[index];
-    },
-    async deleteRental(id) {
-      demoRentals = demoRentals.filter((rental) => rental.id !== id);
-    },
-    async getUsers() {
-      return demoUsers;
-    },
-    async updateUser(id, input) {
-      const index = demoUsers.findIndex((user) => user.id === id);
-      if (index < 0) throw new Error("User not found");
-      demoUsers[index] = { ...demoUsers[index], ...input, updatedAt: nowIso() };
-      return demoUsers[index];
-    },
-    async getNotifications(recipientEmail, options) {
-      return demoNotifications.filter((notification) => (
-        notification.recipientEmail === recipientEmail ||
-        Boolean(options?.includeAdmin && isAdminNotification(notification))
-      ));
-    },
-    async markNotificationRead(id) {
-      const index = demoNotifications.findIndex((notification) => notification.id === id);
-      if (index < 0) throw new Error("Notification not found");
-      demoNotifications[index] = { ...demoNotifications[index], read: true, updatedAt: nowIso() };
-      return demoNotifications[index];
-    },
-    async deleteNotification(id) {
-      demoNotifications = demoNotifications.filter((notification) => notification.id !== id);
-    },
-  };
-}
-
 export function createBase44HarvestApi(base44: Base44ClientLike): HarvestApi {
   return {
     async getCurrentUser() {
@@ -471,10 +251,16 @@ export function createBase44HarvestApi(base44: Base44ClientLike): HarvestApi {
       await base44.entities.Product.delete(id);
     },
     async getMyOrders(customerEmail) {
-      const records = await safeEntityFilter(base44.entities.Order, { customer_email: customerEmail }, "-created_date");
+      const currentUser = base44.auth ? mapBase44User(await base44.auth.me()) : null;
+      const records = await safeEntityList(base44.entities.Order, "-created_date");
       return records
         .map(mapBase44Order)
-        .filter((order) => sameEmail(order.customerEmail, customerEmail))
+        .filter((order) => {
+          if (currentUser?.id && sameRecordId(order.createdById, currentUser.id)) {
+            return true;
+          }
+          return Boolean(order.customerEmail && sameEmail(order.customerEmail, customerEmail));
+        })
         .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
     },
     async getOrders() {
@@ -504,9 +290,11 @@ export function createBase44HarvestApi(base44: Base44ClientLike): HarvestApi {
     },
     async getRentals(customerEmail) {
       const records = customerEmail
-        ? await base44.entities.Rental.filter({ customer_email: customerEmail }, "-created_date")
-        : await base44.entities.Rental.list("-created_date");
-      return records.map(mapBase44Rental);
+        ? await safeEntityFilter(base44.entities.Rental, { customer_email: customerEmail }, "-created_date")
+        : await safeEntityList(base44.entities.Rental, "-created_date");
+      return records
+        .map(mapBase44Rental)
+        .filter((rental) => !customerEmail || sameEmail(rental.customerEmail, customerEmail));
     },
     async createRental(input) {
       return mapBase44Rental(await base44.entities.Rental.create(toBase44RentalCreate(input)));
@@ -525,12 +313,12 @@ export function createBase44HarvestApi(base44: Base44ClientLike): HarvestApi {
     },
     async getNotifications(recipientEmail, options) {
       const records = options?.includeAdmin
-        ? await base44.entities.Notification.list("-created_date")
-        : await base44.entities.Notification.filter({ recipient_email: recipientEmail }, "-created_date");
+        ? await safeEntityList(base44.entities.Notification, "-created_date")
+        : await safeEntityFilter(base44.entities.Notification, { recipient_email: recipientEmail }, "-created_date");
       return records
         .map(mapBase44Notification)
         .filter((notification) => (
-          notification.recipientEmail === recipientEmail ||
+          sameEmail(notification.recipientEmail, recipientEmail) ||
           Boolean(options?.includeAdmin && isAdminNotification(notification))
         ));
     },
@@ -602,17 +390,23 @@ export function createReadOnlyHarvestApi(api: HarvestApi): HarvestApi {
 
 export function createProxyHarvestApi(options: HarvestProxyOptions): HarvestApi {
   const call = async <T>(action: string, input?: RawRecord): Promise<T> => {
-    const response = await fetch(options.endpoint, {
-      body: JSON.stringify({
-        action,
-        input,
-        token: options.getAccessToken?.() ?? undefined,
-      }),
-      headers: {
-        "content-type": "application/json",
-      },
-      method: "POST",
-    });
+    let response: Response;
+    try {
+      response = await fetch(options.endpoint, {
+        body: JSON.stringify({
+          action,
+          input,
+          token: options.getAccessToken?.() ?? undefined,
+        }),
+        headers: {
+          "content-type": "application/json",
+        },
+        method: "POST",
+      });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "Network request failed";
+      throw new Error(`Harvest proxy request failed: ${action} at ${options.endpoint}. ${reason}`);
+    }
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(stringValue(payload.error, `Harvest proxy action failed: ${action}`));
@@ -1071,6 +865,10 @@ async function safeEntityList(entity: EntityClient, order?: string): Promise<Raw
 
 function sameEmail(left: unknown, right: unknown) {
   return normalizeEmail(left) === normalizeEmail(right);
+}
+
+function sameRecordId(left: unknown, right: unknown) {
+  return stringValue(left).trim() === stringValue(right).trim();
 }
 
 function normalizeEmail(value: unknown) {

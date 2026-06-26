@@ -46,7 +46,6 @@ export interface OrderStatusChangedFunctionInput {
 
 export interface HarvestIntegrationResult {
   message: string;
-  mocked: boolean;
 }
 
 export interface HarvestRentalInvoice {
@@ -62,7 +61,7 @@ export interface HarvestRentalInvoice {
 export interface HarvestIntegrations {
   checkRentalReminders(): Promise<HarvestIntegrationResult & { processed?: number }>;
   generateProductDescription(input: GenerateProductDescriptionInput): Promise<HarvestIntegrationResult & { description: string }>;
-  generateRentalInvoice(input: RentalInvoiceInput): Promise<HarvestRentalInvoice & { mocked: boolean }>;
+  generateRentalInvoice(input: RentalInvoiceInput): Promise<HarvestRentalInvoice>;
   onOrderCreated(input: OrderCreatedFunctionInput): Promise<HarvestIntegrationResult>;
   onOrderStatusChanged(input: OrderStatusChangedFunctionInput): Promise<HarvestIntegrationResult>;
   sendNotification(input: SendNotificationInput): Promise<HarvestIntegrationResult & { notificationId?: string }>;
@@ -73,79 +72,10 @@ export interface HarvestIntegrations {
 export function getHarvestIntegrations(): HarvestIntegrations {
   const base44 = getBase44Client();
   if (base44) return createBase44HarvestIntegrations(base44 as Base44FunctionClientLike);
-  return mockHarvestIntegrations;
+  throw new Error("Base44 client is required for Harvest integrations.");
 }
 
 const nowIso = () => new Date().toISOString();
-
-const mockHarvestIntegrations: HarvestIntegrations = {
-  async checkRentalReminders() {
-    return {
-      message: "Rental reminder check is mocked for now; Base44 checkRentalReminders will be wired in live mode.",
-      mocked: true,
-      processed: 0,
-    };
-  },
-  async generateProductDescription(input) {
-    const productName = input.productName.trim();
-    const context = [input.category, input.weight].filter(Boolean).join(" · ");
-    return {
-      description: `${productName} is prepared for professional coffee shops, cafes, and hospitality businesses. It is selected for reliable service, practical stock handling, and consistent quality across busy service periods.${context ? ` ${context} keeps the product easy to plan into recurring B2B orders.` : ""}`,
-      message: "AI description is mocked for now; Base44 InvokeLLM will be wired later.",
-      mocked: true,
-    };
-  },
-  async generateRentalInvoice(input) {
-    const start = Date.parse(input.startDate);
-    const end = Date.parse(input.endDate);
-    const rentalDays = Number.isNaN(start) || Number.isNaN(end)
-      ? 0
-      : Math.max(1, Math.ceil((end - start) / 86400000));
-
-    return {
-      customerEmail: input.customerEmail,
-      customerName: input.customerName,
-      date: nowIso().slice(0, 10),
-      invoiceNumber: `INV-${input.rentalId.slice(0, 8).toUpperCase()}`,
-      mocked: true,
-      productName: input.productName,
-      rentalDays,
-      totalAmount: input.totalAmount,
-    };
-  },
-  async onOrderCreated() {
-    return {
-      message: "Order created function is mocked for now; Base44 onOrderCreated will be called in live mode.",
-      mocked: true,
-    };
-  },
-  async onOrderStatusChanged() {
-    return {
-      message: "Order status changed function is mocked for now; Base44 onOrderStatusChanged will be called in live mode.",
-      mocked: true,
-    };
-  },
-  async sendNotification(input) {
-    return {
-      message: `Notification is mocked for now; Base44 sendNotification will be called in live mode. ${input.title}`,
-      mocked: true,
-      notificationId: `mock-${Date.now()}`,
-    };
-  },
-  async sendLowStockEmail(input) {
-    return {
-      message: `Low stock email notification is mocked for now; Base44 SendEmail will be wired later. ${input.productName} is at ${input.stockQuantity}/${input.lowStockThreshold}.`,
-      mocked: true,
-    };
-  },
-  async updateRentalStatus() {
-    return {
-      message: "Rental status update is mocked for now; Base44 updateRentalStatus will be called in live mode.",
-      mocked: true,
-      updatedCount: 0,
-    };
-  },
-};
 
 interface Base44FunctionClientLike {
   functions: {
@@ -159,15 +89,14 @@ function createBase44HarvestIntegrations(base44: Base44FunctionClientLike): Harv
       const data = await invokeBase44Function<{ processed?: number; success?: boolean }>(base44, "checkRentalReminders", {});
       return {
         message: data.success === false ? "Rental reminder check returned without success." : "Rental reminder check completed.",
-        mocked: false,
         processed: data.processed,
       };
     },
     async generateProductDescription(input) {
+      const data = await invokeBase44Function<RawRecord>(base44, "generateProductDescription", input as unknown as RawRecord);
       return {
-        description: `${input.productName} is prepared for professional coffee shops, cafes, and hospitality businesses.`,
-        message: "AI description remains local until a matching Base44 function exists.",
-        mocked: true,
+        description: stringFromUnknown(data.description),
+        message: stringFromUnknown(data.message, "Product description generated."),
       };
     },
     async generateRentalInvoice(input) {
@@ -180,7 +109,6 @@ function createBase44HarvestIntegrations(base44: Base44FunctionClientLike): Harv
         customerName: stringFromUnknown(customer.name, input.customerName),
         date: stringFromUnknown(data.date, nowIso().slice(0, 10)),
         invoiceNumber: stringFromUnknown(data.invoiceNumber, `INV-${input.rentalId.slice(0, 8).toUpperCase()}`),
-        mocked: false,
         productName: stringFromUnknown(rental.product, input.productName),
         rentalDays: numberFromUnknown(rental.days, calculateRentalDays(input.startDate, input.endDate)),
         totalAmount,
@@ -190,35 +118,31 @@ function createBase44HarvestIntegrations(base44: Base44FunctionClientLike): Harv
       const data = await invokeBase44Function<RawRecord>(base44, "onOrderCreated", input as unknown as RawRecord);
       return {
         message: stringFromUnknown(data.message, "Order created function completed."),
-        mocked: false,
       };
     },
     async onOrderStatusChanged(input) {
       const data = await invokeBase44Function<RawRecord>(base44, "onOrderStatusChanged", input as unknown as RawRecord);
       return {
         message: stringFromUnknown(data.message, "Order status changed function completed."),
-        mocked: false,
       };
     },
     async sendNotification(input) {
       const data = await invokeBase44Function<{ notificationId?: string; success?: boolean }>(base44, "sendNotification", input as unknown as RawRecord);
       return {
         message: data.success === false ? "Notification function returned without success." : "Notification function completed.",
-        mocked: false,
         notificationId: data.notificationId,
       };
     },
     async sendLowStockEmail(input) {
+      const data = await invokeBase44Function<RawRecord>(base44, "sendLowStockEmail", input as unknown as RawRecord);
       return {
-        message: `Low stock email notification remains mocked until an admin recipient is provided. ${input.productName} is at ${input.stockQuantity}/${input.lowStockThreshold}.`,
-        mocked: true,
+        message: stringFromUnknown(data.message, "Low stock email notification completed."),
       };
     },
     async updateRentalStatus() {
       const data = await invokeBase44Function<{ updatedCount?: number; success?: boolean }>(base44, "updateRentalStatus", {});
       return {
         message: data.success === false ? "Rental status update returned without success." : "Rental status update completed.",
-        mocked: false,
         updatedCount: data.updatedCount,
       };
     },

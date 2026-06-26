@@ -1,6 +1,6 @@
 "use client";
 
-import { clearHarvestSession, getHarvestAccessToken, getHarvestApi, hasHarvestSession, isHarvestMockAuthEnabled, syncHarvestSessionFromUrl } from "@/lib/harvest-api";
+import { clearHarvestSession, getHarvestApi, hasHarvestSession, syncHarvestSessionFromUrl } from "@/lib/harvest-api";
 import { useNotificationsQuery } from "@/lib/harvest-query";
 import type { User, UserRole } from "@/lib/domain";
 import { BarChart3, Bell, Boxes, CalendarDays, ClipboardList, LayoutDashboard, LogOut, Menu, PackagePlus, Settings, ShoppingCart, UserCircle, Users, X } from "lucide-react";
@@ -58,16 +58,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       setRole(null);
       setIsRedirecting(true);
       router.replace(`/login?next=${encodeURIComponent(pathname || "/home")}`);
-      return () => {
-        mounted = false;
-      };
-    }
-
-    const storedMockRole = window.localStorage.getItem("harvest_mock_role");
-    if (isHarvestMockAuthEnabled() && !getHarvestAccessToken() && hasHarvestSession() && (storedMockRole === "admin" || storedMockRole === "dealer")) {
-      const mockUser = createMockShellUser(storedMockRole);
-      setUser(mockUser);
-      setRole(mockUser.role);
       return () => {
         mounted = false;
       };
@@ -482,27 +472,4 @@ function CoffeeBranchMask({ className }: { className?: string }) {
       }}
     />
   );
-}
-
-function createMockShellUser(role: Extract<UserRole, "admin" | "dealer">): User {
-  if (role === "admin") {
-    return {
-      id: "user-demo-3",
-      email: "ops@example.com",
-      fullName: "Ops Admin",
-      role: "admin",
-      customerSegment: "regular",
-      addresses: [],
-    };
-  }
-
-  return {
-    id: "user-demo-1",
-    email: "dealer@example.com",
-    fullName: "Hakan Urtimur",
-    companyName: "North Quarter Cafe",
-    role: "dealer",
-    customerSegment: "regular",
-    addresses: [{ title: "Main cafe", address: "Unit 4, Roastery Lane" }],
-  };
 }

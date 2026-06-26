@@ -1,25 +1,26 @@
 import { Feather } from "@expo/vector-icons";
 import { ReactNode, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Card, colors, Field, fontFamilies, PrimaryButton, StatusBanner } from "../../components/ui";
 
 type FeatherIconName = keyof typeof Feather.glyphMap;
 
 export default function ContactScreen() {
   const [form, setForm] = useState({ email: "", message: "", name: "", subject: "" });
-  const [sent, setSent] = useState(false);
+  const [message, setMessage] = useState<{ body?: string; title: string; tone: "error" | "success" } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     if (!form.name.trim() || !form.email.trim() || !form.subject.trim() || !form.message.trim()) {
-      Alert.alert("Missing details", "Please fill in every field before sending.");
+      setMessage({ body: "Please fill in every field before sending.", title: "Missing details", tone: "error" });
       return;
     }
 
+    setMessage(null);
     setSubmitting(true);
     await Promise.resolve();
     setSubmitting(false);
-    setSent(true);
+    setMessage({ body: "Thank you for reaching out. The team will follow up from info@harvestcoffee.co.uk.", title: "Message sent", tone: "success" });
     setForm({ email: "", message: "", name: "", subject: "" });
   };
 
@@ -48,9 +49,7 @@ export default function ContactScreen() {
 
         <Card>
           <Text style={contactStyles.formTitle}>Send a Message</Text>
-          {sent ? (
-            <StatusBanner title="Message Sent" body="Thank you for reaching out. Email delivery is mocked during the Base44 migration." tone="success" />
-          ) : null}
+          {message ? <StatusBanner title={message.title} body={message.body} tone={message.tone} /> : null}
           <Field placeholder="Your name" value={form.name} onChangeText={(name) => setForm({ ...form, name })} />
           <Field keyboardType="email-address" placeholder="your@email.com" value={form.email} onChangeText={(email) => setForm({ ...form, email })} />
           <Field placeholder="How can we help?" value={form.subject} onChangeText={(subject) => setForm({ ...form, subject })} />

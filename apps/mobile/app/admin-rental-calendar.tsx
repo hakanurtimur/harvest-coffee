@@ -42,14 +42,16 @@ export default function AdminRentalCalendarScreen() {
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+  const monthStartKey = formatDateKey(monthStart);
+  const monthEndKey = formatDateKey(monthEnd);
   const calendarDays = useMemo(() => getCalendarDays(currentMonth), [currentMonth]);
 
   const rentalStats = useMemo(() => {
     const activeRentals = rentals.filter((rental) => rental.status === "active");
     const upcomingRentals = rentals.filter((rental) => rental.status === "upcoming");
     const expiringThisMonth = rentals.filter((rental) => {
-      const endDate = parseDateKey(rental.endDate);
-      return rental.status === "active" && endDate >= monthStart && endDate <= monthEnd;
+      const endDateKey = toDateKey(rental.endDate);
+      return rental.status === "active" && endDateKey >= monthStartKey && endDateKey <= monthEndKey;
     });
 
     return {
@@ -57,7 +59,7 @@ export default function AdminRentalCalendarScreen() {
       expiringThisMonth,
       upcomingRentals,
     };
-  }, [monthEnd, monthStart, rentals]);
+  }, [monthEndKey, monthStartKey, rentals]);
 
   const selectedEvents = useMemo(() => getDayEvents(rentals, selectedDateKey), [rentals, selectedDateKey]);
   const agendaEvents = useMemo(() => getMonthAgendaEvents(rentals, currentMonth), [currentMonth, rentals]);
@@ -314,26 +316,32 @@ function getCalendarDays(month: Date) {
 
 function getDayEvents(rentals: Rental[], dateKey: string): DayEvents {
   return {
-    active: rentals.filter((rental) => dateKey > rental.startDate && dateKey < rental.endDate && rental.status === "active"),
-    ending: rentals.filter((rental) => rental.endDate === dateKey && rental.status === "active"),
-    starting: rentals.filter((rental) => rental.startDate === dateKey && rental.status === "upcoming"),
+    active: rentals.filter((rental) => {
+      const startKey = toDateKey(rental.startDate);
+      const endKey = toDateKey(rental.endDate);
+      return dateKey > startKey && dateKey < endKey && rental.status === "active";
+    }),
+    ending: rentals.filter((rental) => toDateKey(rental.endDate) === dateKey && rental.status === "active"),
+    starting: rentals.filter((rental) => toDateKey(rental.startDate) === dateKey && rental.status === "upcoming"),
   };
 }
 
 function getMonthAgendaEvents(rentals: Rental[], month: Date): AgendaEvent[] {
   const monthStart = startOfMonth(month);
   const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+  const monthStartKey = formatDateKey(monthStart);
+  const monthEndKey = formatDateKey(monthEnd);
 
   return rentals.flatMap((rental) => {
     const events: AgendaEvent[] = [];
-    const startDate = parseDateKey(rental.startDate);
-    const endDate = parseDateKey(rental.endDate);
+    const startKey = toDateKey(rental.startDate);
+    const endKey = toDateKey(rental.endDate);
 
-    if (rental.status === "upcoming" && startDate >= monthStart && startDate <= monthEnd) {
-      events.push({ dateKey: rental.startDate, rental, type: "starting" });
+    if (rental.status === "upcoming" && startKey >= monthStartKey && startKey <= monthEndKey) {
+      events.push({ dateKey: startKey, rental, type: "starting" });
     }
-    if (rental.status === "active" && endDate >= monthStart && endDate <= monthEnd) {
-      events.push({ dateKey: rental.endDate, rental, type: "ending" });
+    if (rental.status === "active" && endKey >= monthStartKey && endKey <= monthEndKey) {
+      events.push({ dateKey: endKey, rental, type: "ending" });
     }
 
     return events;
@@ -355,7 +363,19 @@ function startOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }
 
-function parseDateKey(dateKey: string) {
+function toDateKey(value?: string) {
+  if (!value) return "";
+  const trimmed = value.trim();
+  const datePart = trimmed.split("T")[0];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return datePart;
+
+  const parsed = new Date(trimmed);
+  if (!Number.isNaN(parsed.getTime())) return formatDateKey(parsed);
+  return datePart;
+}
+
+function parseDateKey(value: string) {
+  const dateKey = toDateKey(value);
   const [year, month, day] = dateKey.split("-").map(Number);
   return new Date(year, (month || 1) - 1, day || 1);
 }

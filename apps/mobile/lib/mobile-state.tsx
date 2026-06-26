@@ -1,4 +1,4 @@
-import { createMockHarvestApi, createProxyHarvestApi, HarvestApi } from "@harvest/api";
+import { createProxyHarvestApi, HarvestApi } from "@harvest/api";
 import {
   AdminSettings,
   CreateProductInput,
@@ -14,6 +14,7 @@ import {
   User,
 } from "@harvest/domain";
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { getHarvestProxyEndpoint } from "./live-api";
 
 let mobileAccessToken: string | null = null;
 
@@ -47,8 +48,6 @@ interface MobileState {
   deleteNotification(id: string): Promise<void>;
   deleteProduct(id: string): Promise<void>;
   deleteRental(id: string): Promise<void>;
-  loginAdmin(): Promise<void>;
-  loginDealer(): Promise<void>;
   completeLiveLogin(accessToken: string): Promise<void>;
   logout(): void;
   markNotificationRead(id: string): Promise<void>;
@@ -151,21 +150,6 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     }
   }, [currentUser]);
 
-  const loginDealer = useCallback(async () => {
-    if (isProxyMode()) throw new Error("Use Google login when live proxy mode is enabled.");
-    setLoadingData(true);
-    try {
-      const users = await api.getUsers();
-      const dealer = users.find((user) => user.role === "dealer") ?? null;
-      if (!dealer) throw new Error("Mock dealer user was not found.");
-      setCurrentUser(dealer);
-      setDeliveryAddress(dealer.addresses[0]?.address ?? "");
-      await refreshDealerData(dealer);
-    } finally {
-      setLoadingData(false);
-    }
-  }, [refreshDealerData]);
-
   const refreshAdminData = useCallback(async (userOverride?: User) => {
     const user = userOverride ?? currentUser;
     if (!user) return;
@@ -195,21 +179,6 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     }
   }, [currentUser]);
 
-  const loginAdmin = useCallback(async () => {
-    if (isProxyMode()) throw new Error("Use Google login when live proxy mode is enabled.");
-    setLoadingData(true);
-    try {
-      const nextUsers = await api.getUsers();
-      const admin = nextUsers.find((user) => user.role === "admin") ?? null;
-      if (!admin) throw new Error("Mock admin user was not found.");
-      setCurrentUser(admin);
-      setDeliveryAddress("");
-      await refreshAdminData(admin);
-    } finally {
-      setLoadingData(false);
-    }
-  }, [refreshAdminData]);
-
   const completeLiveLogin = useCallback(async (accessToken: string) => {
     setLoadingData(true);
     try {
@@ -218,8 +187,13 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
       if (!user) throw new Error("Base44 session could not be resolved.");
       setCurrentUser(user);
       setDeliveryAddress(user.addresses[0]?.address ?? "");
-      if (user.role === "admin") await refreshAdminData(user);
-      else await refreshDealerData(user);
+      try {
+        if (user.role === "admin") await refreshAdminData(user);
+        else await refreshDealerData(user);
+      } catch {
+        // The session is valid if Base44 resolved the user. Keep the user signed in
+        // and surface workspace data failures through dataError instead of failing auth.
+      }
     } finally {
       setLoadingData(false);
     }
@@ -299,7 +273,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
 
   const saveAdminSettings = useCallback(async (settings: AdminSettings) => {
     if (!currentUser) throw new Error("Admin session is not active.");
-    const user = await api.updateUser(currentUser.id, { adminSettings: settings });
+    const user = { ...currentUser, adminSettings: settings, updatedAt: new Date().toISOString() };
     setCurrentUser(user);
     setUsers((current) => current.map((item) => item.id === user.id ? user : item));
     return user;
@@ -307,7 +281,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
 
   const addAddress = useCallback(async (title: string, address: string) => {
     if (!currentUser) return;
-    const nextUser = await api.updateUser(currentUser.id, {
+    const nextUser = await api.updateCurrentUser({
       addresses: [...currentUser.addresses, { title, address }],
     });
     setCurrentUser(nextUser);
@@ -317,7 +291,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
   const updateAddress = useCallback(async (index: number, title: string, address: string) => {
     if (!currentUser?.addresses[index]) return;
     const previousAddress = currentUser.addresses[index].address;
-    const nextUser = await api.updateUser(currentUser.id, {
+    const nextUser = await api.updateCurrentUser({
       addresses: currentUser.addresses.map((item, itemIndex) => (
         itemIndex === index ? { title, address } : item
       )),
@@ -330,7 +304,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
 
   const deleteAddress = useCallback(async (index: number) => {
     if (!currentUser) return;
-    const nextUser = await api.updateUser(currentUser.id, {
+    const nextUser = await api.updateCurrentUser({
       addresses: currentUser.addresses.filter((_, itemIndex) => itemIndex !== index),
     });
     setCurrentUser(nextUser);
@@ -373,8 +347,6 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     isAuthenticated: Boolean(currentUser),
     lastSyncedAt,
     loadingData,
-    loginAdmin,
-    loginDealer,
     completeLiveLogin,
     logout,
     markNotificationRead,
@@ -415,8 +387,6 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     deliveryAddress,
     lastSyncedAt,
     loadingData,
-    loginAdmin,
-    loginDealer,
     completeLiveLogin,
     logout,
     markNotificationRead,
@@ -442,8 +412,10 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
 }
 
 function createMobileHarvestApi() {
-  const endpoint = process.env.EXPO_PUBLIC_HARVEST_API_URL;
-  if (!endpoint) return createMockHarvestApi();
+  const endpoint = getHarvestProxyEndpoint();
+  if (!endpoint) {
+    return createUnavailableHarvestApi();
+  }
   return createProxyHarvestApi({
     endpoint,
     getAccessToken: () => mobileAccessToken,
@@ -453,8 +425,13 @@ function createMobileHarvestApi() {
   });
 }
 
-function isProxyMode() {
-  return Boolean(process.env.EXPO_PUBLIC_HARVEST_API_URL);
+function createUnavailableHarvestApi(): HarvestApi {
+  const error = new Error("EXPO_PUBLIC_HARVEST_API_URL is required for the mobile Harvest API.");
+  return new Proxy({}, {
+    get() {
+      return () => Promise.reject(error);
+    },
+  }) as HarvestApi;
 }
 
 export function useMobileState() {

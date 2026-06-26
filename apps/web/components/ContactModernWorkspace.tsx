@@ -90,7 +90,6 @@ export default function ContactModernWorkspace() {
                   <p className="mx-auto mt-3 max-w-md text-sm font-medium leading-6 text-muted-foreground">
                     Thank you for reaching out. We'll get back to you shortly.
                   </p>
-                  <p className="mt-4 text-xs font-semibold text-muted-foreground/70">Email delivery is mocked during the Base44 migration.</p>
                 </div>
               ) : (
                 <form className="mt-7 space-y-6" onSubmit={handleSubmit}>

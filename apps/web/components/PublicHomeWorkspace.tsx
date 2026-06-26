@@ -1,6 +1,6 @@
 "use client";
 
-import { getHarvestApi, hasHarvestSession } from "@/lib/harvest-api";
+import { getHarvestApi, HARVEST_AUTH_EVENT, hasHarvestSession } from "@/lib/harvest-api";
 import { Order, Product } from "@/lib/domain";
 import { useEffect, useMemo, useState } from "react";
 import PublicHomeModernWorkspace from "./PublicHomeModernWorkspace";
@@ -20,10 +20,10 @@ export default function PublicHomeWorkspace() {
     };
 
     syncAuth();
-    window.addEventListener("harvest_mock_auth_changed", syncAuth);
+    window.addEventListener(HARVEST_AUTH_EVENT, syncAuth);
     window.addEventListener("storage", syncAuth);
     return () => {
-      window.removeEventListener("harvest_mock_auth_changed", syncAuth);
+      window.removeEventListener(HARVEST_AUTH_EVENT, syncAuth);
       window.removeEventListener("storage", syncAuth);
     };
   }, []);

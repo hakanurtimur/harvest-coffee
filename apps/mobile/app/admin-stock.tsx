@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import { createMockHarvestIntegrations } from "@harvest/api";
 import { Product } from "@harvest/domain";
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -23,8 +22,6 @@ const stockStatusConfig: Record<Product["stockStatus"], { icon: keyof typeof Fea
   low_stock: { icon: "alert-triangle", label: "Low stock", tone: colors.status.warning },
   out_of_stock: { icon: "x-circle", label: "Out of stock", tone: colors.status.danger },
 };
-
-const integrations = createMockHarvestIntegrations();
 
 export default function AdminStockScreen() {
   const { products, updateProduct } = useMobileState();
@@ -95,14 +92,9 @@ export default function AdminStockScreen() {
       });
       cancel();
       if (updated.stockQuantity <= updated.lowStockThreshold && updated.stockQuantity > 0) {
-        const notification = await integrations.sendLowStockEmail({
-          lowStockThreshold: updated.lowStockThreshold,
-          productName: updated.name,
-          stockQuantity: updated.stockQuantity,
-        });
         setMessage({
-          body: notification.message,
-          text: "Low stock notification mocked",
+          body: `${updated.name} is at ${updated.stockQuantity}/${updated.lowStockThreshold}. Admin alerts will sync through the Base44 notification flow when available.`,
+          text: "Low stock status updated.",
           tone: "info",
         });
       } else if (updated.stockQuantity === 0) {
@@ -425,11 +417,11 @@ function StockEditPanel({
       <View style={stockStyles.editGrid}>
         <View style={stockStyles.fieldBlock}>
           <Text style={stockStyles.controlLabel}>Current stock</Text>
-          <Field keyboardType="number-pad" onChangeText={setStockQuantity} placeholder="Current stock" value={stockQuantity} />
+          <Field editable={!saving} keyboardType="number-pad" onChangeText={setStockQuantity} placeholder="Current stock" value={stockQuantity} />
         </View>
         <View style={stockStyles.fieldBlock}>
           <Text style={stockStyles.controlLabel}>Low stock threshold</Text>
-          <Field keyboardType="number-pad" onChangeText={setLowStockThreshold} placeholder="Low stock threshold" value={lowStockThreshold} />
+          <Field editable={!saving} keyboardType="number-pad" onChangeText={setLowStockThreshold} placeholder="Low stock threshold" value={lowStockThreshold} />
         </View>
       </View>
 
@@ -438,7 +430,7 @@ function StockEditPanel({
           <Feather color={colors.onPrimary} name="save" size={15} />
           <Text style={stockStyles.saveButtonText}>{saving ? "Saving..." : "Save"}</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={cancel} style={({ pressed }) => [stockStyles.cancelButton, pressed && styles.pressed]}>
+        <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving }} disabled={saving} onPress={cancel} style={({ pressed }) => [stockStyles.cancelButton, pressed && !saving && styles.pressed, saving && styles.disabled]}>
           <Text style={stockStyles.cancelButtonText}>Cancel</Text>
         </Pressable>
       </View>

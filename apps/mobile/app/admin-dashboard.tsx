@@ -17,7 +17,7 @@ import { Extrapolation, interpolate, runOnJS, useAnimatedReaction, useDerivedVal
 import { Area, Bar, CartesianChart, Line, Pie, PolarChart, useChartPressState } from "victory-native";
 import { AdminPanel, ProgressRow } from "../components/admin-ui";
 import { Card, EmptyState, colors, fontFamilies, formatCurrency, ScrollContent, SectionTitle, StatusBanner, styles } from "../components/ui";
-import { getCategorySales, getStatusStats, getTopCustomers, getTopProducts } from "../lib/admin-analytics";
+import { getCategorySales, getOrderCustomerLabel, getStatusStats, getTopCustomers, getTopProducts } from "../lib/admin-analytics";
 import { useMobileState } from "../lib/mobile-state";
 
 type TimeRange = "week" | "month" | "all";
@@ -98,7 +98,7 @@ export default function AdminDashboardScreen() {
   const lowStockProducts = products.filter((product) => product.stockQuantity <= product.lowStockThreshold && product.stockQuantity > 0);
   const outOfStockProducts = products.filter((product) => product.stockQuantity === 0);
   const topProducts = getTopProducts(orders);
-  const topCustomers = getTopCustomers(orders);
+  const topCustomers = getTopCustomers(orders, users);
   const statusStats = getStatusStats(orders);
   const categorySales = getCategorySales(orders, products);
   const paymentStats = getPaymentStats(orders);
@@ -244,8 +244,8 @@ export default function AdminDashboardScreen() {
         ) : (
           topCustomers.slice(0, 5).map((customer) => (
             <ProgressRow
-              key={customer.email}
-              label={customer.email.split("@")[0]}
+              key={customer.id || customer.email}
+              label={customer.label}
               sublabel={`${customer.orderCount} orders`}
               value={formatCurrency(customer.totalSpent)}
               width={(customer.totalSpent / maxCustomerSpent) * 100}
@@ -270,7 +270,7 @@ export default function AdminDashboardScreen() {
               </View>
               <View style={styles.flex}>
                 <Text style={styles.name}>Order #{order.orderNumber}</Text>
-                <Text style={styles.muted}>{order.customerEmail}</Text>
+                <Text style={styles.muted}>{getOrderCustomerLabel(order, users)}</Text>
               </View>
               <Text style={styles.price}>{formatCurrency(order.totalAmount)}</Text>
             </Pressable>

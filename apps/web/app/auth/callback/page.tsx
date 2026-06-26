@@ -1,6 +1,6 @@
 "use client";
 
-import { getHarvestApi, setHarvestAccessToken } from "@/lib/harvest-api";
+import { getHarvestApi, HARVEST_AUTH_EVENT, setHarvestAccessToken } from "@/lib/harvest-api";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 
@@ -30,10 +30,8 @@ function AuthCallbackContent() {
     setHarvestAccessToken(accessToken);
     void api.getCurrentUser()
       .then((user) => {
-        window.localStorage.setItem("harvest_mock_auth", "logged-out");
-        window.localStorage.removeItem("harvest_mock_role");
         window.localStorage.setItem("harvest_user_label", user?.fullName || user?.email || "Harvest User");
-        window.dispatchEvent(new Event("harvest_mock_auth_changed"));
+        window.dispatchEvent(new Event(HARVEST_AUTH_EVENT));
         router.replace(user?.role === "admin" ? "/admin" : next);
       })
       .catch((callbackError) => {

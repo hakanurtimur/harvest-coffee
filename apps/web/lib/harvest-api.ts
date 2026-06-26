@@ -1,13 +1,12 @@
 "use client";
 
 import { createClient } from "@base44/sdk";
-import type { UserRole } from "@/lib/domain";
-import { createBase44HarvestApi, createMockHarvestApi, createProxyHarvestApi, createReadOnlyHarvestApi, type Base44ClientLike, type HarvestApi } from "@/lib/api";
+import { createBase44HarvestApi, createProxyHarvestApi, createReadOnlyHarvestApi, type Base44ClientLike, type HarvestApi } from "@/lib/api";
 import { requestToast } from "@/components/ui/sonner";
 
 const STORAGE_PREFIX = "base44_";
 const ACCESS_TOKEN_KEY = "harvest_access_token";
-const mockApi = createMockHarvestApi();
+export const HARVEST_AUTH_EVENT = "harvest_auth_changed";
 
 let cachedApi: HarvestApi | null = null;
 let cachedBase44Client: ReturnType<typeof createClient> | null = null;
@@ -21,7 +20,7 @@ export function getHarvestApi(): HarvestApi {
       getAccessToken: getHarvestAccessToken,
       setAccessToken: setHarvestAccessToken,
     });
-    cachedApi = withRequestToasts(isHarvestMockAuthEnabled() ? createMockAwareProxyHarvestApi(proxyApi) : proxyApi);
+    cachedApi = withRequestToasts(proxyApi);
     return cachedApi;
   }
 
@@ -35,12 +34,7 @@ export function getHarvestApi(): HarvestApi {
     throw new Error("Base44 adapter requested, but NEXT_PUBLIC_BASE44_APP_ID or NEXT_PUBLIC_BASE44_BACKEND_URL is missing.");
   }
 
-  if (!isHarvestMockAuthEnabled()) {
-    throw new Error("Harvest mock API is disabled. Set NEXT_PUBLIC_HARVEST_API_ADAPTER=mock or NEXT_PUBLIC_ENABLE_MOCK_AUTH=true to use mock data.");
-  }
-
-  cachedApi = withRequestToasts(withReadOnlyGuard(withMockCurrentUserSelection(mockApi)));
-  return cachedApi;
+  throw new Error("Harvest API adapter must be configured as proxy or base44.");
 }
 
 export function resetHarvestApiForTests() {
@@ -71,53 +65,13 @@ function shouldUseBase44() {
 }
 
 function shouldUseProxy() {
-  return process.env.NEXT_PUBLIC_HARVEST_API_ADAPTER !== "mock" && !shouldUseBase44();
+  return !shouldUseBase44();
 }
 
 function withReadOnlyGuard(api: HarvestApi) {
   return process.env.NEXT_PUBLIC_HARVEST_API_READ_ONLY === "true"
     ? createReadOnlyHarvestApi(api)
     : api;
-}
-
-function withMockCurrentUserSelection(api: HarvestApi): HarvestApi {
-  return {
-    ...api,
-    async getCurrentUser() {
-      const users = await api.getUsers();
-      const role = getMockRole();
-      if (role === "admin") return users.find((user) => user.role === "admin") ?? users[0] ?? null;
-      if (role === "dealer") return users.find((user) => user.role === "dealer") ?? users[0] ?? null;
-      return api.getCurrentUser();
-    },
-    async updateCurrentUser(input) {
-      const currentUser = await this.getCurrentUser();
-      if (!currentUser) throw new Error("User not found");
-      return api.updateUser(currentUser.id, input);
-    },
-  };
-}
-
-function createMockAwareProxyHarvestApi(proxyApi: HarvestApi): HarvestApi {
-  const selectedMockApi = withReadOnlyGuard(withMockCurrentUserSelection(mockApi));
-  return new Proxy(proxyApi, {
-    get(target, prop, receiver) {
-      const value = Reflect.get(target, prop, receiver);
-      if (typeof value !== "function") return value;
-
-      return (...args: unknown[]) => {
-        const source = shouldUseExplicitMockSession() ? selectedMockApi : target;
-        const method = Reflect.get(source, prop, source);
-        if (typeof method !== "function") return value.apply(target, args);
-        return method.apply(source, args);
-      };
-    },
-  }) as HarvestApi;
-}
-
-function shouldUseExplicitMockSession() {
-  if (typeof window === "undefined") return false;
-  return isHarvestMockAuthEnabled() && !getHarvestAccessToken() && window.localStorage.getItem("harvest_mock_auth") === "logged-in";
 }
 
 type HarvestMethodName = {
@@ -160,23 +114,9 @@ function withRequestToasts(api: HarvestApi): HarvestApi {
   }) as HarvestApi;
 }
 
-export function isHarvestMockAuthEnabled() {
-  return process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === "true" || process.env.NEXT_PUBLIC_HARVEST_API_ADAPTER === "mock";
-}
-
 export function hasHarvestSession() {
   if (typeof window === "undefined") return false;
-  return Boolean(getHarvestAccessToken()) || (isHarvestMockAuthEnabled() && window.localStorage.getItem("harvest_mock_auth") === "logged-in");
-}
-
-export function getHarvestMockRole(): UserRole | null {
-  if (typeof window === "undefined") return null;
-  const role = window.localStorage.getItem("harvest_mock_role");
-  return role === "admin" || role === "dealer" ? role : null;
-}
-
-function getMockRole(): UserRole | null {
-  return getHarvestMockRole();
+  return Boolean(getHarvestAccessToken());
 }
 
 function getBase44Params() {
@@ -200,38 +140,17 @@ export function syncHarvestAccessTokenFromUrl() {
   if (!token) return null;
 
   setHarvestAccessToken(token);
-  window.localStorage.setItem("harvest_mock_auth", "logged-out");
-  window.localStorage.removeItem("harvest_mock_role");
   url.searchParams.delete("access_token");
   url.searchParams.delete("is_new_user");
   window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-  window.dispatchEvent(new Event("harvest_mock_auth_changed"));
+  window.dispatchEvent(new Event(HARVEST_AUTH_EVENT));
   return token;
 }
 
 export function syncHarvestSessionFromUrl() {
   if (typeof window === "undefined") return;
 
-  const token = syncHarvestAccessTokenFromUrl();
-  if (token) return;
-
-  const url = new URL(window.location.href);
-  const requestedMockAuth = url.searchParams.get("mockAuth") === "1";
-  if (!requestedMockAuth) return;
-
-  const mockRole = url.searchParams.get("mockRole");
-  if (isHarvestMockAuthEnabled()) {
-    setHarvestAccessToken(null);
-    window.localStorage.setItem("harvest_mock_auth", "logged-in");
-    if (mockRole === "admin" || mockRole === "dealer") {
-      window.localStorage.setItem("harvest_mock_role", mockRole);
-    }
-  }
-
-  url.searchParams.delete("mockAuth");
-  url.searchParams.delete("mockRole");
-  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-  window.dispatchEvent(new Event("harvest_mock_auth_changed"));
+  syncHarvestAccessTokenFromUrl();
 }
 
 export function setHarvestAccessToken(token: string | null) {
@@ -243,10 +162,8 @@ export function setHarvestAccessToken(token: string | null) {
 export function clearHarvestSession() {
   setHarvestAccessToken(null);
   if (typeof window === "undefined") return;
-  window.localStorage.setItem("harvest_mock_auth", "logged-out");
-  window.localStorage.removeItem("harvest_mock_role");
   window.localStorage.removeItem("harvest_user_label");
-  window.dispatchEvent(new Event("harvest_mock_auth_changed"));
+  window.dispatchEvent(new Event(HARVEST_AUTH_EVENT));
 }
 
 function normalizeBase44ServerUrl(value: string) {

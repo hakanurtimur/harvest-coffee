@@ -3,7 +3,7 @@ import { Rental } from "@harvest/domain";
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, EmptyState, fontFamilies, formatCurrency, formatDate, ScrollContent, SectionTitle, styles } from "../components/ui";
-import { getExpiringRentals, getMonthlyOrderData, getTopCustomers } from "../lib/admin-analytics";
+import { type CustomerAggregate, getExpiringRentals, getMonthlyOrderData, getTopCustomers } from "../lib/admin-analytics";
 import { useMobileState } from "../lib/mobile-state";
 
 type ReportTab = "rentals" | "sales" | "customers";
@@ -35,7 +35,7 @@ export default function AdminReportsScreen() {
   }, [rentals]);
 
   const monthlyData = useMemo(() => getMonthlyOrderData(orders), [orders]);
-  const topCustomers = useMemo(() => getTopCustomers(orders), [orders]);
+  const topCustomers = useMemo(() => getTopCustomers(orders, users), [orders, users]);
   const totalRevenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
   const averageOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0;
   const nonAdminUsers = users.filter((user) => user.role !== "admin");
@@ -215,7 +215,7 @@ function CustomerReports({
   customerCount: number;
   maxCustomerSpent: number;
   orderCount: number;
-  topCustomers: Array<{ email: string; orderCount: number; pendingPayment: number; totalSpent: number }>;
+  topCustomers: CustomerAggregate[];
   totalRevenue: number;
 }) {
   return (
@@ -236,7 +236,7 @@ function CustomerReports({
               <CustomerReportRow
                 customer={customer}
                 index={index}
-                key={customer.email}
+                key={customer.id || customer.email}
                 maxCustomerSpent={maxCustomerSpent}
               />
             ))}
@@ -346,7 +346,7 @@ function CustomerReportRow({
   index,
   maxCustomerSpent,
 }: {
-  customer: { email: string; orderCount: number; pendingPayment: number; totalSpent: number };
+  customer: CustomerAggregate;
   index: number;
   maxCustomerSpent: number;
 }) {
@@ -357,7 +357,7 @@ function CustomerReportRow({
       </View>
       <View style={reportStyles.customerCopy}>
         <View style={reportStyles.customerHeader}>
-          <Text numberOfLines={1} style={reportStyles.customerEmail}>{customer.email}</Text>
+          <Text numberOfLines={1} style={reportStyles.customerEmail}>{customer.label}</Text>
           <Text style={reportStyles.customerRevenue}>{formatCurrency(customer.totalSpent).replace("GBP ", "£")}</Text>
         </View>
         <Text style={reportStyles.customerMeta}>{customer.orderCount} orders · {formatCurrency(customer.pendingPayment).replace("GBP ", "£")} pending</Text>

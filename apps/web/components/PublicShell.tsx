@@ -1,6 +1,6 @@
 "use client";
 
-import { clearHarvestSession, getHarvestAccessToken, getHarvestApi, getHarvestMockRole, hasHarvestSession, isHarvestMockAuthEnabled, syncHarvestSessionFromUrl } from "@/lib/harvest-api";
+import { clearHarvestSession, getHarvestApi, HARVEST_AUTH_EVENT, hasHarvestSession, syncHarvestSessionFromUrl } from "@/lib/harvest-api";
 import { CalendarDays, CircleUserRound, ClipboardList, Home, Info, LogIn, LogOut, Mail, MapPin, Menu, Search, ShoppingBag, User, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -62,22 +62,9 @@ export default function PublicShell({ children }: PublicShellProps) {
       const cachedLabel = window.localStorage.getItem(userLabelCacheKey);
       if (cachedLabel) setUserLabel(cachedLabel);
 
-      const mockLabel = isHarvestMockAuthEnabled() ? getMockUserLabel() : null;
-      if (mockLabel) {
-        setUserLabel(mockLabel);
-        window.localStorage.setItem(userLabelCacheKey, mockLabel);
-        if (!getHarvestAccessToken()) {
-          setAuthChecked(true);
-          if (shouldLeavePublicShell(pathname)) {
-            router.replace(getHarvestMockRole() === "admin" ? "/admin" : "/dashboard");
-          }
-          return;
-        }
-      }
-
       void api.getCurrentUser().then((user) => {
         if (!mounted) return;
-        const nextLabel = user?.fullName || user?.email || cachedLabel || mockLabel || fallbackUserLabel;
+        const nextLabel = user?.fullName || user?.email || cachedLabel || fallbackUserLabel;
         setUserLabel(nextLabel);
         window.localStorage.setItem(userLabelCacheKey, nextLabel);
         setAuthChecked(true);
@@ -91,11 +78,11 @@ export default function PublicShell({ children }: PublicShellProps) {
     };
 
     syncAuth();
-    window.addEventListener("harvest_mock_auth_changed", syncAuth);
+    window.addEventListener(HARVEST_AUTH_EVENT, syncAuth);
     window.addEventListener("storage", syncAuth);
     return () => {
       mounted = false;
-      window.removeEventListener("harvest_mock_auth_changed", syncAuth);
+      window.removeEventListener(HARVEST_AUTH_EVENT, syncAuth);
       window.removeEventListener("storage", syncAuth);
     };
   }, [api, pathname, router]);
@@ -377,12 +364,4 @@ function PublicAuthLoading() {
       />
     </div>
   );
-}
-
-function getMockUserLabel() {
-  if (typeof window === "undefined") return null;
-  const role = window.localStorage.getItem("harvest_mock_role");
-  if (role === "dealer") return "Hakan Urtimur";
-  if (role === "admin") return "Ops Admin";
-  return null;
 }

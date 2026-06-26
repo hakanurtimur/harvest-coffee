@@ -6,9 +6,9 @@ The Expo app currently covers native public entry screens, dealer mobile-web par
 
 - Public Home
 - Public About
-- Public Contact with mocked form submission
+- Public Contact
 
-- Mock dealer login/logout
+- Base44 dealer login/logout
 - Products and quick order
 - My Orders
 - Order Detail
@@ -19,7 +19,7 @@ The Expo app currently covers native public entry screens, dealer mobile-web par
 
 Admin mobile parity currently includes:
 
-- Mock admin login/logout
+- Base44 admin login/logout
 - Admin Dashboard
 - Admin Orders
 - Admin Products
@@ -29,20 +29,20 @@ Admin mobile parity currently includes:
 - Admin Settings
 - Rental Calendar
 
-Unauthenticated users now boot into the native Public Home screen before choosing mock login.
+Unauthenticated users now boot into the native Public Home screen before choosing Google login.
 
 ## Hardening Completed
 
 - Shared validation helpers for delivery addresses, profile addresses, order tracking, and rental dates.
 - Dynamic rental date defaults instead of fixed dates.
 - Consistent async error handling for order creation, rental creation, profile address creation, order lookup, and order detail loading.
-- Dealer shell loading/error banners for mock data refresh state.
+- Dealer shell loading/error banners for live data refresh state.
 - Keyboard-safe app wrapper and native-friendly scroll behavior.
 - Accessibility roles/states for buttons, tabs, cards, selections, and quantity controls.
 - Lightweight native motion with React Native `Animated`.
 - Product list render tuning for small-to-medium catalogues.
 - Admin shell with role guard and horizontal admin navigation.
-- Admin mock flows for orders, products, stock, customers, settings, reports, and rental calendar.
+- Admin flows for orders, products, stock, customers, settings, reports, and rental calendar.
 
 ## Still Needed Before Production Release
 
@@ -50,7 +50,7 @@ Unauthenticated users now boot into the native Public Home screen before choosin
 - Persistent session storage with `expo-secure-store` or another approved storage layer.
 - Preview/release build setup with EAS.
 - Test coverage for domain/API validation and key mobile state flows.
-- Real API environment switching when Base44/live API access is approved.
+- Release environment hardening for the live Base44 proxy URL.
 
 ## Dependency Note
 

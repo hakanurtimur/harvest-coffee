@@ -803,44 +803,6 @@ textarea {
   color: hsl(var(--muted-foreground));
 }
 
-.mock-login {
-  min-height: calc(100vh - 112px);
-  display: grid;
-  place-items: center;
-  padding: 40px 24px;
-}
-
-.mock-login > div {
-  width: min(520px, 100%);
-  display: grid;
-  gap: 16px;
-  border: 1px solid #263247;
-  border-radius: 8px;
-  padding: 28px;
-  background: #192335;
-}
-
-.mock-login p {
-  margin: 0;
-  color: #dd7d25;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.mock-login h1 {
-  margin: 0;
-  color: #fff7ea;
-  font-family: Georgia, serif;
-  font-size: 46px;
-}
-
-.mock-login span {
-  color: #b9c0cc;
-  line-height: 1.5;
-}
-
 .app-shell {
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);

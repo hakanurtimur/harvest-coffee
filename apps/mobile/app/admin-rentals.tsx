@@ -1,8 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import { Rental, RentalStatus } from "@harvest/domain";
 import { useMemo, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
-import { Badge, Card, colors, EmptyState, fontFamilies, formatDate, ScrollContent, SectionTitle, styles } from "../components/ui";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Badge, Card, colors, ConfirmDialog, EmptyState, fontFamilies, formatDate, ScrollContent, SectionTitle, StatusBanner, styles } from "../components/ui";
 import { useMobileState } from "../lib/mobile-state";
 
 type RentalFilter = "all" | RentalStatus;
@@ -25,7 +25,9 @@ const rentalStatusLabels: Record<RentalStatus, string> = {
 export default function AdminRentalsScreen() {
   const { deleteRental, rentals, updateRental } = useMobileState();
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<Rental | null>(null);
   const [filter, setFilter] = useState<RentalFilter>("all");
+  const [message, setMessage] = useState<{ body?: string; title: string; tone: "error" | "success" } | null>(null);
 
   const filteredRentals = useMemo(
     () => filter === "all" ? rentals : rentals.filter((rental) => rental.status === filter),
@@ -40,39 +42,41 @@ export default function AdminRentalsScreen() {
   }), [rentals]);
 
   const setStatus = async (rental: Rental, status: RentalStatus) => {
+    if (rental.status === status || busyId === rental.id) return;
     setBusyId(rental.id);
+    setMessage(null);
     try {
       await updateRental(rental.id, { status });
     } catch (error) {
-      Alert.alert("Update failed", error instanceof Error ? error.message : "Rental could not be updated.");
+      setMessage({ body: error instanceof Error ? error.message : "Rental could not be updated.", title: "Update failed", tone: "error" });
     } finally {
       setBusyId(null);
     }
   };
 
   const removeRental = (rental: Rental) => {
-    Alert.alert("Delete rental", `Delete ${rental.productName}?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          setBusyId(rental.id);
-          try {
-            await deleteRental(rental.id);
-          } catch (error) {
-            Alert.alert("Delete failed", error instanceof Error ? error.message : "Rental could not be deleted.");
-          } finally {
-            setBusyId(null);
-          }
-        },
-      },
-    ]);
+    setDeleteCandidate(rental);
+  };
+
+  const confirmDeleteRental = async () => {
+    if (!deleteCandidate) return;
+    setBusyId(deleteCandidate.id);
+    setMessage(null);
+    try {
+      await deleteRental(deleteCandidate.id);
+      setMessage({ title: "Rental deleted", tone: "success" });
+      setDeleteCandidate(null);
+    } catch (error) {
+      setMessage({ body: error instanceof Error ? error.message : "Rental could not be deleted.", title: "Delete failed", tone: "error" });
+    } finally {
+      setBusyId(null);
+    }
   };
 
   return (
     <ScrollContent>
       <SectionTitle eyebrow="Admin" title="Rental management" />
+      {message ? <StatusBanner body={message.body} title={message.title} tone={message.tone} /> : null}
 
       <View style={adminRentalStyles.metrics}>
         <Metric label="Total" value={String(statusCounts.total)} />
@@ -129,18 +133,19 @@ export default function AdminRentalsScreen() {
             <View style={adminRentalStyles.statusGrid}>
               {(Object.keys(rentalStatusLabels) as RentalStatus[]).map((status) => {
                 const active = rental.status === status;
+                const disabled = active || busyId === rental.id;
                 return (
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityState={{ disabled: busyId === rental.id, selected: active }}
-                    disabled={busyId === rental.id}
+                    accessibilityState={{ disabled, selected: active }}
+                    disabled={disabled}
                     key={status}
                     onPress={() => setStatus(rental, status)}
                     style={({ pressed }) => [
                       adminRentalStyles.statusChip,
                       active && adminRentalStyles.statusChipActive,
                       pressed && styles.pressed,
-                      busyId === rental.id && styles.disabled,
+                      disabled && !active && styles.disabled,
                     ]}
                   >
                     <Text style={[adminRentalStyles.statusText, active && adminRentalStyles.statusTextActive]}>{rentalStatusLabels[status]}</Text>
@@ -157,11 +162,23 @@ export default function AdminRentalsScreen() {
               style={({ pressed }) => [adminRentalStyles.deleteButton, pressed && styles.pressed, busyId === rental.id && styles.disabled]}
             >
               <Feather color={colors.status.danger.color} name="trash-2" size={15} />
-              <Text style={adminRentalStyles.deleteText}>Delete rental</Text>
+              <Text style={adminRentalStyles.deleteText}>{busyId === rental.id ? "Deleting..." : "Delete rental"}</Text>
             </Pressable>
           </Card>
         ))
       )}
+      <ConfirmDialog
+        body={deleteCandidate ? `${deleteCandidate.productName} will be removed from rental records.` : ""}
+        confirmLabel="Delete"
+        confirming={Boolean(deleteCandidate && busyId === deleteCandidate.id)}
+        destructive
+        onCancel={() => {
+          if (!(deleteCandidate && busyId === deleteCandidate.id)) setDeleteCandidate(null);
+        }}
+        onConfirm={() => void confirmDeleteRental()}
+        title="Delete rental?"
+        visible={Boolean(deleteCandidate)}
+      />
     </ScrollContent>
   );
 }
