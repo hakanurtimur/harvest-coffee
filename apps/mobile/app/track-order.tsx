@@ -1,6 +1,7 @@
 import { Order } from "@harvest/domain";
 import { useState } from "react";
-import { EmptyState, Field, OrderDetailContent, PrimaryButton, ScrollContent, SectionTitle, StatusBanner } from "../components/ui";
+import { View } from "react-native";
+import { EmptyState, Field, OrderDetailContent, PrimaryButton, SectionTitle, StatusBanner, styles } from "../components/ui";
 import { useMobileState } from "../lib/mobile-state";
 import { validateOrderNumber } from "../lib/validation";
 
@@ -32,7 +33,7 @@ export default function TrackOrderScreen() {
   };
 
   return (
-    <ScrollContent>
+    <View style={styles.list}>
       <SectionTitle eyebrow="Tracking" title="Find an order" />
       {message ? <StatusBanner body={message.body} title={message.title} tone="error" /> : null}
       <Field autoCapitalize="characters" onChangeText={(value) => setOrderNumber(value.toUpperCase())} placeholder="HC20480914" value={orderNumber} />
@@ -41,6 +42,6 @@ export default function TrackOrderScreen() {
       {!order && searched ? (
         <EmptyState title="Order not found" body="No order matched that order number. Check the number and try again." />
       ) : null}
-    </ScrollContent>
+    </View>
   );
 }

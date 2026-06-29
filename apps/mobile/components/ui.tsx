@@ -18,7 +18,6 @@ import {
   Modal,
   Pressable,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -28,6 +27,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Defs, G, Path, Text as SvgText, TextPath } from "react-native-svg";
 
 export const fallbackImage =
@@ -42,7 +42,7 @@ const rentalStatusLabels: Record<RentalStatus, string> = {
 
 export function AppScreen({ children }: { children: ReactNode }) {
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.keyboardAvoider}>
         {children}
       </KeyboardAvoidingView>
@@ -52,6 +52,7 @@ export function AppScreen({ children }: { children: ReactNode }) {
 
 export function ScrollContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -59,7 +60,12 @@ export function ScrollContent({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   return (
-    <ScrollView ref={scrollRef} contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+    <ScrollView
+      ref={scrollRef}
+      contentContainerStyle={[styles.list, { paddingBottom: 96 + insets.bottom }]}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
       {children}
     </ScrollView>
   );
@@ -408,7 +414,7 @@ export function ProductCard({
   product: Product;
   quantity: number;
 }) {
-  const disabled = product.stockStatus === "out_of_stock" || product.stockQuantity === 0;
+  const disabled = product.stockStatus === "out_of_stock";
   const subtotal = quantity * product.price;
 
   return (
@@ -717,6 +723,7 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.16,
     shadowRadius: 24,
     width: "88%",
+    elevation: 12,
   },
   confirmDangerButton: {
     backgroundColor: colors.status.danger.color,
@@ -905,6 +912,7 @@ export const styles = StyleSheet.create({
     shadowOffset: { height: 6, width: 0 },
     shadowOpacity: 0.035,
     shadowRadius: 12,
+    elevation: 2,
   },
   productImageFrame: {
     alignItems: "center",
