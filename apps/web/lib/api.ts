@@ -39,12 +39,24 @@ export type HarvestUploadFile = Blob | {
   uri: string;
 };
 
+export interface ContactMessageInput {
+  email: string;
+  message: string;
+  name: string;
+  subject: string;
+}
+
+export interface HarvestContactResult {
+  message: string;
+}
+
 export interface HarvestApi {
   getCurrentUser(): Promise<User | null>;
   updateCurrentUser(input: Partial<User>): Promise<User>;
   deleteCurrentUser(): Promise<void>;
   getProducts(): Promise<Product[]>;
   uploadProductImage(file: HarvestUploadFile): Promise<HarvestUploadResult>;
+  sendContactMessage(input: ContactMessageInput): Promise<HarvestContactResult>;
   createProduct(input: CreateProductInput): Promise<Product>;
   updateProduct(id: string, input: UpdateProductInput): Promise<Product>;
   deleteProduct(id: string): Promise<void>;
@@ -116,6 +128,9 @@ export function createBase44HarvestApi(base44: Base44ClientLike): HarvestApi {
     },
     async uploadProductImage() {
       throw new Error("Product image upload is only available through the Harvest proxy.");
+    },
+    async sendContactMessage() {
+      throw new Error("Contact messages are only available through the Harvest proxy.");
     },
     async createProduct(input) {
       return mapBase44Product(await base44.entities.Product.create(toBase44ProductInput(input)));
@@ -224,6 +239,7 @@ export function createReadOnlyHarvestApi(api: HarvestApi): HarvestApi {
     async uploadProductImage() {
       return readOnlyError();
     },
+    sendContactMessage: api.sendContactMessage.bind(api),
     async createProduct() {
       return readOnlyError();
     },
@@ -322,6 +338,7 @@ export function createProxyHarvestApi(options: HarvestProxyOptions): HarvestApi 
     deleteCurrentUser: () => call<void>("deleteCurrentUser"),
     getProducts: () => call<Product[]>("getProducts"),
     uploadProductImage: upload,
+    sendContactMessage: (input) => call<HarvestContactResult>("sendContactMessage", input as unknown as RawRecord),
     createProduct: (input) => call<Product>("createProduct", input as RawRecord),
     updateProduct: (id, input) => call<Product>("updateProduct", { id, input }),
     deleteProduct: (id) => call<void>("deleteProduct", { id }),

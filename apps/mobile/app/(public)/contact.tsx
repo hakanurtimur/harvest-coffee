@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { ReactNode, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Card, colors, Field, fontFamilies, PrimaryButton, StatusBanner } from "../../components/ui";
+import { useMobileState } from "../../lib/mobile-state";
 
 type FeatherIconName = keyof typeof Feather.glyphMap;
 
@@ -9,6 +10,7 @@ export default function ContactScreen() {
   const [form, setForm] = useState({ email: "", message: "", name: "", subject: "" });
   const [message, setMessage] = useState<{ body?: string; title: string; tone: "error" | "success" } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const { sendContactMessage } = useMobileState();
 
   const handleSubmit = async () => {
     if (!form.name.trim() || !form.email.trim() || !form.subject.trim() || !form.message.trim()) {
@@ -18,10 +20,24 @@ export default function ContactScreen() {
 
     setMessage(null);
     setSubmitting(true);
-    await Promise.resolve();
-    setSubmitting(false);
-    setMessage({ body: "Thank you for reaching out. The team will follow up from info@harvestcoffee.co.uk.", title: "Message sent", tone: "success" });
-    setForm({ email: "", message: "", name: "", subject: "" });
+    try {
+      const result = await sendContactMessage({
+        email: form.email.trim(),
+        message: form.message.trim(),
+        name: form.name.trim(),
+        subject: form.subject.trim(),
+      });
+      setMessage({ body: result.message || "Thank you for reaching out. The team will follow up shortly.", title: "Message sent", tone: "success" });
+      setForm({ email: "", message: "", name: "", subject: "" });
+    } catch (error) {
+      setMessage({
+        body: error instanceof Error ? error.message : "Message could not be sent.",
+        title: "Message failed",
+        tone: "error",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

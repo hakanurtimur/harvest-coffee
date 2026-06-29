@@ -3,6 +3,7 @@ import {
   createBase44HarvestApi,
   mapBase44User,
   type Base44ClientLike,
+  type ContactMessageInput,
   type HarvestApi,
 } from "@/lib/api";
 import type { CreateOrderInput, CreateRentalInput, User } from "@/lib/domain";
@@ -42,6 +43,10 @@ export const runtime = "nodejs";
 
 const IMAGE_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 const IMAGE_UPLOAD_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const DEFAULT_CONTACT_EMAIL = "dythakanurtimur@gmail.com";
+const CONTACT_NAME_MAX_LENGTH = 120;
+const CONTACT_SUBJECT_MAX_LENGTH = 160;
+const CONTACT_MESSAGE_MAX_LENGTH = 4000;
 
 export function GET(request: Request) {
   const url = new URL(request.url);
@@ -144,6 +149,8 @@ async function runHarvestAction(
     case "uploadProductImage":
       requireAdmin(actor);
       throw httpError("Product image upload requires multipart/form-data.", 415);
+    case "sendContactMessage":
+      return sendContactMessage(base44, input);
     case "getOrders":
       requireAdmin(actor);
       return api.getOrders();
@@ -266,6 +273,33 @@ async function uploadBase44File(base44: ReturnType<typeof createClient>, file: F
   return { fileUrl };
 }
 
+async function sendContactMessage(base44: ReturnType<typeof createClient>, input: RawRecord) {
+  const contact = toContactMessage(input);
+  const emailClient = base44 as unknown as {
+    integrations?: {
+      Core?: {
+        SendEmail(input: { body: string; subject: string; to: string }): Promise<unknown>;
+      };
+    };
+  };
+
+  if (!emailClient.integrations?.Core?.SendEmail) {
+    throw httpError("Base44 email client is not available.", 500);
+  }
+
+  await emailClient.integrations.Core.SendEmail({
+    to: process.env.HARVEST_CONTACT_EMAIL || DEFAULT_CONTACT_EMAIL,
+    subject: `Contact Form: ${contact.subject}`,
+    body: [
+      `From: ${contact.name} <${contact.email}>`,
+      "",
+      contact.message,
+    ].join("\n"),
+  });
+
+  return { message: "Message sent." };
+}
+
 async function invokeBase44Function(base44: ReturnType<typeof createClient>, functionName: string, payload: RawRecord) {
   const functionClient = base44 as unknown as {
     functions?: {
@@ -353,6 +387,28 @@ function withActorRentalIdentity(input: RawRecord, actor: User): CreateRentalInp
     customerEmail: actor.email,
     customerName: getUserDisplayName(actor),
   };
+}
+
+function toContactMessage(input: RawRecord): ContactMessageInput {
+  const contact = {
+    email: sanitizeContactText(input.email, 254).toLowerCase(),
+    message: sanitizeContactText(input.message, CONTACT_MESSAGE_MAX_LENGTH),
+    name: sanitizeContactText(input.name, CONTACT_NAME_MAX_LENGTH),
+    subject: sanitizeContactText(input.subject, CONTACT_SUBJECT_MAX_LENGTH).replace(/\n+/g, " "),
+  };
+
+  if (!contact.name || !contact.email || !contact.subject || !contact.message) {
+    throw httpError("Name, email, subject, and message are required.", 400);
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) {
+    throw httpError("A valid email address is required.", 400);
+  }
+
+  return contact;
+}
+
+function sanitizeContactText(value: unknown, maxLength: number) {
+  return stringValue(value).replace(/\r/g, "").trim().slice(0, maxLength);
 }
 
 function getUserDisplayName(user: User) {

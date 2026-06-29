@@ -1,4 +1,11 @@
-import { createProxyHarvestApi, HarvestApi, type HarvestUploadFile, type HarvestUploadResult } from "@harvest/api";
+import {
+  createProxyHarvestApi,
+  HarvestApi,
+  type ContactMessageInput,
+  type HarvestContactResult,
+  type HarvestUploadFile,
+  type HarvestUploadResult,
+} from "@harvest/api";
 import {
   AdminSettings,
   CreateProductInput,
@@ -47,6 +54,7 @@ interface MobileState {
   createProduct(input: CreateProductInput): Promise<Product>;
   createOrder(input: CreateOrderInput): Promise<Order>;
   createRental(input: CreateRentalInput): Promise<Rental>;
+  sendContactMessage(input: ContactMessageInput): Promise<HarvestContactResult>;
   uploadProductImage(file: HarvestUploadFile): Promise<HarvestUploadResult>;
   deleteAddress(index: number): Promise<void>;
   deleteNotification(id: string): Promise<void>;
@@ -328,6 +336,20 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     }
   }, [showFeedback]);
 
+  const sendContactMessage = useCallback(async (input: ContactMessageInput) => {
+    setBlockingMessage("Sending message");
+    try {
+      const result = await api.sendContactMessage(input);
+      showFeedback("Message sent", "success", "The Harvest team will follow up shortly.");
+      return result;
+    } catch (error) {
+      showFeedback("Message failed", "error", error instanceof Error ? error.message : "Message could not be sent.");
+      throw error;
+    } finally {
+      setBlockingMessage(null);
+    }
+  }, [showFeedback]);
+
   const updateProduct = useCallback(async (id: string, input: UpdateProductInput) => {
     try {
       const product = await api.updateProduct(id, input);
@@ -509,6 +531,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     refreshDealerData,
     rentals,
     saveAdminSettings,
+    sendContactMessage,
     setDeliveryAddress,
     setProductQuantity,
     uploadProductImage,
@@ -553,6 +576,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     refreshDealerData,
     rentals,
     saveAdminSettings,
+    sendContactMessage,
     setProductQuantity,
     uploadProductImage,
     updateAddress,

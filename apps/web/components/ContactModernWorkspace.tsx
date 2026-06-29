@@ -4,7 +4,7 @@ import MotionReveal from "@/components/MotionReveal";
 import PublicSectionHeader from "@/components/PublicSectionHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { requestToast } from "@/components/ui/sonner";
+import { useSendContactMessageMutation } from "@/lib/harvest-query";
 import { Clock, Mail, MapPin } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { FormEvent, useState } from "react";
@@ -13,18 +13,23 @@ export default function ContactModernWorkspace() {
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
+  const sendContactMessageMutation = useSendContactMessageMutation();
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSending(true);
-    await requestToast.promise(Promise.resolve(), {
-      loading: "Sending message...",
-      success: "Message sent.",
-      error: "Message could not be sent.",
-    });
-    setSent(true);
-    setSending(false);
-    setForm({ name: "", email: "", subject: "", message: "" });
+    try {
+      await sendContactMessageMutation.mutateAsync({
+        email: form.email.trim(),
+        message: form.message.trim(),
+        name: form.name.trim(),
+        subject: form.subject.trim(),
+      });
+      setSent(true);
+      setForm({ name: "", email: "", subject: "", message: "" });
+    } finally {
+      setSending(false);
+    }
   };
 
   return (

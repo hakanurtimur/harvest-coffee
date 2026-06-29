@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getHarvestApi, hasHarvestSession } from "@/lib/harvest-api";
+import type { ContactMessageInput } from "@/lib/api";
 import type {
   CreateOrderInput,
   CreateProductInput,
@@ -222,6 +223,12 @@ export function useCreateProductMutation() {
 export function useUploadProductImageMutation() {
   return useMutation({
     mutationFn: (file: File) => getHarvestApi().uploadProductImage(file),
+  });
+}
+
+export function useSendContactMessageMutation() {
+  return useMutation({
+    mutationFn: (input: ContactMessageInput) => getHarvestApi().sendContactMessage(input),
   });
 }
 
