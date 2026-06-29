@@ -12,6 +12,7 @@ import { FormEvent, useState } from "react";
 export default function ContactModernWorkspace() {
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
   const [sent, setSent] = useState(false);
+  const [sentMessage, setSentMessage] = useState("Thank you for reaching out. We'll get back to you shortly.");
   const [sending, setSending] = useState(false);
   const sendContactMessageMutation = useSendContactMessageMutation();
 
@@ -19,12 +20,13 @@ export default function ContactModernWorkspace() {
     event.preventDefault();
     setSending(true);
     try {
-      await sendContactMessageMutation.mutateAsync({
+      const result = await sendContactMessageMutation.mutateAsync({
         email: form.email.trim(),
         message: form.message.trim(),
         name: form.name.trim(),
         subject: form.subject.trim(),
       });
+      setSentMessage(result.message || "Thank you for reaching out. We'll get back to you shortly.");
       setSent(true);
       setForm({ name: "", email: "", subject: "", message: "" });
     } finally {
@@ -93,7 +95,7 @@ export default function ContactModernWorkspace() {
                   </div>
                   <h3 className="font-display mt-6 text-2xl font-black text-foreground">Message Sent!</h3>
                   <p className="mx-auto mt-3 max-w-md text-sm font-medium leading-6 text-muted-foreground">
-                    Thank you for reaching out. We'll get back to you shortly.
+                    {sentMessage}
                   </p>
                 </div>
               ) : (

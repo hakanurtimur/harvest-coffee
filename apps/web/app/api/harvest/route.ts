@@ -278,7 +278,7 @@ async function sendContactMessage(base44: ReturnType<typeof createClient>, input
   const emailClient = base44 as unknown as {
     integrations?: {
       Core?: {
-        SendEmail(input: { body: string; subject: string; to: string }): Promise<unknown>;
+        SendEmail(input: { body: string; from_name?: string; subject: string; to: string }): Promise<unknown>;
       };
     };
   };
@@ -287,8 +287,10 @@ async function sendContactMessage(base44: ReturnType<typeof createClient>, input
     throw httpError("Base44 email client is not available.", 500);
   }
 
-  await emailClient.integrations.Core.SendEmail({
-    to: process.env.HARVEST_CONTACT_EMAIL || DEFAULT_CONTACT_EMAIL,
+  const recipient = process.env.HARVEST_CONTACT_EMAIL || DEFAULT_CONTACT_EMAIL;
+  const result = await emailClient.integrations.Core.SendEmail({
+    to: recipient,
+    from_name: "Harvest Coffee",
     subject: `Contact Form: ${contact.subject}`,
     body: [
       `From: ${contact.name} <${contact.email}>`,
@@ -297,7 +299,12 @@ async function sendContactMessage(base44: ReturnType<typeof createClient>, input
     ].join("\n"),
   });
 
-  return { message: "Message sent." };
+  console.info("[harvest-contact] Base44 SendEmail completed", {
+    recipient,
+    result: readRecord(result),
+  });
+
+  return { message: `Message forwarded to ${recipient}.` };
 }
 
 async function invokeBase44Function(base44: ReturnType<typeof createClient>, functionName: string, payload: RawRecord) {
