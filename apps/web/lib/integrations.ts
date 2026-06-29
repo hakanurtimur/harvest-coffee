@@ -228,15 +228,18 @@ async function invokeHarvestProxyFunction<T extends RawRecord = RawRecord>(
   action: string,
   input: RawRecord,
 ): Promise<T> {
+  const token = getHarvestAccessToken() ?? undefined;
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
+  if (token) headers.authorization = `Bearer ${token}`;
+
   const response = await fetch(process.env.NEXT_PUBLIC_HARVEST_API_URL || "/api/harvest", {
     body: JSON.stringify({
       action,
       input,
-      token: getHarvestAccessToken() ?? undefined,
     }),
-    headers: {
-      "content-type": "application/json",
-    },
+    headers,
     method: "POST",
   });
   const payload = await response.json().catch(() => ({}));

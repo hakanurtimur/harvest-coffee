@@ -6,6 +6,8 @@ import { BrandStamp, colors, FadeInView, fontFamilies, OutlineButton, PrimaryBut
 import { getHarvestProxyEndpoint, getHarvestWebOrigin } from "../../lib/live-api";
 import { useMobileState } from "../../lib/mobile-state";
 
+const handledLoginUrls = new Set<string>();
+
 export default function LoginScreen() {
   const { booting, completeLiveLogin, currentUser, isAuthenticated, loadingData } = useMobileState();
   const harvestProxyEndpoint = getHarvestProxyEndpoint();
@@ -22,6 +24,8 @@ export default function LoginScreen() {
 
     const handleUrl = (url: string | null) => {
       if (!url) return;
+      if (handledLoginUrls.has(url)) return;
+      handledLoginUrls.add(url);
       const params = getUrlParams(url);
       const error = params.get("error");
       if (error) {
@@ -30,6 +34,7 @@ export default function LoginScreen() {
       }
       const token = params.get("access_token");
       if (!token) return;
+      setMessage(null);
       void completeLiveLogin(token).catch((error) => {
         setMessage({ body: error instanceof Error ? error.message : "Base44 Google login failed.", title: "Login failed" });
       });

@@ -323,15 +323,19 @@ export default function AdminDashboardModernWorkspace() {
 
       <DashboardCard title="Recent Activities" icon={Package}>
         <div className="grid gap-2">
-          {orders.slice(0, 10).map((order) => (
-            <Link className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted p-3 transition-colors hover:bg-card" href={`/orderdetails?id=${order.id}`} key={order.id}>
-              <div className="flex min-w-0 items-center gap-3">
-                <Package className="h-5 w-5 flex-shrink-0 text-[hsl(var(--status-info))]" />
-                <span className="truncate text-sm font-bold text-foreground">Order #{order.orderNumber} · {order.customerEmail}</span>
-              </div>
-              <strong className="flex-shrink-0 text-sm font-black text-[hsl(var(--status-success))]">£{order.totalAmount.toFixed(2)}</strong>
-            </Link>
-          ))}
+          {orders.slice(0, 10).map((order) => {
+            const customer = getOrderCustomer(order, users);
+            const customerLabel = getCustomerLabel(customer, order);
+            return (
+              <Link className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted p-3 transition-colors hover:bg-card" href={`/orderdetails?id=${order.id}`} key={order.id}>
+                <div className="flex min-w-0 items-center gap-3">
+                  <Package className="h-5 w-5 flex-shrink-0 text-[hsl(var(--status-info))]" />
+                  <span className="truncate text-sm font-bold text-foreground">Order #{order.orderNumber} · {customerLabel}</span>
+                </div>
+                <strong className="flex-shrink-0 text-sm font-black text-[hsl(var(--status-success))]">£{order.totalAmount.toFixed(2)}</strong>
+              </Link>
+            );
+          })}
         </div>
       </DashboardCard>
 
@@ -473,9 +477,17 @@ function getOrderCustomer(order: Order, users: User[]) {
     if (byId) return byId;
   }
   if (order.customerEmail) {
-    return users.find((user) => user.email === order.customerEmail);
+    return users.find((user) => sameEmail(user.email, order.customerEmail));
   }
   return undefined;
+}
+
+function getCustomerLabel(customer: User | undefined, order: Order) {
+  return customer?.fullName || customer?.companyName || customer?.email || order.customerName || order.customerEmail || "Unknown customer";
+}
+
+function sameEmail(left?: string, right?: string) {
+  return Boolean(left && right && left.trim().toLowerCase() === right.trim().toLowerCase());
 }
 
 function getPaymentStats(orders: Order[]): PaymentStat[] {

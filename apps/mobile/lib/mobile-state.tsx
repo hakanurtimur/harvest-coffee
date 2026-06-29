@@ -1,4 +1,4 @@
-import { createProxyHarvestApi, HarvestApi } from "@harvest/api";
+import { createProxyHarvestApi, HarvestApi, type HarvestUploadFile, type HarvestUploadResult } from "@harvest/api";
 import {
   AdminSettings,
   CreateProductInput,
@@ -47,6 +47,7 @@ interface MobileState {
   createProduct(input: CreateProductInput): Promise<Product>;
   createOrder(input: CreateOrderInput): Promise<Order>;
   createRental(input: CreateRentalInput): Promise<Rental>;
+  uploadProductImage(file: HarvestUploadFile): Promise<HarvestUploadResult>;
   deleteAddress(index: number): Promise<void>;
   deleteNotification(id: string): Promise<void>;
   deleteProduct(id: string): Promise<void>;
@@ -205,7 +206,10 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     try {
       mobileAccessToken = accessToken;
       const user = await api.getCurrentUser();
-      if (!user) throw new Error("Base44 session could not be resolved.");
+      if (!user) {
+        mobileAccessToken = null;
+        throw new Error("Base44 session could not be resolved.");
+      }
       setCurrentUser(user);
       setDeliveryAddress(user.addresses[0]?.address ?? "");
       setBlockingMessage(user.role === "admin" ? "Loading admin workspace" : "Loading dealer workspace");
@@ -240,33 +244,49 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
 
   const createOrder = useCallback(async (input: CreateOrderInput) => {
     setBlockingMessage("Placing order");
+    let order: Order;
     try {
-      const order = await api.createOrder(input);
-      await refreshDealerData();
-      showFeedback("Order created", "success", `${order.orderNumber} is ready in your orders.`);
-      return order;
+      order = await api.createOrder(input);
     } catch (error) {
       showFeedback("Order failed", "error", error instanceof Error ? error.message : "The order could not be created.");
       throw error;
+    }
+
+    try {
+      await refreshDealerData();
+      showFeedback("Order created", "success", `${order.orderNumber} is ready in your orders.`);
+    } catch (error) {
+      setDataError(error instanceof Error ? error.message : "The latest order list could not be refreshed.");
+      showFeedback("Order created", "info", `${order.orderNumber} was created, but the latest list could not be refreshed.`);
     } finally {
       setBlockingMessage(null);
     }
+
+    return order;
   }, [refreshDealerData, showFeedback]);
 
   const createRental = useCallback(async (input: CreateRentalInput) => {
     setBlockingMessage("Creating rental");
+    let rental: Rental;
     try {
-      const rental = await api.createRental(input);
-      if (currentUser?.role === "admin") await refreshAdminData();
-      else await refreshDealerData();
-      showFeedback("Rental created", "success", rental.productName);
-      return rental;
+      rental = await api.createRental(input);
     } catch (error) {
       showFeedback("Rental failed", "error", error instanceof Error ? error.message : "The rental request could not be created.");
       throw error;
+    }
+
+    try {
+      if (currentUser?.role === "admin") await refreshAdminData();
+      else await refreshDealerData();
+      showFeedback("Rental created", "success", rental.productName);
+    } catch (error) {
+      setDataError(error instanceof Error ? error.message : "The latest rental list could not be refreshed.");
+      showFeedback("Rental created", "info", `${rental.productName} was created, but the latest list could not be refreshed.`);
     } finally {
       setBlockingMessage(null);
     }
+
+    return rental;
   }, [currentUser?.role, refreshAdminData, refreshDealerData, showFeedback]);
 
   const updateOrder = useCallback(async (id: string, input: UpdateOrderInput) => {
@@ -293,6 +313,20 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
       throw error;
     }
   }, [refreshAdminData, showFeedback]);
+
+  const uploadProductImage = useCallback(async (file: HarvestUploadFile) => {
+    setBlockingMessage("Uploading image");
+    try {
+      const result = await api.uploadProductImage(file);
+      showFeedback("Image uploaded", "success");
+      return result;
+    } catch (error) {
+      showFeedback("Image upload failed", "error", error instanceof Error ? error.message : "Product image could not be uploaded.");
+      throw error;
+    } finally {
+      setBlockingMessage(null);
+    }
+  }, [showFeedback]);
 
   const updateProduct = useCallback(async (id: string, input: UpdateProductInput) => {
     try {
@@ -477,6 +511,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     saveAdminSettings,
     setDeliveryAddress,
     setProductQuantity,
+    uploadProductImage,
     updateAddress,
     updateOrder,
     updateCartQuantity,
@@ -519,6 +554,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     rentals,
     saveAdminSettings,
     setProductQuantity,
+    uploadProductImage,
     updateAddress,
     updateOrder,
     updateCartQuantity,

@@ -1,12 +1,14 @@
 import { Feather } from "@expo/vector-icons";
 import { useEffect, useRef } from "react";
 import { ActivityIndicator, Animated, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMobileState } from "../lib/mobile-state";
 import { BrandStamp, colors, fontFamilies } from "./ui";
 
 const SNACKBAR_DURATION_MS = 3600;
 
 export function MobileFeedbackOverlay() {
+  const insets = useSafeAreaInsets();
   const {
     blockingMessage,
     clearFeedback,
@@ -69,6 +71,7 @@ export function MobileFeedbackOverlay() {
           pointerEvents="box-none"
           style={[
             feedbackStyles.snackbarWrap,
+            { bottom: insets.bottom + 90 },
             {
               opacity: snackbarProgress,
               transform: [
@@ -130,6 +133,7 @@ const feedbackStyles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 28,
     width: 250,
+    elevation: 16,
   },
   loadingCopy: {
     color: colors.muted,
@@ -165,6 +169,7 @@ const feedbackStyles = StyleSheet.create({
     shadowOffset: { height: 12, width: 0 },
     shadowOpacity: 0.16,
     shadowRadius: 20,
+    elevation: 12,
   },
   snackbarBody: {
     color: colors.muted,

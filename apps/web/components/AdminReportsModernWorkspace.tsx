@@ -307,7 +307,11 @@ function getOrderCustomer(order: Order, users: User[]) {
     if (byId) return byId;
   }
   if (order.customerEmail) {
-    return users.find((user) => user.email === order.customerEmail);
+    return users.find((user) => sameEmail(user.email, order.customerEmail));
   }
   return undefined;
+}
+
+function sameEmail(left?: string, right?: string) {
+  return Boolean(left && right && left.trim().toLowerCase() === right.trim().toLowerCase());
 }

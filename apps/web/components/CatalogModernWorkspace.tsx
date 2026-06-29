@@ -89,6 +89,11 @@ export default function CatalogModernWorkspace() {
   };
 
   const handleCheckout = async () => {
+    if (!currentUser?.email) {
+      requestToast.error({ title: "Please sign in before placing an order." });
+      return;
+    }
+
     const checkoutAddress = deliveryAddress.trim() || defaultDeliveryAddress.trim();
     if (!checkoutAddress) {
       requestToast.error({ title: "Delivery address is required." });
@@ -96,7 +101,7 @@ export default function CatalogModernWorkspace() {
     }
 
     const order = await createOrderMutation.mutateAsync({
-      customerEmail: currentUser?.email ?? "dealer@example.com",
+      customerEmail: currentUser.email,
       customerName: currentUser?.fullName || currentUser?.companyName || currentUser?.email,
       items: cartItems,
       paymentMethod,

@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router, usePathname } from "expo-router";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMobileState } from "../lib/mobile-state";
 import { AppScreen, BrandStamp, colors, FadeInView, fontFamilies, initials, LoadingState, StatusBanner } from "./ui";
 
@@ -46,6 +47,7 @@ function getDealerBackRoute(pathname: string) {
 
 export function DealerShell({ children, title }: { children: ReactNode; title?: string }) {
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
   const { booting, cartItemCount, currentUser, dataError, isAuthenticated, loadingData, notifications, openCart } = useMobileState();
   const unreadCount = notifications.filter((notification) => !notification.read).length;
   const screenTitle = title ?? getDealerTitle(pathname);
@@ -152,7 +154,7 @@ export function DealerShell({ children, title }: { children: ReactNode; title?: 
         ) : null}
         {children}
       </View>
-      <FadeInView delay={120} distance={8} style={styles.tabs}>
+      <FadeInView delay={120} distance={8} style={[styles.tabs, { bottom: insets.bottom + 10 }]}>
         {tabs.map((tab) => {
           const active = isTabActive(pathname, tab.href);
           return (
@@ -341,6 +343,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.045,
     shadowRadius: 14,
     width: 44,
+    elevation: 2,
   },
   logoMark: {
     alignItems: "center",
@@ -374,6 +377,7 @@ const styles = StyleSheet.create({
     shadowOffset: { height: 8, width: 0 },
     shadowOpacity: 0.18,
     shadowRadius: 18,
+    elevation: 4,
   },
   tabIcon: {
     zIndex: 2,
@@ -399,6 +403,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.16,
     shadowRadius: 22,
     width: "94%",
+    elevation: 12,
   },
   tabText: {
     color: colors.foreground,

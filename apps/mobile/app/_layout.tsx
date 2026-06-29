@@ -7,6 +7,7 @@ import { useFonts } from "@expo-google-fonts/plus-jakarta-sans/useFonts";
 import { router, Stack, usePathname } from "expo-router";
 import { useEffect } from "react";
 import { Text, TextInput, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AdminShell } from "../components/admin-shell";
 import { DealerShell } from "../components/dealer-shell";
 import { MobileFeedbackOverlay } from "../components/mobile-feedback";
@@ -47,12 +48,14 @@ export default function RootLayout() {
   applyDefaultFonts();
 
   return (
-    <MobileStateProvider>
-      <View style={{ flex: 1 }}>
-        <RootStack />
-        <MobileFeedbackOverlay />
-      </View>
-    </MobileStateProvider>
+    <SafeAreaProvider>
+      <MobileStateProvider>
+        <View style={{ flex: 1 }}>
+          <RootStack />
+          <MobileFeedbackOverlay />
+        </View>
+      </MobileStateProvider>
+    </SafeAreaProvider>
   );
 }
 

@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router, usePathname } from "expo-router";
 import { ReactNode, useEffect, useRef } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppScreen, BrandStamp, colors, FadeInView, fontFamilies } from "./ui";
 
 const navItems = [
@@ -28,6 +29,7 @@ function isMainPublicRoute(pathname: string) {
 
 export function PublicShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const title = routeTitles[pathname] ?? "Harvest Coffee";
   const isInnerRoute = !isMainPublicRoute(pathname);
@@ -44,7 +46,12 @@ export function PublicShell({ children }: { children: ReactNode }) {
   return (
     <AppScreen>
       <View style={publicStyles.shell}>
-        <ScrollView ref={scrollRef} contentContainerStyle={publicStyles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={[publicStyles.content, { paddingBottom: 112 + insets.bottom }]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <FadeInView distance={6} style={publicStyles.header}>
             <View style={publicStyles.routeHeader}>
               {isInnerRoute ? (
@@ -82,7 +89,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
           {children}
         </ScrollView>
 
-        <FadeInView delay={120} distance={8} style={publicStyles.floatingBarWrap}>
+        <FadeInView delay={120} distance={8} style={[publicStyles.floatingBarWrap, { bottom: insets.bottom + 18 }]}>
           <View style={publicStyles.floatingBar}>
             {navItems.map((item) => {
               const active = pathname === item.href;
@@ -165,6 +172,7 @@ export const publicStyles = StyleSheet.create({
     shadowOffset: { height: 12, width: 0 },
     shadowOpacity: 0.16,
     shadowRadius: 22,
+    elevation: 12,
   },
   floatingBarWrap: {
     alignSelf: "center",
@@ -185,6 +193,7 @@ export const publicStyles = StyleSheet.create({
     shadowOffset: { height: 8, width: 0 },
     shadowOpacity: 0.18,
     shadowRadius: 18,
+    elevation: 4,
   },
   activeGradient: {
     ...StyleSheet.absoluteFillObject,
@@ -231,6 +240,7 @@ export const publicStyles = StyleSheet.create({
     shadowOpacity: 0.045,
     shadowRadius: 14,
     width: 44,
+    elevation: 2,
   },
   pressed: {
     opacity: 0.78,

@@ -84,6 +84,7 @@ const requestToastMessages: Partial<Record<HarvestMethodName, { loading: string;
   createRental: { loading: "Creating rental...", success: "Rental created." },
   updateRental: { loading: "Updating rental...", success: "Rental updated." },
   deleteRental: { loading: "Deleting rental...", success: "Rental deleted." },
+  uploadProductImage: { loading: "Uploading product image...", success: "Product image uploaded." },
   createProduct: { loading: "Saving product...", success: "Product created." },
   updateProduct: { loading: "Saving product...", success: "Product updated." },
   deleteProduct: { loading: "Deleting product...", success: "Product deleted." },

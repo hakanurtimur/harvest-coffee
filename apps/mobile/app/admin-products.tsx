@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { Product } from "@harvest/domain";
 import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
@@ -42,7 +43,7 @@ const stockStatusConfig: Record<Product["stockStatus"], { icon: keyof typeof Fea
 };
 
 export default function AdminProductsScreen() {
-  const { createProduct, deleteProduct, products, updateProduct } = useMobileState();
+  const { createProduct, deleteProduct, products, updateProduct, uploadProductImage } = useMobileState();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<Product | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -51,6 +52,7 @@ export default function AdminProductsScreen() {
   const [message, setMessage] = useState<MessageState>(null);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
 
   const productStats = useMemo(() => ({
@@ -154,6 +156,54 @@ export default function AdminProductsScreen() {
     }
   };
 
+  const pickProductImage = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        setMessage({ text: "Photo library permission is required to upload a product image.", tone: "error" });
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: false,
+        mediaTypes: ["images"],
+        quality: 0.86,
+      });
+      if (result.canceled) return;
+
+      const asset = result.assets[0];
+      if (!asset?.uri) {
+        setMessage({ text: "Selected image could not be read.", tone: "error" });
+        return;
+      }
+
+      const mimeType = asset.mimeType ?? "image/jpeg";
+      if (!mimeType.startsWith("image/")) {
+        setMessage({ text: "Please choose an image file.", tone: "error" });
+        return;
+      }
+      if ((asset.fileSize ?? 0) > 5 * 1024 * 1024) {
+        setMessage({ text: "Image must be 5MB or smaller.", tone: "error" });
+        return;
+      }
+
+      setUploadingImage(true);
+      setMessage(null);
+      const extension = mimeType.split("/")[1] || "jpg";
+      const uploaded = await uploadProductImage({
+        name: asset.fileName ?? `product-${Date.now()}.${extension}`,
+        type: mimeType,
+        uri: asset.uri,
+      });
+      setForm((current) => ({ ...current, imageUrl: uploaded.fileUrl }));
+      setMessage({ text: "Product image uploaded.", tone: "success" });
+    } catch (error) {
+      setMessage({ text: error instanceof Error ? error.message : "Product image could not be uploaded.", tone: "error" });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   return (
     <ScrollContent>
       <SectionTitle eyebrow="Admin" title="Product management" />
@@ -190,9 +240,11 @@ export default function AdminProductsScreen() {
           form={form}
           generatingDescription={generatingDescription}
           generateDescription={generateDescription}
+          pickProductImage={pickProductImage}
           save={save}
           saving={saving}
           setForm={setForm}
+          uploadingImage={uploadingImage}
         />
       ) : null}
 
@@ -282,18 +334,22 @@ function ProductFormCard({
   form,
   generatingDescription,
   generateDescription,
+  pickProductImage,
   save,
   saving,
   setForm,
+  uploadingImage,
 }: {
   cancel: () => void;
   editing: boolean;
   form: ProductForm;
   generatingDescription: boolean;
   generateDescription: () => void;
+  pickProductImage: () => Promise<void>;
   save: () => Promise<void>;
   saving: boolean;
   setForm: Dispatch<SetStateAction<ProductForm>>;
+  uploadingImage: boolean;
 }) {
   return (
     <View style={productStyles.formCard}>
@@ -339,7 +395,31 @@ function ProductFormCard({
         onChange={(stockStatus) => setForm((current) => ({ ...current, stockStatus }))}
       />
 
-      <LabeledField label="Product image URL">
+      <View style={productStyles.imageUploadPanel}>
+        {form.imageUrl ? (
+          <Image accessibilityLabel="Product image preview" source={{ uri: form.imageUrl }} style={productStyles.formImagePreview} />
+        ) : (
+          <View style={productStyles.formImagePlaceholder}>
+            <Feather color={colors.muted} name="image" size={22} />
+          </View>
+        )}
+        <View style={productStyles.imageUploadCopy}>
+          <Text style={productStyles.controlLabel}>Product image</Text>
+          <Text style={productStyles.imageUploadHelp}>Upload a catalogue image. The Base44 file URL will be saved with this product.</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: uploadingImage || saving }}
+            disabled={uploadingImage || saving}
+            onPress={() => void pickProductImage()}
+            style={({ pressed }) => [productStyles.uploadButton, pressed && !uploadingImage && !saving && styles.pressed, (uploadingImage || saving) && styles.disabled]}
+          >
+            <Feather color={colors.primary} name={uploadingImage ? "loader" : "upload"} size={14} />
+            <Text style={productStyles.uploadButtonText}>{uploadingImage ? "Uploading..." : "Pick image"}</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      <LabeledField label="Image URL fallback">
         <Field onChangeText={(imageUrl) => setForm((current) => ({ ...current, imageUrl }))} placeholder="https://..." value={form.imageUrl} />
       </LabeledField>
 
@@ -364,7 +444,7 @@ function ProductFormCard({
       />
 
       <View style={productStyles.actions}>
-        <Pressable accessibilityRole="button" disabled={saving} onPress={() => void save()} style={({ pressed }) => [productStyles.saveButton, pressed && !saving && styles.pressed, saving && styles.disabled]}>
+        <Pressable accessibilityRole="button" disabled={saving || uploadingImage} onPress={() => void save()} style={({ pressed }) => [productStyles.saveButton, pressed && !saving && !uploadingImage && styles.pressed, (saving || uploadingImage) && styles.disabled]}>
           <Feather color={colors.onPrimary} name="save" size={15} />
           <Text style={productStyles.saveButtonText}>{saving ? "Saving..." : "Save"}</Text>
         </Pressable>
@@ -704,6 +784,23 @@ const productStyles = StyleSheet.create({
     fontSize: 18,
     marginTop: 2,
   },
+  formImagePlaceholder: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 14,
+    borderStyle: "dashed",
+    borderWidth: 1,
+    height: 96,
+    justifyContent: "center",
+    width: 96,
+  },
+  formImagePreview: {
+    backgroundColor: colors.progressTrack,
+    borderRadius: 14,
+    height: 96,
+    width: 96,
+  },
   iconButton: {
     alignItems: "center",
     backgroundColor: colors.surfaceMuted,
@@ -718,6 +815,27 @@ const productStyles = StyleSheet.create({
     backgroundColor: colors.progressTrack,
     height: 150,
     width: "100%",
+  },
+  imageUploadCopy: {
+    flex: 1,
+    gap: 7,
+    minWidth: 0,
+  },
+  imageUploadHelp: {
+    color: colors.muted,
+    fontFamily: fontFamilies.regular,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  imageUploadPanel: {
+    alignItems: "center",
+    backgroundColor: colors.secondary,
+    borderColor: colors.border,
+    borderRadius: 15,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 12,
+    padding: 10,
   },
   listActions: {
     flexDirection: "row",
@@ -887,6 +1005,23 @@ const productStyles = StyleSheet.create({
     flex: 1,
     gap: 4,
     minWidth: 0,
+  },
+  uploadButton: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: colors.secondary,
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 7,
+    minHeight: 36,
+    paddingHorizontal: 12,
+  },
+  uploadButtonText: {
+    color: colors.primary,
+    fontFamily: fontFamilies.semiBold,
+    fontSize: 12,
   },
   saveButton: {
     alignItems: "center",

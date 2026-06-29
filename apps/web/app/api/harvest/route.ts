@@ -16,6 +16,7 @@ const DEFAULT_BASE44_BACKEND_URL = "https://harvest-coffee-b2-b-orders-3f836b87.
 const WRITE_ACTIONS = new Set([
   "updateCurrentUser",
   "deleteCurrentUser",
+  "uploadProductImage",
   "createProduct",
   "updateProduct",
   "deleteProduct",
@@ -38,6 +39,9 @@ const WRITE_ACTIONS = new Set([
 ]);
 
 export const runtime = "nodejs";
+
+const IMAGE_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+const IMAGE_UPLOAD_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 export function GET(request: Request) {
   const url = new URL(request.url);
@@ -67,10 +71,15 @@ export function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const contentType = request.headers.get("content-type") ?? "";
+    if (contentType.includes("multipart/form-data")) {
+      return await handleMultipartHarvestAction(request);
+    }
+
     const body = await request.json().catch(() => ({}));
     const action = stringValue(body.action);
     const input = readRecord(body.input);
-    const token = optionalString(body.token);
+    const token = readBearerToken(request.headers.get("authorization")) ?? optionalString(body.token);
 
     if (!action) return jsonError("Missing harvest proxy action.", 400);
     if (WRITE_ACTIONS.has(action) && isReadOnly()) {
@@ -89,6 +98,37 @@ export async function POST(request: Request) {
   }
 }
 
+async function handleMultipartHarvestAction(request: Request) {
+  const formData = await request.formData();
+  const action = stringValue(formData.get("action"));
+  const token = readBearerToken(request.headers.get("authorization"));
+
+  if (!action) return jsonError("Missing harvest proxy action.", 400);
+  if (action !== "uploadProductImage") {
+    return jsonError(`Unsupported multipart harvest proxy action: ${action}`, 400);
+  }
+  if (WRITE_ACTIONS.has(action) && isReadOnly()) {
+    return jsonError("Harvest API is running in read-only mode. Write operations are disabled.", 403);
+  }
+
+  const file = formData.get("file");
+  if (!isUploadedFile(file)) {
+    return jsonError("Product image upload requires an image file.", 400);
+  }
+  if (!IMAGE_UPLOAD_TYPES.has(file.type)) {
+    return jsonError("Product image must be a JPG, PNG, WebP, or GIF file.", 400);
+  }
+  if (file.size > IMAGE_UPLOAD_MAX_BYTES) {
+    return jsonError("Product image must be 5MB or smaller.", 400);
+  }
+
+  const base44 = createServerBase44Client(token);
+  const actor = await getActor(base44, token);
+  requireAdmin(actor);
+
+  return jsonOk(await uploadBase44File(base44, file));
+}
+
 async function runHarvestAction(
   action: string,
   input: RawRecord,
@@ -101,6 +141,9 @@ async function runHarvestAction(
       return actor;
     case "getProducts":
       return api.getProducts();
+    case "uploadProductImage":
+      requireAdmin(actor);
+      throw httpError("Product image upload requires multipart/form-data.", 415);
     case "getOrders":
       requireAdmin(actor);
       return api.getOrders();
@@ -200,6 +243,27 @@ async function runHarvestAction(
     default:
       throw httpError(`Unsupported harvest proxy action: ${action}`, 400);
   }
+}
+
+async function uploadBase44File(base44: ReturnType<typeof createClient>, file: File) {
+  const uploadClient = base44 as unknown as {
+    integrations?: {
+      Core?: {
+        UploadFile(input: { file: File }): Promise<unknown>;
+      };
+    };
+  };
+
+  if (!uploadClient.integrations?.Core?.UploadFile) {
+    throw httpError("Base44 upload client is not available.", 500);
+  }
+
+  const result = readRecord(await uploadClient.integrations.Core.UploadFile({ file }));
+  const fileUrl = stringValue(result.file_url);
+  if (!fileUrl) {
+    throw httpError("Base44 upload did not return a file URL.", 502);
+  }
+  return { fileUrl };
 }
 
 async function invokeBase44Function(base44: ReturnType<typeof createClient>, functionName: string, payload: RawRecord) {
@@ -335,6 +399,10 @@ function readRecord(value: unknown): RawRecord {
   return value && typeof value === "object" ? value as RawRecord : {};
 }
 
+function isUploadedFile(value: FormDataEntryValue | null): value is File {
+  return typeof File !== "undefined" && value instanceof File;
+}
+
 function stringValue(value: unknown, fallback = "") {
   return typeof value === "string" ? value : fallback;
 }
@@ -353,6 +421,14 @@ function normalizeEmail(value: unknown) {
 
 function optionalString(value: unknown) {
   return typeof value === "string" && value ? value : undefined;
+}
+
+function readBearerToken(value: string | null) {
+  if (!value) return undefined;
+  const [scheme, ...rest] = value.split(" ");
+  if (scheme.toLowerCase() !== "bearer") return undefined;
+  const token = rest.join(" ").trim();
+  return token || undefined;
 }
 
 function numberValue(value: unknown, fallback = 0) {

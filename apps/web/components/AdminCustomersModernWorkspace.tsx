@@ -160,7 +160,11 @@ export default function AdminCustomersModernWorkspace() {
 
 function isCustomerOrder(order: Order, customer: User) {
   if (order.createdById && order.createdById === customer.id) return true;
-  return Boolean(order.customerEmail && order.customerEmail === customer.email);
+  return Boolean(order.customerEmail && sameEmail(order.customerEmail, customer.email));
+}
+
+function sameEmail(left?: string, right?: string) {
+  return Boolean(left && right && left.trim().toLowerCase() === right.trim().toLowerCase());
 }
 
 function SummaryCard({ icon: Icon, label, tone, value }: { icon: React.ComponentType<{ className?: string }>; label: string; tone: "blue" | "purple" | "green" | "amber"; value: string }) {

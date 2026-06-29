@@ -35,6 +35,7 @@ export default function ProductsScreen() {
   } = useMobileState();
   const [notes, setNotes] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("bank_transfer");
+  const [publicError, setPublicError] = useState<string | null>(null);
   const [publicLoading, setPublicLoading] = useState(false);
   const [publicProducts, setPublicProducts] = useState<Product[]>([]);
   const [saving, setSaving] = useState(false);
@@ -44,10 +45,14 @@ export default function ProductsScreen() {
     if (isAuthenticated) return;
 
     let mounted = true;
+    setPublicError(null);
     setPublicLoading(true);
     void api.getProducts()
       .then((nextProducts) => {
         if (mounted) setPublicProducts(nextProducts);
+      })
+      .catch((error) => {
+        if (mounted) setPublicError(error instanceof Error ? error.message : "Products could not be loaded.");
       })
       .finally(() => {
         if (mounted) setPublicLoading(false);
@@ -93,7 +98,7 @@ export default function ProductsScreen() {
   };
 
   if (!isAuthenticated) {
-    return <PublicProductsScreen loading={publicLoading} products={publicProducts} />;
+    return <PublicProductsScreen error={publicError} loading={publicLoading} products={publicProducts} />;
   }
 
   return (
@@ -333,7 +338,7 @@ function CartModal({
   );
 }
 
-function PublicProductsScreen({ loading, products }: { loading: boolean; products: Product[] }) {
+function PublicProductsScreen({ error, loading, products }: { error: string | null; loading: boolean; products: Product[] }) {
   return (
     <>
       <View style={publicProductStyles.hero}>
@@ -358,6 +363,8 @@ function PublicProductsScreen({ loading, products }: { loading: boolean; product
           <Card>
             <Text style={styles.description}>Loading products...</Text>
           </Card>
+        ) : error ? (
+          <StatusBanner body={error} title="Products unavailable" tone="error" />
         ) : products.length === 0 ? (
           <Card>
             <Text style={styles.description}>No products available.</Text>

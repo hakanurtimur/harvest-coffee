@@ -29,11 +29,22 @@ export interface NotificationQueryOptions {
   includeAdmin?: boolean;
 }
 
+export interface HarvestUploadResult {
+  fileUrl: string;
+}
+
+export type HarvestUploadFile = Blob | {
+  name: string;
+  type: string;
+  uri: string;
+};
+
 export interface HarvestApi {
   getCurrentUser(): Promise<User | null>;
   updateCurrentUser(input: Partial<User>): Promise<User>;
   deleteCurrentUser(): Promise<void>;
   getProducts(): Promise<Product[]>;
+  uploadProductImage(file: HarvestUploadFile): Promise<HarvestUploadResult>;
   createProduct(input: CreateProductInput): Promise<Product>;
   updateProduct(id: string, input: UpdateProductInput): Promise<Product>;
   deleteProduct(id: string): Promise<void>;
@@ -241,6 +252,9 @@ export function createBase44HarvestApi(base44: Base44ClientLike): HarvestApi {
     async getProducts() {
       return (await base44.entities.Product.list()).map(mapBase44Product);
     },
+    async uploadProductImage() {
+      throw new Error("Product image upload is only available through the Harvest proxy.");
+    },
     async createProduct(input) {
       return mapBase44Product(await base44.entities.Product.create(toBase44ProductInput(input)));
     },
@@ -345,6 +359,9 @@ export function createReadOnlyHarvestApi(api: HarvestApi): HarvestApi {
       return readOnlyError();
     },
     getProducts: api.getProducts.bind(api),
+    async uploadProductImage() {
+      return readOnlyError();
+    },
     async createProduct() {
       return readOnlyError();
     },
@@ -389,24 +406,7 @@ export function createReadOnlyHarvestApi(api: HarvestApi): HarvestApi {
 }
 
 export function createProxyHarvestApi(options: HarvestProxyOptions): HarvestApi {
-  const call = async <T>(action: string, input?: RawRecord): Promise<T> => {
-    let response: Response;
-    try {
-      response = await fetch(options.endpoint, {
-        body: JSON.stringify({
-          action,
-          input,
-          token: options.getAccessToken?.() ?? undefined,
-        }),
-        headers: {
-          "content-type": "application/json",
-        },
-        method: "POST",
-      });
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : "Network request failed";
-      throw new Error(`Harvest proxy request failed: ${action} at ${options.endpoint}. ${reason}`);
-    }
+  const parseProxyResponse = async <T>(response: Response, action: string): Promise<T> => {
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(stringValue(payload.error, `Harvest proxy action failed: ${action}`));
@@ -414,11 +414,65 @@ export function createProxyHarvestApi(options: HarvestProxyOptions): HarvestApi 
     return payload.data as T;
   };
 
+  const call = async <T>(action: string, input?: RawRecord): Promise<T> => {
+    let response: Response;
+    const token = options.getAccessToken?.() ?? undefined;
+    const headers: Record<string, string> = {
+      "content-type": "application/json",
+    };
+    if (token) headers.authorization = `Bearer ${token}`;
+
+    try {
+      response = await fetch(options.endpoint, {
+        body: JSON.stringify({
+          action,
+          input,
+          token,
+        }),
+        headers,
+        method: "POST",
+      });
+    } catch (error) {
+        const reason = error instanceof Error ? error.message : "Network request failed";
+      throw new Error(`Harvest proxy request failed: ${action} at ${options.endpoint}. ${reason}`);
+    }
+    return parseProxyResponse<T>(response, action);
+  };
+
+  const upload = async (file: HarvestUploadFile): Promise<HarvestUploadResult> => {
+    const action = "uploadProductImage";
+    const token = options.getAccessToken?.() ?? undefined;
+    const headers: Record<string, string> = {};
+    if (token) headers.authorization = `Bearer ${token}`;
+
+    const formData = new FormData();
+    formData.append("action", action);
+    if (isReactNativeUploadFile(file)) {
+      formData.append("file", file as unknown as Blob);
+    } else {
+      formData.append("file", file);
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(options.endpoint, {
+        body: formData,
+        headers,
+        method: "POST",
+      });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "Network request failed";
+      throw new Error(`Harvest proxy request failed: ${action} at ${options.endpoint}. ${reason}`);
+    }
+    return parseProxyResponse<HarvestUploadResult>(response, action);
+  };
+
   return {
     getCurrentUser: () => call<User | null>("getCurrentUser"),
     updateCurrentUser: (input) => call<User>("updateCurrentUser", input as RawRecord),
     deleteCurrentUser: () => call<void>("deleteCurrentUser"),
     getProducts: () => call<Product[]>("getProducts"),
+    uploadProductImage: upload,
     createProduct: (input) => call<Product>("createProduct", input as RawRecord),
     updateProduct: (id, input) => call<Product>("updateProduct", { id, input }),
     deleteProduct: (id) => call<void>("deleteProduct", { id }),
@@ -438,6 +492,10 @@ export function createProxyHarvestApi(options: HarvestProxyOptions): HarvestApi 
     markNotificationRead: (id) => call<Notification>("markNotificationRead", { id }),
     deleteNotification: (id) => call<void>("deleteNotification", { id }),
   };
+}
+
+function isReactNativeUploadFile(file: HarvestUploadFile): file is Exclude<HarvestUploadFile, Blob> {
+  return typeof file === "object" && file !== null && "uri" in file;
 }
 
 export function mapBase44Product(product: RawRecord): Product {

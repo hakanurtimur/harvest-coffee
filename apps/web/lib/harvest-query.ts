@@ -219,6 +219,12 @@ export function useCreateProductMutation() {
   });
 }
 
+export function useUploadProductImageMutation() {
+  return useMutation({
+    mutationFn: (file: File) => getHarvestApi().uploadProductImage(file),
+  });
+}
+
 export function useUpdateProductMutation() {
   const queryClient = useQueryClient();
 

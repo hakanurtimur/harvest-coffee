@@ -14,6 +14,8 @@ export default function NotificationsScreen() {
     setBusyId(id);
     try {
       await markNotificationRead(id);
+    } catch {
+      // Global feedback handles API failures.
     } finally {
       setBusyId(null);
     }

@@ -6,11 +6,11 @@ import { AlertDialog } from "@/components/ui/alert-dialog";
 import { requestToast } from "@/components/ui/sonner";
 import { Combobox } from "@/components/ui/combobox";
 import AdminPageHeader from "@/components/AdminPageHeader";
-import { useCreateProductMutation, useDeleteProductMutation, useProductsQuery, useUpdateProductMutation } from "@/lib/harvest-query";
+import { useCreateProductMutation, useDeleteProductMutation, useProductsQuery, useUpdateProductMutation, useUploadProductImageMutation } from "@/lib/harvest-query";
 import { getHarvestIntegrations } from "@/lib/integrations";
 import type { Product } from "@/lib/domain";
-import { Edit2, Loader2, Package, Plus, Save, Sparkles, Trash2, X } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
+import { Edit2, ImageIcon, Loader2, Package, Plus, Save, Sparkles, Trash2, Upload, X } from "lucide-react";
+import { FormEvent, useMemo, useRef, useState } from "react";
 
 type ProductForm = {
   name: string;
@@ -52,6 +52,8 @@ export default function AdminProductsModernWorkspace() {
   const createProductMutation = useCreateProductMutation();
   const updateProductMutation = useUpdateProductMutation();
   const deleteProductMutation = useDeleteProductMutation();
+  const uploadProductImageMutation = useUploadProductImageMutation();
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
@@ -60,7 +62,8 @@ export default function AdminProductsModernWorkspace() {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const products = productsQuery.data ?? [];
   const isLoading = productsQuery.isLoading;
-  const isSaving = createProductMutation.isPending || updateProductMutation.isPending;
+  const isUploadingImage = uploadProductImageMutation.isPending;
+  const isSaving = createProductMutation.isPending || updateProductMutation.isPending || isUploadingImage;
 
   const handleEdit = (product: Product) => {
     setEditingId(product.id);
@@ -125,6 +128,28 @@ export default function AdminProductsModernWorkspace() {
       setProductToDelete(null);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Product could not be deleted.");
+    }
+  };
+
+  const handleProductImageUpload = async (file: File | null | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      requestToast.error({ title: "Please choose an image file." });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      requestToast.error({ title: "Image must be 5MB or smaller." });
+      return;
+    }
+
+    try {
+      const result = await uploadProductImageMutation.mutateAsync(file);
+      setForm((current) => ({ ...current, imageUrl: result.fileUrl }));
+      setMessage("Product image uploaded.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Product image could not be uploaded.");
+    } finally {
+      if (imageInputRef.current) imageInputRef.current.value = "";
     }
   };
 
@@ -196,7 +221,41 @@ export default function AdminProductsModernWorkspace() {
               <TextInput label="Stock Quantity" type="number" value={form.stockQuantity} onChange={(value) => setForm({ ...form, stockQuantity: value })} />
             </div>
 
-            <TextInput label="Product Image URL" value={form.imageUrl} onChange={(value) => setForm({ ...form, imageUrl: value })} placeholder="https://..." />
+            <div className="rounded-xl border border-border bg-muted/40 p-4">
+              <div className="grid gap-4 md:grid-cols-[140px_1fr]">
+                <div className="flex h-32 items-center justify-center overflow-hidden rounded-lg border border-border bg-background">
+                  {form.imageUrl ? (
+                    <img src={form.imageUrl} alt={form.name || "Product preview"} className="h-full w-full object-cover" />
+                  ) : (
+                    <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-black text-foreground">Product image</p>
+                    <p className="mt-1 text-xs font-semibold leading-5 text-muted-foreground">Upload a JPG, PNG, WebP, or GIF. The returned Base44 file URL will be saved into the product image URL field.</p>
+                  </div>
+                  <input
+                    ref={imageInputRef}
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={(event) => void handleProductImageUpload(event.target.files?.[0])}
+                    type="file"
+                  />
+                  <Button
+                    className="h-10 rounded-md px-4"
+                    disabled={isUploadingImage}
+                    onClick={() => imageInputRef.current?.click()}
+                    type="button"
+                    variant="outline"
+                  >
+                    {isUploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    {isUploadingImage ? "Uploading..." : "Upload image"}
+                  </Button>
+                  <TextInput label="Image URL fallback" value={form.imageUrl} onChange={(value) => setForm({ ...form, imageUrl: value })} placeholder="https://..." />
+                </div>
+              </div>
+            </div>
 
             <div>
               <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

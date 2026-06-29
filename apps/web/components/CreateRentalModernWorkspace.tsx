@@ -12,8 +12,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
-const fallbackEmail = "dealer@example.com";
-
 export default function CreateRentalModernWorkspace() {
   const productsQuery = useProductsQuery();
   const currentUserQuery = useCurrentUserQuery();
@@ -38,10 +36,14 @@ export default function CreateRentalModernWorkspace() {
     setMessage("");
     try {
       const user = currentUserQuery.data ?? await currentUserQuery.refetch().then((result) => result.data);
+      if (!user?.email) {
+        setMessage("Please sign in before creating a rental.");
+        return;
+      }
       await createRentalMutation.mutateAsync({
         productId: selectedProduct.id,
         productName: selectedProduct.name,
-        customerEmail: user?.email ?? fallbackEmail,
+        customerEmail: user.email,
         customerName: user?.fullName || user?.email,
         startDate,
         endDate,

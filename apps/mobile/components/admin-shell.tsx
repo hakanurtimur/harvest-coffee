@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router, usePathname } from "expo-router";
 import { ReactNode, useEffect, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMobileState } from "../lib/mobile-state";
 import { AppScreen, BrandStamp, colors, fontFamilies, initials, LoadingState, StatusBanner } from "./ui";
 
@@ -55,6 +56,7 @@ function getAdminBackRoute(pathname: string) {
 
 export function AdminShell({ children, title }: { children: ReactNode; title?: string }) {
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
   const { booting, currentUser, dataError, isAuthenticated, loadingData, logout, notifications } = useMobileState();
   const [moreOpen, setMoreOpen] = useState(false);
   const screenTitle = title ?? getAdminTitle(pathname);
@@ -129,7 +131,7 @@ export function AdminShell({ children, title }: { children: ReactNode; title?: s
         ) : null}
         {children}
       </View>
-      <View style={styles.appBar}>
+      <View style={[styles.appBar, { bottom: insets.bottom + 10 }]}>
         <View style={styles.appBarContent}>
           {primaryAdminTabs.map((tab) => {
             const active = isAdminTabActive(pathname, tab.href);
@@ -168,7 +170,7 @@ export function AdminShell({ children, title }: { children: ReactNode; title?: s
           })}
         </View>
       </View>
-      <View style={styles.fabWrap}>
+      <View style={[styles.fabWrap, { bottom: insets.bottom + 10 }]}>
         <Pressable
           accessibilityLabel="Open admin menu"
           accessibilityRole="button"
@@ -282,6 +284,7 @@ const styles = StyleSheet.create({
     shadowOffset: { height: 12, width: 0 },
     shadowOpacity: 0.16,
     shadowRadius: 22,
+    elevation: 12,
   },
   appBarContent: {
     flexDirection: "row",
@@ -343,6 +346,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.045,
     shadowRadius: 14,
     width: 44,
+    elevation: 2,
   },
   logoMark: {
     alignItems: "center",
@@ -376,6 +380,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 18,
     width: 56,
+    elevation: 12,
   },
   fabActive: {
     transform: [{ scale: 1.02 }],
@@ -469,6 +474,7 @@ const styles = StyleSheet.create({
     shadowOffset: { height: 14, width: 0 },
     shadowOpacity: 0.18,
     shadowRadius: 26,
+    elevation: 16,
   },
   moreTitle: {
     color: colors.foreground,
@@ -491,6 +497,7 @@ const styles = StyleSheet.create({
     shadowOffset: { height: 8, width: 0 },
     shadowOpacity: 0.18,
     shadowRadius: 18,
+    elevation: 4,
   },
   tabIcon: {
     zIndex: 2,
