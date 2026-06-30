@@ -288,7 +288,7 @@ async function sendContactMessage(base44: ReturnType<typeof createClient>, input
   }
 
   const recipient = process.env.HARVEST_CONTACT_EMAIL || DEFAULT_CONTACT_EMAIL;
-  const result = await emailClient.integrations.Core.SendEmail({
+  await emailClient.integrations.Core.SendEmail({
     to: recipient,
     from_name: "Harvest Coffee",
     subject: `Contact Form: ${contact.subject}`,
@@ -297,11 +297,6 @@ async function sendContactMessage(base44: ReturnType<typeof createClient>, input
       "",
       contact.message,
     ].join("\n"),
-  });
-
-  console.info("[harvest-contact] Base44 SendEmail completed", {
-    recipient,
-    result: readRecord(result),
   });
 
   return { message: `Message forwarded to ${recipient}.` };
