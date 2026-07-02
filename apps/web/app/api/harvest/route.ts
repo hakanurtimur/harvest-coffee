@@ -7,6 +7,7 @@ import {
   type HarvestApi,
 } from "@/lib/api";
 import type { CreateOrderInput, CreateRentalInput, User } from "@/lib/domain";
+import { consumeMobileAuthCode, getMobileAuthCodeSecret } from "@/lib/mobile-auth-code";
 import { createMemoryRateLimiter, getSafeHarvestLoginRedirectUrl } from "@/lib/security-helpers";
 
 type RawRecord = Record<string, unknown>;
@@ -98,6 +99,9 @@ export async function POST(request: Request) {
     }
     if (action === "sendContactMessage") {
       assertContactRateLimit(request);
+    }
+    if (action === "exchangeMobileAuthCode") {
+      return jsonOk(exchangeMobileAuthCode(input));
     }
 
     const base44 = createServerBase44Client(token);
@@ -325,6 +329,12 @@ async function invokeBase44Function(base44: ReturnType<typeof createClient>, fun
   const result = await functionClient.functions.invoke(functionName, payload);
   const row = readRecord(result);
   return "data" in row ? readRecord(row.data) : row;
+}
+
+function exchangeMobileAuthCode(input: RawRecord) {
+  return consumeMobileAuthCode(stringValue(input.code), {
+    secret: getMobileAuthCodeSecret(),
+  });
 }
 
 function createServerBase44Client(token?: string) {

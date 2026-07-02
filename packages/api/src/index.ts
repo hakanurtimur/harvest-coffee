@@ -87,6 +87,11 @@ export interface HarvestProxyOptions {
   setAccessToken?: (token: string | null) => void;
 }
 
+export interface MobileAuthCodeExchangeResult {
+  accessToken: string;
+  isNewUser?: string;
+}
+
 export interface GenerateProductDescriptionInput {
   category?: string;
   productName: string;
@@ -523,6 +528,37 @@ export function createProxyHarvestApi(options: HarvestProxyOptions): HarvestApi 
     getNotifications: (recipientEmail, options) => call<Notification[]>("getNotifications", { recipientEmail, includeAdmin: options?.includeAdmin }),
     markNotificationRead: (id) => call<Notification>("markNotificationRead", { id }),
     deleteNotification: (id) => call<void>("deleteNotification", { id }),
+  };
+}
+
+export async function exchangeMobileAuthCode(endpoint: string, code: string): Promise<MobileAuthCodeExchangeResult> {
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      body: JSON.stringify({
+        action: "exchangeMobileAuthCode",
+        input: { code },
+      }),
+      headers: {
+        "content-type": "application/json",
+      },
+      method: "POST",
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "Network request failed";
+    throw new Error(`Harvest proxy request failed: exchangeMobileAuthCode at ${endpoint}. ${reason}`);
+  }
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(stringValue(readRecord(payload).error, "Harvest proxy action failed: exchangeMobileAuthCode"));
+  }
+  const data = readRecord(readRecord(payload).data);
+  const accessToken = stringValue(data.accessToken);
+  if (!accessToken) throw new Error("Mobile auth code exchange did not return an access token.");
+  return {
+    accessToken,
+    isNewUser: optionalString(data.isNewUser),
   };
 }
 

@@ -1,27 +1,20 @@
-import { getSafeMobileRedirectUrl } from "@/lib/security-helpers";
+import { buildMobileAuthRedirect } from "@/lib/mobile-auth-bridge";
+import { getMobileAuthCodeSecret } from "@/lib/mobile-auth-code";
+
+export const runtime = "nodejs";
 
 export function GET(request: Request) {
-  const url = new URL(request.url);
-  const redirectUrl = getSafeMobileRedirectUrl(url.searchParams.get("return_to"), {
-    allowExpoRedirects: shouldAllowExpoMobileRedirects(),
-  });
-
-  if (!redirectUrl) {
+  try {
+    return Response.redirect(buildMobileAuthRedirect(request.url, {
+      allowExpoRedirects: shouldAllowExpoMobileRedirects(),
+      secret: getMobileAuthCodeSecret(),
+    }), 302);
+  } catch {
+    const url = new URL(request.url);
     const fallback = new URL("/login", url.origin);
-    fallback.searchParams.set("error", "Invalid mobile redirect.");
+    fallback.searchParams.set("error", "Mobile auth bridge is not configured.");
     return Response.redirect(fallback.toString(), 302);
   }
-
-  const accessToken = url.searchParams.get("access_token");
-  const isNewUser = url.searchParams.get("is_new_user");
-  const error = url.searchParams.get("error");
-
-  if (accessToken) redirectUrl.searchParams.set("access_token", accessToken);
-  if (isNewUser) redirectUrl.searchParams.set("is_new_user", isNewUser);
-  if (error) redirectUrl.searchParams.set("error", error);
-  if (!accessToken && !error) redirectUrl.searchParams.set("error", "Google sign in did not return an access token.");
-
-  return Response.redirect(redirectUrl.toString(), 302);
 }
 
 function shouldAllowExpoMobileRedirects() {

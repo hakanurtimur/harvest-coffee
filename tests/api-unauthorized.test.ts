@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { createProxyHarvestApi } from "../packages/api/src/index.ts";
+import { createProxyHarvestApi, exchangeMobileAuthCode } from "../packages/api/src/index.ts";
 
 describe("createProxyHarvestApi unauthorized handling", () => {
   it("sends bearer tokens only through the Authorization header", async () => {
@@ -88,6 +88,38 @@ describe("createProxyHarvestApi unauthorized handling", () => {
 
       assert.equal(actionName, "generateProductDescription");
       assert.equal(result.description, "Generated copy");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("exchanges mobile auth codes without sending an Authorization header", async () => {
+    const originalFetch = globalThis.fetch;
+    let requestBody: unknown;
+    let authorizationHeader: string | undefined;
+
+    globalThis.fetch = async (_url, init) => {
+      requestBody = JSON.parse(String(init?.body ?? "{}"));
+      const headers = init?.headers as Record<string, string> | undefined;
+      authorizationHeader = headers?.authorization;
+
+      return new Response(JSON.stringify({
+        data: { accessToken: "base44-access-token", isNewUser: "false" },
+      }), {
+        headers: { "content-type": "application/json" },
+        status: 200,
+      });
+    };
+
+    try {
+      const result = await exchangeMobileAuthCode("https://harvest.example/api/harvest", "auth-code");
+
+      assert.deepEqual(requestBody, {
+        action: "exchangeMobileAuthCode",
+        input: { code: "auth-code" },
+      });
+      assert.equal(authorizationHeader, undefined);
+      assert.equal(result.accessToken, "base44-access-token");
     } finally {
       globalThis.fetch = originalFetch;
     }

@@ -5,9 +5,9 @@ Scope: `apps/mobile`, shared `packages/api`, shared `packages/domain`, and the w
 
 ## Executive Summary
 
-The mobile app is in a much better state than the earlier mock/demo phase: mobile no longer contains a mock runtime fallback, no Base44 API key or client secret was found in the mobile/shared source, and live data goes through the web proxy contract. The main remaining risks are around production OAuth deep-link hardening and token lifetime modeling.
+The mobile app is in a much better state than the earlier mock/demo phase: mobile no longer contains a mock runtime fallback, no Base44 API key or client secret was found in the mobile/shared source, and live data goes through the web proxy contract. Mobile auth now uses a nonce-protected, short-lived auth-code bridge instead of redirecting raw Base44 access tokens. Persisted mobile sessions also cache JWT expiry metadata and clear expired tokens on boot. The main remaining risks are around release configuration and optional server-backed one-time auth-code hardening.
 
-No Critical findings were identified from static review. The High item should be fixed before production mobile auth is trusted outside development/test devices.
+No Critical or High findings were identified from the current static review.
 
 ## Positive Controls
 
@@ -15,7 +15,10 @@ No Critical findings were identified from static review. The High item should be
 - `apps/mobile/lib/mobile-state.tsx` creates the API client through `createProxyHarvestApi` and fails closed when the proxy URL is missing.
 - No `Alert.alert`, `WebView`, `eval`, `dangerouslySetInnerHTML`, `localStorage`, `AsyncStorage`, `api_key`, or `client_secret` usage was found in `apps/mobile`, `packages/api`, or `packages/domain`.
 - Mobile now uses `expo-secure-store` through `apps/mobile/lib/token-store.ts` and `apps/mobile/lib/secure-token-store.ts` for the Base44 access token cache.
+- Stored Base44 access tokens are decoded for JWT `exp`, expiry metadata is cached, and expired persisted tokens are cleared before the session is restored.
 - Runtime `401` responses from the proxy trigger secure token cleanup and reset the mobile session state.
+- Mobile login now creates a one-time SecureStore nonce, sends it in the `return_to` callback URL, and accepts returned auth codes only when the callback nonce matches.
+- `apps/web/app/mobile-auth/callback/route.ts` converts Base44 callback tokens into encrypted short-lived auth codes; `apps/web/app/api/harvest/route.ts` exchanges those codes for the access token over the proxy response instead of putting the access token in the redirect URL.
 - Root routing is centralized in `apps/mobile/app/_layout.tsx`; logged-out private routes redirect to login and role shells are selected from one place.
 - Destructive product, rental, address, and notification deletes use `ConfirmDialog` and loading/disabled state in the inspected screens.
 - Admin/dealer data access is primarily enforced by the web proxy route, including `created_by_id` order access checks and admin write guards.
@@ -24,28 +27,34 @@ No Critical findings were identified from static review. The High item should be
 
 ### High
 
-#### H-01 Mobile OAuth callback still needs production-only scheme and nonce hardening
+No current High findings.
+
+### Medium
+
+#### M-00 Mobile auth code exchange is short-lived but not backed by a server-side one-time store
 
 Evidence:
-- `apps/web/app/mobile-auth/callback/route.ts` forwards Base44 `access_token` values to the mobile `return_to` URL.
+- `apps/web/app/mobile-auth/callback/route.ts` delegates redirect creation to `apps/web/lib/mobile-auth-bridge.ts` and no longer writes `access_token` into the redirect URL.
+- `apps/web/lib/mobile-auth-code.ts` encrypts Base44 tokens into short-lived auth codes.
+- `apps/web/app/api/harvest/route.ts` exposes `exchangeMobileAuthCode` to exchange the code over the proxy response.
 - `apps/web/lib/security-helpers.ts` now rejects arbitrary `exp:` hosts, permits `harvestcoffee:` always, and permits Expo development hosts only when explicitly enabled by the mobile auth bridge.
-- `apps/web/app/mobile-auth/callback/route.ts:3` through `apps/web/app/mobile-auth/callback/route.ts:22` copies `access_token` into the redirect URL query.
-- `apps/mobile/app/(public)/login.tsx:50` through `apps/mobile/app/(public)/login.tsx:55` builds the mobile auth bridge with a `return_to` URL.
+- `apps/mobile/app/(public)/login.tsx` builds the mobile auth bridge with a one-time nonce-protected `return_to` URL.
+- `apps/mobile/lib/mobile-auth.ts` and `apps/mobile/lib/token-store.ts` validate the returned callback nonce before exchanging the auth code.
 
 Impact:
-Expo development callbacks are useful during testing, but production mobile auth should not rely on Expo tunnel URLs or bearer tokens in query strings.
+Resolved for raw-token URL exposure. The remaining hardening opportunity is making the auth code strictly one-time across serverless instances with a shared store, or adding a PKCE-style verifier if the bridge is extended further.
 
 Recommended fix:
 - Use the custom app scheme `harvestcoffee:` for production mobile callbacks.
 - Keep `exp:`/`exps:` behind the explicit `HARVEST_ALLOW_EXPO_MOBILE_REDIRECTS=true` development flag or an exact environment allowlist.
-- Add a nonce/state generated by the mobile app and validated after callback.
-- Prefer a short-lived code exchange over putting the final access token in the redirect URL.
+- Keep the mobile-generated nonce/state regression covered.
+- Consider a server-backed one-time code store or PKCE-style verifier for an additional production hardening pass.
 
 Test scenario:
 - Start a login with `return_to=exp://attacker.example/--/login` and verify the bridge rejects it.
 - Start a valid login with the expected Expo development URL and a matching nonce and verify it succeeds.
-
-### Medium
+- Start a callback with a missing or stale nonce and verify mobile rejects the auth code.
+- Verify the mobile redirect URL contains `auth_code` and never contains `access_token`.
 
 #### M-01 Proxy bearer token transport is header-only
 
@@ -130,22 +139,25 @@ Test scenario:
 
 ### Low
 
-#### L-01 Access token lifetime metadata is not modeled explicitly
+#### L-01 Access token lifetime metadata is modeled from JWT expiry
 
 Evidence:
 - `apps/mobile/lib/token-store.ts` stores the mobile Base44 access token in `expo-secure-store`.
-- `apps/mobile/lib/mobile-state.tsx` restores the stored token on boot and clears it on logout, unresolved session, or runtime `401`.
+- `apps/mobile/lib/token-store.ts` decodes JWT `exp`, stores `harvest_mobile_access_token_expires_at`, and clears expired persisted tokens during `loadAccessToken`.
+- `apps/mobile/lib/mobile-state.tsx` restores the stored token on boot only after token-store validation and clears it on logout, unresolved session, or runtime `401`.
+- `tests/mobile-token-store.test.ts` covers expiry metadata persistence, unexpired restore, and expired token cleanup.
 
 Impact:
-Persisted sessions improve UX and runtime `401` failures now recover cleanly, but the app still does not know the token expiry time before making a request.
+Resolved for the current JWT-based Base44 token shape. Persisted sessions are no longer restored when the token is already expired or within the configured expiry skew window.
 
 Recommended fix:
-- Add explicit token expiry metadata handling if Base44 exposes token lifetime details.
-- Proactively refresh/re-auth before expiry if Base44 supports it.
+- Keep the JWT expiry regression tests.
+- If Base44 later exposes refresh tokens or explicit token lifetime metadata, add proactive refresh/re-auth before expiry.
 
 Test scenario:
 - Login, kill/reopen the app, and verify the user is restored.
-- Revoke/expire the session, trigger any API request, and verify the stored token is cleared with no login loop.
+- Persist an expired token, reopen the app, and verify the token is cleared with no login loop.
+- Revoke a still-unexpired session server-side, trigger any API request, and verify runtime `401` still clears the secure token.
 
 #### L-02 Order detail can show stale cached order data
 
@@ -214,9 +226,8 @@ Admin:
 
 ## Recommended Fix Order
 
-1. Finish production OAuth callback hardening with nonce/state and preferably short-lived code exchange.
-2. Add token lifetime metadata handling if Base44 exposes it.
-3. Decide whether admin settings should remain session-only or gain a documented persisted Base44 settings backend.
+1. Decide whether admin settings should remain session-only or gain a documented persisted Base44 settings backend.
+2. Optionally back mobile auth codes with a shared one-time store or PKCE-style verifier before app-store release.
 
 ## Verification Performed
 

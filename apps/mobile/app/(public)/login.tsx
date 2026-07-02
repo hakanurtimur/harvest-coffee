@@ -1,10 +1,13 @@
+import { exchangeMobileAuthCode } from "@harvest/api";
 import * as ExpoLinking from "expo-linking";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Linking, StyleSheet, Text, View } from "react-native";
 import { BrandStamp, colors, FadeInView, fontFamilies, OutlineButton, PrimaryButton, StatusBanner } from "../../components/ui";
 import { getHarvestProxyEndpoint, getHarvestWebOrigin } from "../../lib/live-api";
+import { MOBILE_AUTH_CODE_PARAM, MOBILE_LOGIN_NONCE_PARAM, appendMobileLoginNonce, getMobileLoginCallbackParams } from "../../lib/mobile-auth";
 import { useMobileState } from "../../lib/mobile-state";
+import { mobileTokenStore } from "../../lib/secure-token-store";
 
 const handledLoginUrls = new Set<string>();
 
@@ -22,28 +25,39 @@ export default function LoginScreen() {
   useEffect(() => {
     if (!liveLoginEnabled) return;
 
-    const handleUrl = (url: string | null) => {
+    const handleUrl = async (url: string | null) => {
       if (!url) return;
       if (handledLoginUrls.has(url)) return;
       handledLoginUrls.add(url);
-      const params = getUrlParams(url);
+      const params = getMobileLoginCallbackParams(url);
       const error = params.get("error");
       if (error) {
+        await mobileTokenStore.clearLoginNonce();
         setMessage({ body: error, title: "Login failed" });
         return;
       }
-      const token = params.get("access_token");
-      if (!token) return;
+      const authCode = params.get(MOBILE_AUTH_CODE_PARAM);
+      if (!authCode) return;
+      const nonceMatches = await mobileTokenStore.consumeLoginNonce(params.get(MOBILE_LOGIN_NONCE_PARAM));
+      if (!nonceMatches) {
+        setMessage({ body: "The mobile login session could not be verified. Please try again.", title: "Login failed" });
+        return;
+      }
       setMessage(null);
-      void completeLiveLogin(token).catch((error) => {
+      try {
+        const endpoint = harvestProxyEndpoint;
+        if (!endpoint) throw new Error("Live API is not configured.");
+        const exchange = await exchangeMobileAuthCode(endpoint, authCode);
+        await completeLiveLogin(exchange.accessToken);
+      } catch (error) {
         setMessage({ body: error instanceof Error ? error.message : "Base44 Google login failed.", title: "Login failed" });
-      });
+      }
     };
 
-    void Linking.getInitialURL().then(handleUrl);
-    const subscription = Linking.addEventListener("url", (event) => handleUrl(event.url));
+    void Linking.getInitialURL().then((url) => void handleUrl(url));
+    const subscription = Linking.addEventListener("url", (event) => void handleUrl(event.url));
     return () => subscription.remove();
-  }, [completeLiveLogin, liveLoginEnabled]);
+  }, [completeLiveLogin, harvestProxyEndpoint, liveLoginEnabled]);
 
   const handleLiveLogin = async () => {
     const endpoint = getHarvestProxyEndpoint();
@@ -52,13 +66,15 @@ export default function LoginScreen() {
     setLiveSubmitting(true);
     setMessage(null);
     try {
+      const nonce = await mobileTokenStore.createLoginNonce();
       const bridgeUrl = new URL("/mobile-auth/callback", webOrigin);
-      bridgeUrl.searchParams.set("return_to", ExpoLinking.createURL("/login"));
+      bridgeUrl.searchParams.set("return_to", appendMobileLoginNonce(ExpoLinking.createURL("/login"), nonce));
       const loginUrl = new URL(endpoint);
       loginUrl.searchParams.set("mode", "google-login");
       loginUrl.searchParams.set("from", bridgeUrl.toString());
       await Linking.openURL(loginUrl.toString());
     } catch (error) {
+      await mobileTokenStore.clearLoginNonce();
       setMessage({ body: error instanceof Error ? error.message : "Base44 Google login failed.", title: "Login failed" });
     } finally {
       setLiveSubmitting(false);
@@ -96,15 +112,6 @@ export default function LoginScreen() {
       </FadeInView>
     </View>
   );
-}
-
-function getUrlParams(url: string) {
-  try {
-    return new URL(url).searchParams;
-  } catch {
-    const [, query = ""] = url.split("?");
-    return new URLSearchParams(query);
-  }
 }
 
 const loginStyles = StyleSheet.create({

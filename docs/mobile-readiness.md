@@ -47,14 +47,16 @@ Unauthenticated users now boot into the native Public Home screen before choosin
 - Runtime `401` handling clears the secure token cache and returns the app to a clean login state.
 - Proxy bearer tokens are sent through the `Authorization` header instead of JSON request bodies.
 - Expo mobile auth redirects are gated behind `HARVEST_ALLOW_EXPO_MOBILE_REDIRECTS=true`; production app-owned callbacks use `harvestcoffee:`.
+- Mobile login callback accepts returned auth codes only after matching a one-time SecureStore nonce.
+- Mobile auth now uses an encrypted, short-lived auth-code exchange instead of putting the raw Base44 access token in the mobile redirect URL.
+- Mobile SecureStore sessions cache JWT expiry metadata and clear expired persisted tokens during boot.
 - Mobile admin product description generation uses the shared Base44 proxy function.
 - Order detail screens revalidate cached detail data on open.
 
 ## Still Needed Before Production Release
 
 - Real brand assets: app icon, adaptive icon, splash logo, and final stamp/logo.
-- Token lifetime metadata handling if Base44 exposes explicit expiry information.
-- Production mobile auth nonce/state or a short-lived code exchange.
+- Optional release hardening: back mobile auth codes with a shared one-time store or PKCE-style verifier.
 - Preview/release build setup with EAS.
 - Test coverage for domain/API validation and key mobile state flows.
 - Release environment hardening for the live Base44 proxy URL.
