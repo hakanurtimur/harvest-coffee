@@ -1,8 +1,8 @@
-const allowedMobileProtocols = new Set(["exp:", "exps:", "harvestcoffee:"]);
+import { getSafeMobileRedirectUrl } from "@/lib/security-helpers";
 
 export function GET(request: Request) {
   const url = new URL(request.url);
-  const redirectUrl = getMobileRedirectUrl(url.searchParams.get("return_to"));
+  const redirectUrl = getSafeMobileRedirectUrl(url.searchParams.get("return_to"));
 
   if (!redirectUrl) {
     const fallback = new URL("/login", url.origin);
@@ -20,16 +20,4 @@ export function GET(request: Request) {
   if (!accessToken && !error) redirectUrl.searchParams.set("error", "Google sign in did not return an access token.");
 
   return Response.redirect(redirectUrl.toString(), 302);
-}
-
-function getMobileRedirectUrl(value: string | null) {
-  if (!value) return null;
-
-  try {
-    const url = new URL(value);
-    if (allowedMobileProtocols.has(url.protocol)) return url;
-    return null;
-  } catch {
-    return null;
-  }
 }

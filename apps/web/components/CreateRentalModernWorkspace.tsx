@@ -69,7 +69,7 @@ export default function CreateRentalModernWorkspace() {
             <p className="mb-5 text-xs font-black uppercase tracking-[0.34em] text-primary">Rental Agreement</p>
             <h1 className="font-display max-w-3xl text-5xl font-black leading-tight text-foreground sm:text-6xl">Create rental</h1>
             <p className="mt-5 max-w-2xl text-lg font-medium leading-8 text-muted-foreground">
-              Select a product, choose your rental dates, and create the same rental agreement flow as the legacy screen.
+              Select a product, choose your rental dates, and create the same rental agreement flow used across the dealer workspace.
             </p>
           </MotionReveal>
         </div>

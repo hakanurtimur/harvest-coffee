@@ -20,10 +20,11 @@ import {
   UpdateRentalInput,
   User,
 } from "@harvest/domain";
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { getHarvestProxyEndpoint } from "./live-api";
+import { mobileTokenStore } from "./secure-token-store";
 
-let mobileAccessToken: string | null = null;
+let mobileUnauthorizedHandler: (() => void | Promise<void>) | null = null;
 
 const api = createMobileHarvestApi();
 const BOOT_DELAY_MS = 950;
@@ -102,6 +103,8 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [notifications, setNotifications] = useState<HarvestNotification[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const bootRestoreStartedRef = useRef(false);
+  const sessionExpiredHandledRef = useRef(false);
 
   const cartItemCount = useMemo(
     () => Object.values(cartQuantities).reduce((sum, quantity) => sum + quantity, 0),
@@ -115,6 +118,39 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
   const clearFeedback = useCallback(() => {
     setFeedback(null);
   }, []);
+
+  const resetSessionState = useCallback(() => {
+    setCurrentUser(null);
+    setCartOpen(false);
+    setCartQuantities({});
+    setProducts([]);
+    setOrders([]);
+    setRentals([]);
+    setNotifications([]);
+    setUsers([]);
+    setDeliveryAddress("");
+    setDataError(null);
+    setLastSyncedAt(null);
+  }, []);
+
+  const handleUnauthorizedSession = useCallback(() => {
+    if (sessionExpiredHandledRef.current) return;
+    sessionExpiredHandledRef.current = true;
+    void mobileTokenStore.clearAccessToken().catch(() => undefined);
+    resetSessionState();
+    setBlockingMessage(null);
+    setLoadingData(false);
+    showFeedback("Session expired", "info", "Please sign in again.");
+  }, [resetSessionState, showFeedback]);
+
+  useEffect(() => {
+    mobileUnauthorizedHandler = handleUnauthorizedSession;
+    return () => {
+      if (mobileUnauthorizedHandler === handleUnauthorizedSession) {
+        mobileUnauthorizedHandler = null;
+      }
+    };
+  }, [handleUnauthorizedSession]);
 
   const updateCartQuantity = useCallback((productId: string, delta: number) => {
     setCartQuantities((current) => {
@@ -145,11 +181,6 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
 
   const closeCart = useCallback(() => {
     setCartOpen(false);
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setBooting(false), BOOT_DELAY_MS);
-    return () => clearTimeout(timer);
   }, []);
 
   const refreshDealerData = useCallback(async (userOverride?: User) => {
@@ -208,16 +239,72 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     }
   }, [currentUser]);
 
+  useEffect(() => {
+    if (bootRestoreStartedRef.current) return;
+    bootRestoreStartedRef.current = true;
+    let cancelled = false;
+
+    const restoreSession = async () => {
+      const minimumBoot = new Promise((resolve) => setTimeout(resolve, BOOT_DELAY_MS));
+
+      try {
+        const token = await mobileTokenStore.loadAccessToken();
+        if (cancelled || !token) return;
+
+        setLoadingData(true);
+        setBlockingMessage("Restoring secure session");
+        const user = await api.getCurrentUser();
+        if (!user) {
+          await mobileTokenStore.clearAccessToken();
+          throw new Error("Stored Base44 session could not be resolved.");
+        }
+        if (cancelled) return;
+
+        sessionExpiredHandledRef.current = false;
+        setCurrentUser(user);
+        setDeliveryAddress(user.addresses[0]?.address ?? "");
+        setBlockingMessage(user.role === "admin" ? "Loading admin workspace" : "Loading dealer workspace");
+
+        try {
+          if (user.role === "admin") await refreshAdminData(user);
+          else await refreshDealerData(user);
+        } catch {
+          // Keep the restored session active and surface data failures through
+          // dataError instead of forcing the user back through Google sign-in.
+        }
+      } catch (error) {
+        await mobileTokenStore.clearAccessToken().catch(() => undefined);
+        if (!cancelled) {
+          setCurrentUser(null);
+          showFeedback("Session expired", "info", error instanceof Error ? error.message : "Please sign in again.");
+        }
+      } finally {
+        await minimumBoot;
+        if (!cancelled) {
+          setBlockingMessage(null);
+          setBooting(false);
+          setLoadingData(false);
+        }
+      }
+    };
+
+    void restoreSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshAdminData, refreshDealerData, showFeedback]);
+
   const completeLiveLogin = useCallback(async (accessToken: string) => {
     setLoadingData(true);
     setBlockingMessage("Signing in with Base44");
     try {
-      mobileAccessToken = accessToken;
+      await mobileTokenStore.setAccessToken(accessToken);
       const user = await api.getCurrentUser();
       if (!user) {
-        mobileAccessToken = null;
+        await mobileTokenStore.clearAccessToken();
         throw new Error("Base44 session could not be resolved.");
       }
+      sessionExpiredHandledRef.current = false;
       setCurrentUser(user);
       setDeliveryAddress(user.addresses[0]?.address ?? "");
       setBlockingMessage(user.role === "admin" ? "Loading admin workspace" : "Loading dealer workspace");
@@ -229,6 +316,10 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
         // The session is valid if Base44 resolved the user. Keep the user signed in
         // and surface workspace data failures through dataError instead of failing auth.
       }
+    } catch (error) {
+      await mobileTokenStore.clearAccessToken().catch(() => undefined);
+      setCurrentUser(null);
+      throw error;
     } finally {
       setBlockingMessage(null);
       setLoadingData(false);
@@ -236,19 +327,10 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
   }, [refreshAdminData, refreshDealerData, showFeedback]);
 
   const logout = useCallback(() => {
-    mobileAccessToken = null;
-    setCurrentUser(null);
-    setCartOpen(false);
-    setCartQuantities({});
-    setProducts([]);
-    setOrders([]);
-    setRentals([]);
-    setNotifications([]);
-    setUsers([]);
-    setDeliveryAddress("");
-    setDataError(null);
-    setLastSyncedAt(null);
-  }, []);
+    sessionExpiredHandledRef.current = true;
+    void mobileTokenStore.clearAccessToken().catch(() => undefined);
+    resetSessionState();
+  }, [resetSessionState]);
 
   const createOrder = useCallback(async (input: CreateOrderInput) => {
     setBlockingMessage("Placing order");
@@ -598,9 +680,13 @@ function createMobileHarvestApi() {
   }
   return createProxyHarvestApi({
     endpoint,
-    getAccessToken: () => mobileAccessToken,
+    getAccessToken: () => mobileTokenStore.getAccessToken(),
+    onUnauthorized: () => {
+      void mobileTokenStore.clearAccessToken().catch(() => undefined);
+      return mobileUnauthorizedHandler?.();
+    },
     setAccessToken: (token) => {
-      mobileAccessToken = token;
+      void (token ? mobileTokenStore.setAccessToken(token) : mobileTokenStore.clearAccessToken());
     },
   });
 }

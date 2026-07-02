@@ -43,15 +43,17 @@ Unauthenticated users now boot into the native Public Home screen before choosin
 - Product list render tuning for small-to-medium catalogues.
 - Admin shell with role guard and horizontal admin navigation.
 - Admin flows for orders, products, stock, customers, settings, reports, and rental calendar.
+- Persistent session storage with `expo-secure-store`.
+- Runtime `401` handling clears the secure token cache and returns the app to a clean login state.
 
 ## Still Needed Before Production Release
 
 - Real brand assets: app icon, adaptive icon, splash logo, and final stamp/logo.
-- Persistent session storage with `expo-secure-store` or another approved storage layer.
+- Token lifetime metadata handling if Base44 exposes explicit expiry information.
 - Preview/release build setup with EAS.
 - Test coverage for domain/API validation and key mobile state flows.
 - Release environment hardening for the live Base44 proxy URL.
 
 ## Dependency Note
 
-`expo-secure-store` was not added in this pass because `npm install` hit the existing root peer dependency conflict between React 19 and `@hello-pangea/dnd`'s React 18 peer range. Avoiding a forced install keeps the dependency tree stable for now.
+`expo-secure-store@~15.0.8` is installed for Expo SDK 54 and is used only for the mobile Base44 access token cache.

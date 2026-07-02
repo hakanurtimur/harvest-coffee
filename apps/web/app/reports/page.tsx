@@ -1,7 +1,7 @@
 import AdminReportsWorkspace from "@/components/AdminReportsWorkspace";
 import AppShell from "@/components/AppShell";
 
-export default function LegacyReportsPage() {
+export default function ReportsPage() {
   return (
     <AppShell>
       <AdminReportsWorkspace />

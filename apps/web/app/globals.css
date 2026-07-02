@@ -45,9 +45,7 @@
   --bg: hsl(var(--background));
   --panel: hsl(var(--card));
   --ink: hsl(var(--foreground));
-  --muted-legacy: hsl(var(--muted-foreground));
   --line: hsl(var(--border));
-  --accent-legacy: hsl(var(--primary));
   --accent-strong: hsl(var(--primary));
   --green: hsl(var(--chart-3));
   --blue: hsl(var(--status-info));

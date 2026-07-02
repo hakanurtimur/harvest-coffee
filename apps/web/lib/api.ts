@@ -1,11 +1,13 @@
 import {
+  calculateOrderTotal,
+  createOrderNumber,
+} from "./domain";
+import type {
   Address,
   AdminSettings,
-  calculateOrderTotal,
   CreateOrderInput,
   CreateProductInput,
   CreateRentalInput,
-  createOrderNumber,
   CustomerSegment,
   Notification,
   Order,
@@ -80,6 +82,7 @@ export interface HarvestApi {
 export interface HarvestProxyOptions {
   endpoint: string;
   getAccessToken?: () => string | null | undefined;
+  onUnauthorized?: () => void | Promise<void>;
   setAccessToken?: (token: string | null) => void;
 }
 
@@ -287,6 +290,9 @@ export function createProxyHarvestApi(options: HarvestProxyOptions): HarvestApi 
   const parseProxyResponse = async <T>(response: Response, action: string): Promise<T> => {
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
+      if (response.status === 401) {
+        await options.onUnauthorized?.();
+      }
       throw new Error(stringValue(payload.error, `Harvest proxy action failed: ${action}`));
     }
     return payload.data as T;

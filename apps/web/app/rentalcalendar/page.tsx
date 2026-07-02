@@ -1,7 +1,7 @@
 import AppShell from "@/components/AppShell";
 import RentalCalendarWorkspace from "@/components/RentalCalendarWorkspace";
 
-export default function LegacyRentalCalendarPage() {
+export default function RentalCalendarPage() {
   return (
     <AppShell>
       <RentalCalendarWorkspace />

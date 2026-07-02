@@ -46,7 +46,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;

@@ -7,6 +7,7 @@ import {
   type HarvestApi,
 } from "@/lib/api";
 import type { CreateOrderInput, CreateRentalInput, User } from "@/lib/domain";
+import { createMemoryRateLimiter, getSafeHarvestLoginRedirectUrl } from "@/lib/security-helpers";
 
 type RawRecord = Record<string, unknown>;
 
@@ -47,6 +48,12 @@ const DEFAULT_CONTACT_EMAIL = "dythakanurtimur@gmail.com";
 const CONTACT_NAME_MAX_LENGTH = 120;
 const CONTACT_SUBJECT_MAX_LENGTH = 160;
 const CONTACT_MESSAGE_MAX_LENGTH = 4000;
+const CONTACT_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const CONTACT_RATE_LIMIT_MAX_REQUESTS = 5;
+const contactRateLimiter = createMemoryRateLimiter({
+  limit: CONTACT_RATE_LIMIT_MAX_REQUESTS,
+  windowMs: CONTACT_RATE_LIMIT_WINDOW_MS,
+});
 
 export function GET(request: Request) {
   const url = new URL(request.url);
@@ -54,19 +61,18 @@ export function GET(request: Request) {
     return jsonError("Unsupported Harvest proxy GET action.", 400);
   }
 
-  const appId = process.env.BASE44_APP_ID || process.env.NEXT_PUBLIC_BASE44_APP_ID || DEFAULT_BASE44_APP_ID;
-  const serverUrl = process.env.BASE44_BACKEND_URL || process.env.NEXT_PUBLIC_BASE44_BACKEND_URL || DEFAULT_BASE44_BACKEND_URL;
+  const appId = process.env.BASE44_APP_ID || DEFAULT_BASE44_APP_ID;
+  const serverUrl = process.env.BASE44_BACKEND_URL || DEFAULT_BASE44_BACKEND_URL;
   const appBaseUrl = process.env.BASE44_APP_BASE_URL || DEFAULT_BASE44_APP_BASE_URL;
   if (!appId || !serverUrl) {
     return jsonError("BASE44_APP_ID and BASE44_BACKEND_URL are required for Google login.", 500);
   }
 
-  const requestedFrom = url.searchParams.get("from") || "/";
-  const fromUrl = normalizeLoginRedirectUrl(
-    requestedFrom.startsWith("http") || requestedFrom.includes("://")
-      ? requestedFrom
-      : new URL(requestedFrom, url.origin).toString()
-  );
+  const requestedFrom = url.searchParams.get("from") || "/auth/callback";
+  const fromUrl = getSafeHarvestLoginRedirectUrl(requestedFrom, url.origin);
+  if (!fromUrl) {
+    return jsonError("Invalid Harvest login redirect.", 400);
+  }
   const loginUrl = new URL("/api/apps/auth/login", normalizeBase44AppBaseUrl(appBaseUrl));
   loginUrl.searchParams.set("app_id", appId);
   loginUrl.searchParams.set("from_url", fromUrl);
@@ -89,6 +95,9 @@ export async function POST(request: Request) {
     if (!action) return jsonError("Missing harvest proxy action.", 400);
     if (WRITE_ACTIONS.has(action) && isReadOnly()) {
       return jsonError("Harvest API is running in read-only mode. Write operations are disabled.", 403);
+    }
+    if (action === "sendContactMessage") {
+      assertContactRateLimit(request);
     }
 
     const base44 = createServerBase44Client(token);
@@ -319,9 +328,9 @@ async function invokeBase44Function(base44: ReturnType<typeof createClient>, fun
 }
 
 function createServerBase44Client(token?: string) {
-  const appId = process.env.BASE44_APP_ID || process.env.NEXT_PUBLIC_BASE44_APP_ID || DEFAULT_BASE44_APP_ID;
+  const appId = process.env.BASE44_APP_ID || DEFAULT_BASE44_APP_ID;
   const apiKey = process.env.BASE44_API_KEY;
-  const serverUrl = process.env.BASE44_BACKEND_URL || process.env.NEXT_PUBLIC_BASE44_BACKEND_URL || DEFAULT_BASE44_BACKEND_URL;
+  const serverUrl = process.env.BASE44_BACKEND_URL || DEFAULT_BASE44_BACKEND_URL;
 
   if (!appId || !serverUrl) {
     throw httpError("BASE44_APP_ID and BASE44_BACKEND_URL are required for the Harvest proxy.", 500);
@@ -441,16 +450,19 @@ function normalizeBase44AppBaseUrl(value: string) {
   return value.replace(/\/$/, "");
 }
 
-function normalizeLoginRedirectUrl(value: string) {
-  try {
-    const redirectUrl = new URL(value);
-    if (redirectUrl.hostname === "0.0.0.0") {
-      redirectUrl.hostname = "localhost";
-    }
-    return redirectUrl.toString();
-  } catch {
-    return value;
+function assertContactRateLimit(request: Request) {
+  const result = contactRateLimiter.check(getClientRateLimitKey(request));
+  if (!result.allowed) {
+    throw httpError("Too many contact messages. Please wait a few minutes and try again.", 429);
   }
+}
+
+function getClientRateLimitKey(request: Request) {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip")?.trim() ||
+    "anonymous"
+  );
 }
 
 function readRecord(value: unknown): RawRecord {

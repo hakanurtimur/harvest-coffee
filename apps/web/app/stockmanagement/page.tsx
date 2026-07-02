@@ -1,7 +1,7 @@
 import AppShell from "@/components/AppShell";
 import StockManagementWorkspace from "@/components/StockManagementWorkspace";
 
-export default function LegacyStockManagementPage() {
+export default function StockManagementPage() {
   return (
     <AppShell>
       <StockManagementWorkspace />

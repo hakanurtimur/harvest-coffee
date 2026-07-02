@@ -235,8 +235,10 @@ export function calculateOrderTotal(items: Pick<OrderItem, "subtotal">[]) {
   return Number(items.reduce((sum, item) => sum + item.subtotal, 0).toFixed(2));
 }
 
-export function createOrderNumber(now = Date.now()) {
-  return `HC${now.toString().slice(-8)}`;
+export function createOrderNumber(now = Date.now(), getRandomSuffix = () => Math.random().toString(36).slice(2, 8)) {
+  const timestampPart = now.toString(36).toUpperCase().slice(0, 6).padStart(6, "0");
+  const randomPart = getRandomSuffix().replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 6).padEnd(6, "0");
+  return `HC${timestampPart}${randomPart}`;
 }
 
 export function calculateOrderItems(products: Product[], quantities: Record<string, number>) {
