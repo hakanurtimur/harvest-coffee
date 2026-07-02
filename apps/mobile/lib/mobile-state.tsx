@@ -498,7 +498,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
     const user = { ...currentUser, adminSettings: settings, updatedAt: new Date().toISOString() };
     setCurrentUser(user);
     setUsers((current) => current.map((item) => item.id === user.id ? user : item));
-    showFeedback("Settings saved", "success", "Admin settings were saved for this session.");
+    showFeedback("Session settings saved", "success", "Base44 does not expose a persistent admin settings field yet.");
     return user;
   }, [currentUser, showFeedback]);
 
@@ -559,6 +559,7 @@ export function MobileStateProvider({ children }: { children: ReactNode }) {
       await api.markNotificationRead(id);
       if (currentUser?.role === "admin") await refreshAdminData();
       else await refreshDealerData();
+      showFeedback("Notification updated", "success");
     } catch (error) {
       showFeedback("Notification update failed", "error", error instanceof Error ? error.message : "Notification could not be updated.");
       throw error;

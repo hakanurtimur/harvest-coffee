@@ -7,16 +7,23 @@ import { useMobileState } from "../../lib/mobile-state";
 export default function OrderDetailScreen() {
   const { api, currentUser, orders } = useMobileState();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [order, setOrder] = useState<Order | null>(orders.find((item) => item.id === id) ?? null);
+  const cachedOrder = orders.find((item) => item.id === id) ?? null;
+  const [order, setOrder] = useState<Order | null>(cachedOrder);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!order);
   const isAdmin = currentUser?.role === "admin";
+
+  useEffect(() => {
+    if (cachedOrder) setOrder(cachedOrder);
+  }, [cachedOrder]);
 
   useEffect(() => {
     let mounted = true;
 
     async function loadOrder() {
       if (!id) return;
+      if (!cachedOrder) setLoading(true);
+      setError(null);
       try {
         const nextOrder = await api.getOrder(id);
         if (mounted) setOrder(nextOrder);
@@ -27,11 +34,11 @@ export default function OrderDetailScreen() {
       }
     }
 
-    if (!order) void loadOrder();
+    void loadOrder();
     return () => {
       mounted = false;
     };
-  }, [api, id, order]);
+  }, [api, cachedOrder, id]);
 
   if (loading) return <LoadingState label="Loading order" />;
 

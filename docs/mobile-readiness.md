@@ -45,11 +45,16 @@ Unauthenticated users now boot into the native Public Home screen before choosin
 - Admin flows for orders, products, stock, customers, settings, reports, and rental calendar.
 - Persistent session storage with `expo-secure-store`.
 - Runtime `401` handling clears the secure token cache and returns the app to a clean login state.
+- Proxy bearer tokens are sent through the `Authorization` header instead of JSON request bodies.
+- Expo mobile auth redirects are gated behind `HARVEST_ALLOW_EXPO_MOBILE_REDIRECTS=true`; production app-owned callbacks use `harvestcoffee:`.
+- Mobile admin product description generation uses the shared Base44 proxy function.
+- Order detail screens revalidate cached detail data on open.
 
 ## Still Needed Before Production Release
 
 - Real brand assets: app icon, adaptive icon, splash logo, and final stamp/logo.
 - Token lifetime metadata handling if Base44 exposes explicit expiry information.
+- Production mobile auth nonce/state or a short-lived code exchange.
 - Preview/release build setup with EAS.
 - Test coverage for domain/API validation and key mobile state flows.
 - Release environment hardening for the live Base44 proxy URL.

@@ -57,7 +57,7 @@ export default function AdminSettingsScreen() {
         <View style={settingStyles.summaryCopy}>
           <Text style={settingStyles.summaryEyebrow}>Workspace</Text>
           <Text style={settingStyles.summaryTitle}>{settings.appName || "Harvest Coffee"}</Text>
-          <Text style={settingStyles.summaryText}>Admin notifications and rental reminder preferences.</Text>
+          <Text style={settingStyles.summaryText}>Session-only admin preferences until Base44 exposes a supported settings field.</Text>
         </View>
       </View>
 
@@ -99,7 +99,7 @@ export default function AdminSettingsScreen() {
 
         <Pressable accessibilityRole="button" disabled={saving} onPress={() => void save()} style={({ pressed }) => [settingStyles.saveButton, pressed && !saving && styles.pressed, saving && styles.disabled]}>
           <Feather color={colors.onPrimary} name="save" size={15} />
-          <Text style={settingStyles.saveButtonText}>{saving ? "Saving..." : "Save settings"}</Text>
+          <Text style={settingStyles.saveButtonText}>{saving ? "Saving..." : "Save session settings"}</Text>
         </Pressable>
       </View>
 

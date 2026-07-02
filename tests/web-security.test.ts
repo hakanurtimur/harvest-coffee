@@ -26,12 +26,13 @@ describe("Harvest web security helpers", () => {
     assert.equal(getSafeHarvestLoginRedirectUrl("javascript:alert(1)", "https://harvest.example"), null);
   });
 
-  it("allows app-owned and Expo mobile redirect targets only", () => {
+  it("allows app-owned and explicitly enabled Expo mobile redirect targets only", () => {
     assert.equal(
-      getSafeMobileRedirectUrl("exp://ca-ine8-anonymous-8081.exp.direct/--/login")?.toString(),
+      getSafeMobileRedirectUrl("exp://ca-ine8-anonymous-8081.exp.direct/--/login", { allowExpoRedirects: true })?.toString(),
       "exp://ca-ine8-anonymous-8081.exp.direct/--/login",
     );
     assert.equal(getSafeMobileRedirectUrl("harvestcoffee://login")?.toString(), "harvestcoffee://login");
+    assert.equal(getSafeMobileRedirectUrl("exp://ca-ine8-anonymous-8081.exp.direct/--/login", { allowExpoRedirects: false }), null);
     assert.equal(getSafeMobileRedirectUrl("exp://evil.example/--/login"), null);
     assert.equal(getSafeMobileRedirectUrl("https://evil.example/login"), null);
   });

@@ -2,7 +2,9 @@ import { getSafeMobileRedirectUrl } from "@/lib/security-helpers";
 
 export function GET(request: Request) {
   const url = new URL(request.url);
-  const redirectUrl = getSafeMobileRedirectUrl(url.searchParams.get("return_to"));
+  const redirectUrl = getSafeMobileRedirectUrl(url.searchParams.get("return_to"), {
+    allowExpoRedirects: shouldAllowExpoMobileRedirects(),
+  });
 
   if (!redirectUrl) {
     const fallback = new URL("/login", url.origin);
@@ -20,4 +22,11 @@ export function GET(request: Request) {
   if (!accessToken && !error) redirectUrl.searchParams.set("error", "Google sign in did not return an access token.");
 
   return Response.redirect(redirectUrl.toString(), 302);
+}
+
+function shouldAllowExpoMobileRedirects() {
+  const value = process.env.HARVEST_ALLOW_EXPO_MOBILE_REDIRECTS;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return process.env.NODE_ENV !== "production";
 }

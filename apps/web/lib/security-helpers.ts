@@ -12,6 +12,10 @@ export type MemoryRateLimitOptions = {
   windowMs: number;
 };
 
+export type MobileRedirectOptions = {
+  allowExpoRedirects?: boolean;
+};
+
 export function getSafeHarvestLoginRedirectUrl(value: string, currentOrigin: string) {
   const current = normalizeUrlOrigin(currentOrigin);
   if (!current) return null;
@@ -30,13 +34,13 @@ export function getSafeHarvestLoginRedirectUrl(value: string, currentOrigin: str
   }
 }
 
-export function getSafeMobileRedirectUrl(value: string | null) {
+export function getSafeMobileRedirectUrl(value: string | null, options: MobileRedirectOptions = {}) {
   if (!value) return null;
 
   try {
     const url = new URL(value);
     if (MOBILE_APP_PROTOCOLS.has(url.protocol)) return url;
-    if (EXPO_PROTOCOLS.has(url.protocol) && isAllowedExpoHost(url.hostname)) return url;
+    if (options.allowExpoRedirects && EXPO_PROTOCOLS.has(url.protocol) && isAllowedExpoHost(url.hostname)) return url;
     return null;
   } catch {
     return null;

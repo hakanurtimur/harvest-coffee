@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}));
     const action = stringValue(body.action);
     const input = readRecord(body.input);
-    const token = readBearerToken(request.headers.get("authorization")) ?? optionalString(body.token);
+    const token = readBearerToken(request.headers.get("authorization"));
 
     if (!action) return jsonError("Missing harvest proxy action.", 400);
     if (WRITE_ACTIONS.has(action) && isReadOnly()) {

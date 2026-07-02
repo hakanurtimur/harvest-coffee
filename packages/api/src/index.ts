@@ -58,6 +58,7 @@ export interface HarvestApi {
   deleteCurrentUser(): Promise<void>;
   getProducts(): Promise<Product[]>;
   uploadProductImage(file: HarvestUploadFile): Promise<HarvestUploadResult>;
+  generateProductDescription(input: GenerateProductDescriptionInput): Promise<HarvestIntegrationResult & { description: string }>;
   sendContactMessage(input: ContactMessageInput): Promise<HarvestContactResult>;
   createProduct(input: CreateProductInput): Promise<Product>;
   updateProduct(id: string, input: UpdateProductInput): Promise<Product>;
@@ -229,6 +230,7 @@ export interface Base44ClientLike {
     me(): Promise<RawRecord>;
     updateMe(data: RawRecord): Promise<RawRecord>;
   };
+  functions?: Base44FunctionClientLike["functions"];
   entities: {
     Product: EntityClient;
     Order: EntityClient;
@@ -269,6 +271,10 @@ export function createBase44HarvestApi(base44: Base44ClientLike): HarvestApi {
     },
     async uploadProductImage() {
       throw new Error("Product image upload is only available through the Harvest proxy.");
+    },
+    async generateProductDescription(input) {
+      if (!base44.functions) throw new Error("Base44 functions client is not available.");
+      return createBase44HarvestIntegrations(base44 as Base44FunctionClientLike).generateProductDescription(input);
     },
     async sendContactMessage() {
       throw new Error("Contact messages are only available through the Harvest proxy.");
@@ -380,6 +386,9 @@ export function createReadOnlyHarvestApi(api: HarvestApi): HarvestApi {
     async uploadProductImage() {
       return readOnlyError();
     },
+    async generateProductDescription() {
+      return readOnlyError();
+    },
     sendContactMessage: api.sendContactMessage.bind(api),
     async createProduct() {
       return readOnlyError();
@@ -449,13 +458,12 @@ export function createProxyHarvestApi(options: HarvestProxyOptions): HarvestApi 
         body: JSON.stringify({
           action,
           input,
-          token,
         }),
         headers,
         method: "POST",
       });
     } catch (error) {
-        const reason = error instanceof Error ? error.message : "Network request failed";
+      const reason = error instanceof Error ? error.message : "Network request failed";
       throw new Error(`Harvest proxy request failed: ${action} at ${options.endpoint}. ${reason}`);
     }
     return parseProxyResponse<T>(response, action);
@@ -495,6 +503,7 @@ export function createProxyHarvestApi(options: HarvestProxyOptions): HarvestApi 
     deleteCurrentUser: () => call<void>("deleteCurrentUser"),
     getProducts: () => call<Product[]>("getProducts"),
     uploadProductImage: upload,
+    generateProductDescription: (input) => call<HarvestIntegrationResult & { description: string }>("generateProductDescription", input as unknown as RawRecord),
     sendContactMessage: (input) => call<HarvestContactResult>("sendContactMessage", input as unknown as RawRecord),
     createProduct: (input) => call<Product>("createProduct", input as RawRecord),
     updateProduct: (id, input) => call<Product>("updateProduct", { id, input }),

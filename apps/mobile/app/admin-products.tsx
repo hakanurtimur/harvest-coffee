@@ -43,7 +43,7 @@ const stockStatusConfig: Record<Product["stockStatus"], { icon: keyof typeof Fea
 };
 
 export default function AdminProductsScreen() {
-  const { createProduct, deleteProduct, products, updateProduct, uploadProductImage } = useMobileState();
+  const { api, createProduct, deleteProduct, products, updateProduct, uploadProductImage } = useMobileState();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<Product | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -144,11 +144,16 @@ export default function AdminProductsScreen() {
     }
     setGeneratingDescription(true);
     try {
+      const generated = await api.generateProductDescription({
+        category: form.category,
+        productName: form.name.trim(),
+        weight: form.weight.trim(),
+      });
       setForm((current) => ({
         ...current,
-        description: draftProductDescription(current),
+        description: generated.description,
       }));
-      setMessage({ text: "Description drafted locally. Review it before saving.", tone: "info" });
+      setMessage({ text: generated.message || "Description generated. Review it before saving.", tone: "success" });
     } catch (error) {
       setMessage({ text: error instanceof Error ? error.message : "Description could not be generated.", tone: "error" });
     } finally {
@@ -433,7 +438,7 @@ function ProductFormCard({
           style={({ pressed }) => [productStyles.aiButton, pressed && !generatingDescription && !saving && styles.pressed, (generatingDescription || saving) && styles.disabled]}
         >
           <Feather color={colors.metric.purple.color} name="zap" size={14} />
-          <Text style={productStyles.aiButtonText}>{generatingDescription ? "Drafting..." : "Draft copy"}</Text>
+          <Text style={productStyles.aiButtonText}>{generatingDescription ? "Generating..." : "Generate copy"}</Text>
         </Pressable>
       </View>
       <Field
@@ -572,15 +577,6 @@ function AdminProductCard({ deleting, editProduct, product, remove }: { deleting
       </View>
     </View>
   );
-}
-
-function draftProductDescription(form: ProductForm) {
-  const productName = form.name.trim();
-  const size = form.weight.trim();
-  const category = form.category;
-  const sizeSentence = size ? ` The ${size} format keeps replenishment simple for recurring B2B orders.` : "";
-
-  return `${productName} is selected for professional coffee shops, cafes, and hospitality teams that need reliable service and consistent quality. This ${category.toLowerCase()} product is easy to plan into daily operations and regular wholesale ordering.${sizeSentence}`;
 }
 
 const productStyles = StyleSheet.create({
